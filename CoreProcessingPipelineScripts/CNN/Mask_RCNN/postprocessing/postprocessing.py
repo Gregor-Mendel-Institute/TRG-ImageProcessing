@@ -9,7 +9,7 @@ FOR TESTING
 conda activate TreeRingCNN &&
 cd /Users/miroslav.polacek/Dropbox\ \(VBC\)/'Group Folder Swarts'/Research/CNNRings/Mask_RCNN/postprocessing &&
 python3 detect_whole_core_measure_split_server.py --dpi=13039 --image=/Users/miroslav.polacek/Desktop/whole_core_examples/ --weight=/Users/miroslav.polacek/Dropbox\ \(VBC\)/Group\ Folder\ Swarts/Research/CNNRings/Mask_RCNN/logs/traintestmlw220200508T2011/mask_rcnn_traintestmlw2_0355.h5
-
+ 
 """
 
 #######################################################################
@@ -126,9 +126,17 @@ def apply_mask(image, mask, alpha=0.5):
 #######################################################################
 # write run information
 #######################################################################
-
+# should find the log file and add data to it
 def write_run_info(string):
-    with open("RingDetectionRunInfo.txt","a+") as f:
+    #get name of the log file in the output dir
+    out_dir = args.output_folder
+    log_files = []
+    for f in os.listdir(out_dir):
+        if f.startswith("CNN_"):
+            log_files.append(f)
+            
+    log_file_name = os.path.join(out_dir, log_files[-1])       
+    with open(log_file_name,"a") as f:
         print(string, file=f)
 
 
@@ -492,8 +500,11 @@ def estimate_pith(Multi_centerlines):
 # plot predicted lines and points of measurements to visually assess
 #######################################################################
 def plot_lines(image, centerlines, measure_points, file_name):
-
+    #create pngs folder in output path
     export_path = os.path.join(args.output_folder, 'pngs')
+    if not os.path.exists(export_path):
+        os.makedirs(export_path)
+    
     #export_path = '/groups/swarts/lab/DendroImages/Plot8CNN_toTest/DetectionJpegs'
     
     #export_path = '/Users/miroslav.polacek/Documents/CNNRundomRubbish/CropTesting'
@@ -658,11 +669,15 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI):
 #######################################################################
 # Run detection on an image
 #######################################################################
-#initiate run information
+#initiate run information and create the log file in outpout dir
 now = datetime.now()
-dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
-write_run_info("#"*60)
-write_run_info("RUN ID:"+dt_string)
+dt_string_name = now.strftime("%Y%m%d_%H") #"%Y-%m-%d_%H:%M:%S"
+dt_string = now.strftime("%Y-%m-%d_%H:%M:%S")
+file_name = 'CNN_' + dt_string_name + '.log' #"RunID" + dt_string +
+file_path =os.path.join(args.output_folder, file_name)
+
+with open(file_path,"x") as fi:
+    print("Run started:" + dt_string, file=fi)
 
 pathpos = args.output_folder
 pos_list = []
