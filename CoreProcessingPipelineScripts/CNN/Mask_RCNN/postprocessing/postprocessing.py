@@ -9,7 +9,10 @@ FOR TESTING
 conda activate TreeRingCNN &&
 cd /Users/miroslav.polacek/Dropbox\ \(VBC\)/'Group Folder Swarts'/Research/CNNRings/Mask_RCNN/postprocessing &&
 python3 detect_whole_core_measure_split_server.py --dpi=13039 --image=/Users/miroslav.polacek/Desktop/whole_core_examples/ --weight=/Users/miroslav.polacek/Dropbox\ \(VBC\)/Group\ Folder\ Swarts/Research/CNNRings/Mask_RCNN/logs/traintestmlw220200508T2011/mask_rcnn_traintestmlw2_0355.h5
- 
+
+AT THE SERVER
+/groups/swarts/lab/ImageProcessingPipeline/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing
+
 """
 
 #######################################################################
