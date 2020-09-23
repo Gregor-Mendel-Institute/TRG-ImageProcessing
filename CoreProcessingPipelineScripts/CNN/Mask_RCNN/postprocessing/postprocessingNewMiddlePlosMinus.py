@@ -8,7 +8,7 @@ Print the image with mask over it.
 FOR TESTING
 conda activate TreeRingCNN &&
 cd /Users/miroslav.polacek/github/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing &&
-python3 postprocessing.py --dpi=13039 --image=/Users/miroslav.polacek/Desktop/whole_core_examples/ --weight=/Users/miroslav.polacek/github/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/traintestmlw220200727T1332/mask_rcnn_traintestmlw2_0473.h5 --output_folder=/Users/miroslav.polacek/Documents/CNNTestRuns
+python3 postprocessingNeWMiddlePlosMinus.py --dpi=13039 --image=/Users/miroslav.polacek/Desktop/whole_core_examples/ --weight=/Users/miroslav.polacek/github/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/traintestmlw220200727T1332/mask_rcnn_traintestmlw2_0957.h5 --output_folder=/Users/miroslav.polacek/Documents/CNNTestRunsNewMiddle
 
 AT THE SERVER
 /groups/swarts/lab/ImageProcessingPipeline/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing
@@ -148,15 +148,24 @@ def write_run_info(string):
 
 ############################################################################################################
 
-def sliding_window_detection(image, overlap = 0.5):
-    #print('im before pad', im_origin.shape)
-    imgheight_for_pad, imgwidth_for_pad = im_origin.shape[:2]
-    #print('image', im.shape)
+def sliding_window_detection(image, overlap = 0.5, cropUpandDown = 0):
+
+    #crop image top and bottom to avoid detectectig useles part of the image
+    imgheight_origin, imgwidth_origin = image.shape[:2]
+
+    print('image shape', image.shape[:2])
+    to_crop = int(imgheight_origin*cropUpandDown)
+    new_image = image[to_crop:(imgheight_origin-to_crop), :, :]
+    #print('new image shape', new_image.shape)
+
+
+    imgheight_for_pad, imgwidth_for_pad = new_image.shape[:2]
+
     # add zero padding at the begining and the end according to overlap so every part of the picture is detected same number of times
     zero_padding_front = np.zeros(shape=(imgheight_for_pad, int(imgheight_for_pad-(imgheight_for_pad*overlap)),3))
     zero_padding_back = np.zeros(shape=(imgheight_for_pad, imgheight_for_pad,3))
     #print('padding', zero_padding.shape)
-    im_padded = np.concatenate((zero_padding_front, im_origin, zero_padding_back), axis=1)
+    im_padded = np.concatenate((zero_padding_front, new_image, zero_padding_back), axis=1)
 
     imgheight, imgwidth = im_padded.shape[:2]
     #print('im_after_pad', im_padded.shape)
@@ -169,7 +178,7 @@ def sliding_window_detection(image, overlap = 0.5):
     for i in looping_list[:-cut_end]: #defines the slide value
         # crop the image
         cropped_part = im_padded[:imgheight, i:(i+imgheight)]
-        #print('cropped_part', cropped_part.shape)
+        #print('cropped_part, i, i+imheight', cropped_part.shape, i, i+imgheight)
         # run detection on the cropped part of the image
         results = model.detect([cropped_part], verbose=0)
         r = results[0]
@@ -238,11 +247,18 @@ def sliding_window_detection(image, overlap = 0.5):
     the_mask_clean = the_mask[:,pad_front:-pad_back]
     #print('the_mask', the_mask.shape)
     #print('the_mask_clean', the_mask_clean.shape)
+
+    #here you have to concatanete the top and buttom to fit the original image
+
+    missing_part = int((imgheight_origin - the_mask_clean.shape[0])/2)
+    to_concatenate = np.zeros(shape=(missing_part, imgwidth_origin))
+    the_mask_clean_origin_size = np.concatenate((to_concatenate, the_mask_clean, to_concatenate),axis=0)
+    #print('the_mask_clean_origin_size', the_mask_clean_origin_size.shape)
     #plt.imshow(the_mask_clean) # uncomment to print mask layer
     #plt.show()
     # TO PRINT THE MASK OVERLAYING THE IMAGE
 
-    return the_mask_clean
+    return the_mask_clean_origin_size
 
 #######################################################################
 # Extract distances from the mask
@@ -252,7 +268,7 @@ def clean_up_mask(mask):
     # detects countours of the masks, removes small contours, fits circle to individual contours and estimates the pith, skeletonizes the detected contours
 
     # make the mask binary
-    binary_mask = np.where(mask >= 1, 255, 0) # this part can be cleaned to remove some missdetections setting condition for >2
+    binary_mask = np.where(mask >= 2, 255, 0) # this part can be cleaned to remove some missdetections setting condition for >=2
     #plt.imshow(binary_mask)
     #plt.show()
     type(binary_mask)
@@ -319,7 +335,7 @@ def measure_contours(clean_contours, image):
 
     centerlines = []
     for i in range(len(contours_tuples)): #range(len(contours_tuples)):
-        print('ring_contour:', i)
+        #print('ring_contour:', i)
         contour = contours_tuples[i]
         #print('contour:', contour)
         polygon = shapely.geometry.Polygon(contour)
@@ -345,80 +361,181 @@ def measure_contours(clean_contours, image):
             centerlines.append(cline)
 
     ## Cut off upper and lower part of detected lines. It should help with problems of horizontal ends of detections
-    px_to_cut_off = 200 #based on examples that i used for testing
+    to_cut_off = .1 #based on examples that i used for testing
     Multi_centerlines_to_crop = shapely.geometry.MultiLineString(centerlines)
     minx, miny, maxx, maxy = Multi_centerlines_to_crop.bounds
+    px_to_cut_off = (maxy-miny)*to_cut_off
     #print('minx, miny, maxx, maxy', minx, miny, maxx, maxy)
     frame_to_crop = shapely.geometry.box(minx, miny+px_to_cut_off, maxx, maxy-px_to_cut_off)
     Multi_centerlines = Multi_centerlines_to_crop.intersection(frame_to_crop)
     # to check if it cropps something
     minx, miny, maxx, maxy = Multi_centerlines.bounds
     #print('minx, miny, maxx, maxy after', minx, miny, maxx, maxy)
+    imgheight, imgwidth = image.shape[:2]
+    print('imgheight, imgwidth', imgheight, imgwidth)
+    write_run_info("Image has height {} and width {}".format(imgheight, imgwidth))
+    write_run_info("{} ring boundries were detected".format(len(centerlines)))
 
     ## Split samples that are crosing center into two then turn the other part around
     #may be I need image dimensions
-    # try to use shapely see shapely intersection
-    imgheight, imgwidth = image.shape[:2]
-    write_run_info("Image has height {} and width {}".format(imgheight, imgwidth))
-    write_run_info("{} ring boundries were detected".format(len(centerlines)))
-    angle_index = [] #average angle should work. Then
-    frame_width = imgheight/.75 #originaly had this at 500 and it was problematic
-    print('frame_width', frame_width)
-    number_of_segments = int(imgwidth/frame_width)
+
+    angle_index = [] #average angle of the section of centerlines.
+    PlusMinus_index = []
+    frame_width = imgheight * .75
+    sliding = frame_width * .5 #how much is the frame sliding in every frame
+    #print('frame_width', frame_width)
+    number_of_segments = int(imgwidth/sliding)
+    #print('number_of_segments', number_of_segments)
     #plt.imshow(image)
     for i in range(0, number_of_segments):
+        #print('loop_number', i)
         #get the frame
-        frame_poly = shapely.geometry.box(i*frame_width, 0, (i*frame_width)+frame_width, imgheight)
-        #print(frame_poly.exterior.coords.xy)
+        frame_poly = shapely.geometry.box(i*sliding, 0, (i*sliding)+frame_width, imgheight)
+        cut_point = i*sliding+(frame_width*.5) #better to get cutting point here and use instead of frame number
+        #print('cutting_point', cutting_point)
+        #print('frame_exterior_xy',frame_poly.exterior.coords.xy)
         #x, y = frame_poly.exterior.coords.xy
         #plt.plot(x,y)
         #get lines inside of the frame
         intersection = Multi_centerlines.intersection(frame_poly)
         #print('intersection:', intersection.geom_type)
         if intersection.geom_type=='LineString':
-            line_coords = intersection.coords
-            line_coords = sorted(line_coords, reverse = True)
+            x, y = intersection.coords.xy
+
+            #line_coords = sorted(line_coords, reverse = True)# i think i do not need this for slope
             #print('sorted:', line_coords)
-            x0, y0 = line_coords[0]
-            xlast, ylast = line_coords[-1]
-            #solve problem with short peaces
-            x_dif = abs(xlast - x0)
-            if x_dif < frame_width:
+
+            x_dif = abs(x[-1] - x[0])
+            if x_dif < frame_width*.20: #This should be adjusted now it should skip this frame is line is less then 20% of the frame width
                 #print(i, 'th is too short')
                 continue
             else:
-                y_dif = abs(y0 - ylast)
-                angle_index.append([y_dif, i]) #I add also i here so i can identify distance later
+                #print(i, "th frame is simple")
+                slope, intercept, rvalue, pvalue, stderr = scipy.stats.linregress(x, y) #I finished here!!!!!!
+                #print("slope:", slope)
+                #dx = 1
+                #dy = slope
+                #angle = math.degrees(math.atan2(dx, -dy)) #to calculate angle in degrees with 180 max and 90 min. Abs value removes the direction.
+                angle_index.append([abs(slope), cut_point]) #I add also i here so i can identify distance later
+                if slope > 0:
+                    PlusMinus = 1
+                elif slope < 0:
+                    PlusMinus = 0
+                PlusMinus_index.append([PlusMinus, cut_point])
+
                 #print('linestring_x',x_int)
                 #plt.plot(x_int, y_int)
 
         elif intersection.geom_type=='MultiLineString':
-            y_difs = []
+            slopes = []
             for l in range(len(intersection.geoms)):
-                line_coords = intersection.geoms[l].coords
-                #x_int, y_int = line_coords.xy
-                line_coords = sorted(line_coords, reverse = True)
-                #print('sorted:', line_coords)
-                x0, y0 = line_coords[0]
-                xlast, ylast = line_coords[-1]
-                y_dif = abs(y0 - ylast)
-                y_difs.append(y_dif)
-                #print('Multi_x:', x_int)
-                #plt.plot(x_int, y_int)
-            angle_index.append([np.mean(y_difs), i])
+                x, y = intersection.geoms[l].coords.xy
+                x_dif = abs(x[-1] - x[0])
+                #print('loop number and xy coords:',i, l, x, y)
+                if x_dif < frame_width*.20: #This should be adjusted now it should skip this frame is line is less then 20% of the frame width
+                    #print(i, 'th is too short')
+                    continue
+                else:
+                    #print(i, "th frame is complex")
+                    slope, intercept, rvalue, pvalue, stderr = scipy.stats.linregress(x, y)
+                    #print("slope:", slope)
+                    #dx = 1
+                    #dy = slope
+                    #angle = math.degrees(math.atan2(dx, -dy)) #to calculate angle in degrees with 180 max and 90 min. Abs value removes the direction.
 
+                    #print('linestring_x',x_int)
+                    #plt.plot(x_int, y_int)
+                slopes.append(slope)
+
+            print('slopes before mean', slopes)
+            mean_slopes = np.mean(slopes)
+            print('mean_slopes', mean_slopes)
+            if np.isnan(mean_slopes):
+                continue
+            else:
+                angle_index.append([abs(mean_slopes), cut_point])
+                if mean_slopes > 0:
+                    PlusMinus = 1
+                elif mean_slopes < 0:
+                    PlusMinus = 0
+                PlusMinus_index.append([PlusMinus,cut_point])
         else:
             #print('second else????')
             continue
 
-    print('angle_index:', angle_index)
-    #now find the one with minimal value and find which frame it was based on i
-    y_diff, frame_number = sorted(angle_index)[0]
+    #get cutting point as a global minimum of polynomial function fit to angle indexes
+    print('angle_index', angle_index)
+
+    """
+    try: #Try whole this block in case angle index is empty it should fail and go the the end
+        angles = []
+        cutting_points = []
+        for i in range(len(angle_index)):
+            angle, cutting_point = angle_index[i]
+            angles.append(angle)
+            cutting_points.append(cutting_point)
+
+        pfit = np.polyfit(cutting_points, angles, 10)
+        c = np.poly1d(pfit)
+        #find the minimum of the functions
+        crit = c.deriv().r
+        r_crit = crit[crit.imag==0].real
+        test = c.deriv(2)(r_crit)
+
+        # compute local minima
+        # excluding range boundaries
+        x_min = r_crit[test>0]
+
+
+        #get the global minimum or dummy angle to use for test next
+        if len(x_min) > 0:
+            #get only x that are within the range of cutting_points
+            x_in_range = [i for i in x_min if i>min(cutting_points)]
+            x_in_range = [i for i in x_in_range if i<max(cutting_points)]
+            y_min = c(x_in_range)
+            yx = sorted(zip(y_min, x_in_range))[0]
+            cutting_point = yx[1]
+            print('polyfit_cutting_point', cutting_point)
+            angle = yx[0]
+            print('final_angle', angle)
+            #print('x_min, y_min', x_in_range, y_min)
+        else:
+            angle = 1 #this seems like very much not elegant solution
+    except Exception as e:
+        print('There was a problem while seatching for cutting point', e)
+        angle = 1 #this seems like very much not elegant solution
+    """
+    angle = 1 #remove this after testing
+    print('PlusMinus_index', PlusMinus_index)
+
+    #If the middle was not found in the first way i can try to find it by the change in a slope of the lines
+    if angle >= 0.3:
+        cutting_point = []
+        test_seq1 = [0,0,1,1]
+        test_seq2 = [1,1,0,0]
+        PlusMinus = [x for x,_ in  PlusMinus_index]
+        for i in range(len(PlusMinus_index)):
+            pm_seq = PlusMinus[i:i+len(test_seq1)]
+            if pm_seq != test_seq1 and pm_seq != test_seq2:
+                continue
+            if angle == 0:
+                print('Several cutting points identified, needs to be investigated!')
+                write_run_info('Several cutting points identified, needs to be investigated!')
+                break
+            cutting_point = PlusMinus_index[i+1][1] + ((PlusMinus_index[i+2][1] - PlusMinus_index[i+1][1])/2)
+            angle = 0
+
+            print('cutting_point_PlusMinus and angle', cutting_point, angle)
+
+
+
+
+    print('angle', angle)
     #print('y_diff and frame_number:', y_diff, frame_number)
     #find the position in the middle of the segment with the lowest value and cut it
-    if y_diff < 50: # threshold that might be important needs to be checked and adjusted 100 seems ok
-        cutting_point = (frame_number*frame_width)+(frame_width/2)
-        print('cutting_point:', cutting_point)
+    if angle < 0.3: # threshold that might be important needs to be checked and adjusted
+
+        print('final_cutting_point:', cutting_point)
         write_run_info('Core sample crosses the center and is cut at: ' + str(cutting_point))
         cut_frame1_poly = shapely.geometry.box(0, 0, cutting_point, imgheight)
         Multi_centerlines1= Multi_centerlines.intersection(cut_frame1_poly)
@@ -427,6 +544,23 @@ def measure_contours(clean_contours, image):
         write_run_info("Multi_centerlines2 type {}".format(Multi_centerlines2.geom_type))
         measure_points1 = []
         measure_points2 = [] #I initiate it alredy here so i can use it in the test later
+        #reorder Multi_centerlines1
+        x_maxs = []
+        x_mins = []
+        for i in range(len(Multi_centerlines1)):
+            minx, _, maxx,_ = Multi_centerlines1[i].bounds
+            x_maxs.append(maxx)
+            x_mins.append(minx)
+
+        x_middle = np.array(x_mins) + (np.array(x_maxs) - np.array(x_mins))/2
+        print('x_middle, x_maxs, x_mins', x_middle, x_maxs, x_mins)
+        contourszip = zip(x_middle, Multi_centerlines1)
+
+        #print('contourszip', contourszip)
+        #print('x_maxs', x_maxs)
+        centerlines1 = [x for _,x in sorted(contourszip, key=itemgetter(0))]
+        Multi_centerlines1 = shapely.geometry.MultiLineString(centerlines1)
+        #print('ordered centerlines2:', Multi_centerlines2.geom_type)
         for i in range(len(Multi_centerlines1.geoms)-1):
             points = shapely.ops.nearest_points(Multi_centerlines1.geoms[i], Multi_centerlines1.geoms[i+1])
             measure_points1.append(points)
@@ -438,18 +572,20 @@ def measure_contours(clean_contours, image):
             # order contours by x_maxs
             # Order by maxx
             x_maxs = []
+            x_mins = []
             for i in range(len(Multi_centerlines2)):
-                _, _, maxx,_ = Multi_centerlines2[i].bounds
+                minx, _, maxx,_ = Multi_centerlines2[i].bounds
                 x_maxs.append(maxx)
+                x_mins.append(minx)
 
-            contourszip = zip(x_maxs, Multi_centerlines2)
+            x_middle = np.array(x_mins) + (np.array(x_maxs) - np.array(x_mins))/2
+            contourszip = zip(x_middle, Multi_centerlines2)
 
             #print('contourszip', contourszip)
             #print('x_maxs', x_maxs)
             centerlines2 = [x for _,x in sorted(contourszip, key=itemgetter(0))]
             Multi_centerlines2 = shapely.geometry.MultiLineString(centerlines2)
             #print('ordered centerlines2:', Multi_centerlines2.geom_type)
-
 
             for i in range(len(Multi_centerlines2.geoms)-1):
                 points = shapely.ops.nearest_points(Multi_centerlines2.geoms[i], Multi_centerlines2.geoms[i+1])
@@ -462,16 +598,33 @@ def measure_contours(clean_contours, image):
             measure_points=[measure_points1, measure_points2]
             Multi_centerlines = [Multi_centerlines1, Multi_centerlines2]
 
-        return Multi_centerlines, measure_points
-
+        return Multi_centerlines, measure_points, angle_index
 
     else:
         # loop through them to measure pairwise distances. if possible find nearest points and also visualise
+        print('middle point was not detected')
+        #reorder the lines
+        x_maxs = []
+        x_mins = []
+        for i in range(len(Multi_centerlines)):
+            minx, _, maxx,_ = Multi_centerlines[i].bounds
+            x_maxs.append(maxx)
+            x_mins.append(minx)
+
+        x_middle = np.array(x_mins) + (np.array(x_maxs) - np.array(x_mins))/2
+        contourszip = zip(x_middle, Multi_centerlines)
+
+        #print('contourszip', contourszip)
+        #print('x_maxs', x_maxs)
+        centerlines = [x for _,x in sorted(contourszip, key=itemgetter(0))]
+        Multi_centerlines = shapely.geometry.MultiLineString(centerlines)
+        #print('ordered centerlines:', Multi_centerlines2.geom_type)
         measure_points = []
         for i in range(len(Multi_centerlines.geoms)-1):
             points = shapely.ops.nearest_points(Multi_centerlines.geoms[i], Multi_centerlines.geoms[i+1])
             measure_points.append(points)
-        return Multi_centerlines, measure_points
+
+        return Multi_centerlines, measure_points, angle_index
 #######################################################################
 # Estimate pith position
 #######################################################################
@@ -504,7 +657,7 @@ def estimate_pith(Multi_centerlines):
 #######################################################################
 # plot predicted lines and points of measurements to visually assess
 #######################################################################
-def plot_lines(image, centerlines, measure_points, file_name):
+def plot_lines(image, centerlines, measure_points, file_name, angle_index):
     #create pngs folder in output path
     export_path = os.path.join(args.output_folder, 'pngs')
     if not os.path.exists(export_path):
@@ -522,11 +675,23 @@ def plot_lines(image, centerlines, measure_points, file_name):
     plt.figure(figsize = (13, 4), dpi=plot_dpi)
     plt.imshow(image)
     """
+    #save images at original size unles they are bigger then 30000. Should improve diagnostics on the images
     imgheight, imgwidth = image.shape[:2]
-    plot_dpi = 300
-    plt.figure(figsize = (20, 4), dpi=plot_dpi)
-    plt.imshow(image)
+    print('imgheight, imgwidth', imgheight, imgwidth)
+    plot_dpi = 100
 
+    if imgwidth < 30000:
+        plt.figure(figsize = (imgwidth/plot_dpi, 2*(imgheight/plot_dpi)), dpi=plot_dpi)
+        #fig, (ax1, ax2) = plt.subplots(2)
+        plt.imshow(image)
+    else: #andjust image size if it`s exceeding 30000 pixels to 30000
+        resized_height = imgheight*(30000/imgwidth)
+        plt.figure(figsize = (30000/plot_dpi, 2*(resized_height/plot_dpi)), dpi=plot_dpi)
+        #fig, (ax1, ax2) = plt.subplots(2)
+        plt.imshow(image)
+
+
+    #plot the lines to the image
     if not isinstance(centerlines, list) and len(centerlines)>2:
 
         #plt.figure(figsize = (30,15))
@@ -569,7 +734,53 @@ def plot_lines(image, centerlines, measure_points, file_name):
             xc,yc = centerlines1[-1].coords.xy # to print the last point
             plt.plot(xc,yc, color[l])
         #plt.show()
-    plt.savefig(os.path.join(export_path, f))
+    #ad subplot for finding the middle to be able to evaluate the function
+    """
+    try:
+        angles = []
+        cutting_points = []
+        for i in range(len(angle_index)):
+            angle, cutting_point = angle_index[i]
+            if np.isnan(angle):
+                continue
+            else:
+                angles.append(angle)
+                cutting_points.append(cutting_point)
+
+        ax2.plot(cutting_points, angles, 'o', color='black')
+        #now try to fit polynomial
+        pfit = np.polyfit(cutting_points, angles, 10)
+        c = np.poly1d(pfit)
+        xc = np.arange(cutting_points[0], cutting_points[-1], 10)
+        ax2.plot(xc, c(xc))
+        #find the minimum of the functions
+        crit = c.deriv().r
+        r_crit = crit[crit.imag==0].real
+        test = c.deriv(2)(r_crit)
+
+
+        # compute local minima
+        # excluding range boundaries
+        x_min = r_crit[test>0]
+        if len(x_min)>0:
+
+            x_in_range = [i for i in x_min if i>min(cutting_points)]
+            x_in_range = [i for i in x_in_range if i<max(cutting_points)]
+            y_min = c(x_in_range)
+
+            #get the global minimum
+            yx = sorted(zip(y_min, x_in_range))[0]
+
+            ax2.plot( yx[1], yx[0], 'o' )
+
+
+
+        fig.savefig(os.path.join(export_path, f), bbox_inches = 'tight', pad_inches = 0)
+    except:
+        fig.savefig(os.path.join(export_path, f), bbox_inches = 'tight', pad_inches = 0)
+    """
+    plt.savefig(os.path.join(export_path, f), bbox_inches = 'tight', pad_inches = 0)
+
 #######################################################################
 # create a .pos file with measure points
 #######################################################################
@@ -695,7 +906,7 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI):
 #######################################################################
 # Run detection on an images
 #######################################################################
-
+"""
 #initiate run information and create the log file in outpout dir
 now = datetime.now()
 dt_string_name = now.strftime("D%Y%m%d_T%H%M") #"%Y-%m-%d_%H:%M:%S"
@@ -723,14 +934,17 @@ for f in os.listdir(pathin):
         im_origin = skimage.io.imread(image_path)
         try:
             detected_mask = sliding_window_detection(image = im_origin, overlap = 0.5)
+
         except Exception as e:
             write_run_info("Function sliding_window_detection failed: {}".format(e))
+
         try:
             clean_contours = clean_up_mask(detected_mask)
         except Exception as e:
             write_run_info("Function clean_up_mask failed: {}".format(e))
+
         try:
-            centerlines, measure_points = measure_contours(clean_contours, detected_mask)
+            centerlines, measure_points, angle_index = measure_contours(clean_contours, detected_mask)
         except Exception as e:
             write_run_info("Function measure_contours failed: {}".format(e))
 
@@ -747,10 +961,58 @@ for f in os.listdir(pathin):
         try:
             masked_image = im_origin.astype(np.uint32).copy()
             masked_image = apply_mask(masked_image, detected_mask, alpha=0.2)
-            plot_lines(masked_image, centerlines, measure_points, file_name)
+            plot_lines(masked_image, centerlines, measure_points, file_name, angle_index)
         except Exception as e:
             write_run_info("Ploting lines failed: {}".format(e))
+"""
+# TO TEST WITHOUT TRY AND EXCEPT TO GET ERROR MESSAGES AND CRUSHES!!!!
 
+
+now = datetime.now()
+dt_string_name = now.strftime("D%Y%m%d_T%H%M") #"%Y-%m-%d_%H:%M:%S"
+dt_string = now.strftime("%Y-%m-%d_%H:%M:%S")
+file_name = 'CNN_' + dt_string_name + '.log' #"RunID" + dt_string +
+file_path =os.path.join(args.output_folder, file_name)
+
+with open(file_path,"x") as fi:
+    print("Run started:" + dt_string, file=fi)
+
+pathpos = args.output_folder
+pos_list = []
+for f in os.listdir(pathpos):
+    if f.endswith('.pos'):
+        pos_name = f.split('.')[0]
+        pos_list.append(pos_name)
+
+pathin = args.image
+for f in os.listdir(pathin):
+    if f.endswith('.tif') and f.split('.')[0] not in pos_list:
+        print(f)
+        write_run_info("Processing image: {}".format(f))
+        image_path = os.path.join(pathin, f)
+        image_name = os.path.basename(image_path)
+        im_origin = skimage.io.imread(image_path)
+
+        detected_mask = sliding_window_detection(image = im_origin, overlap = 0.75, cropUpandDown = 0.17)
+
+
+
+        clean_contours = clean_up_mask(detected_mask)
+
+        centerlines, measure_points, angle_index = measure_contours(clean_contours, detected_mask)
+
+        file_name = os.path.basename(image_path).split('.')[0]
+        print('file_name', file_name)
+        DPI = float(args.dpi)
+        #PithCoordinates = 'none' # NOT YET IMPLEMENTED
+
+        write_to_pos(centerlines, measure_points, file_name, image_name, DPI)
+
+        # Ploting lines is moslty for debugging
+
+        masked_image = im_origin.astype(np.uint32).copy()
+        masked_image = apply_mask(masked_image, detected_mask, alpha=0.2)
+        plot_lines(masked_image, centerlines, measure_points, file_name, angle_index)
 
 """
 #To save variables to test and save time
@@ -818,15 +1080,11 @@ for f in os.listdir(pathin):
         image_name = os.path.basename(image_path)
         im_origin = skimage.io.imread(image_path)
 
-        detected_mask = np.load('/Users/miroslav.polacek/Documents/CNNTestRuns/detected_mask.npy', allow_pickle=True)
-        try:
-            clean_contours = clean_up_mask(detected_mask)
-        except Exception as e:
-            write_run_info("Function clean_up_mask failed: {}".format(e))
-        try:
-            centerlines, measure_points = measure_contours(clean_contours, detected_mask)
-        except Exception as e:
-            write_run_info("Function measure_contours failed: {}".format(e))
+        detected_mask = np.load('/Users/miroslav.polacek/Documents/CNNTestRunsNewMiddle/detected_mask.npy', allow_pickle=True)
+
+        clean_contours = clean_up_mask(detected_mask)
+
+        centerlines, measure_points = measure_contours(clean_contours, detected_mask)
 
 
         #centerlines = np.load('/Users/miroslav.polacek/Documents/CNNTestRuns/centerlines.npy', allow_pickle=True)
@@ -911,26 +1169,3 @@ print('circle_least_square:', xc, yc, r)
 xchf,ychf,rhf,_ = cf.hyper_fit((data))
 print('circle_hyper_fit:', xchf, ychf, rhf)
 """
-#plt.imshow(skelet_mask)
-#plt.show()
-
-
-        #masked_image = im_origin.astype(np.uint32).copy()
-        #masked_image = apply_mask(masked_image, detected_mask, alpha=0.3)
-
-        #plt.imshow(masked_image) # uncomment to print masked image
-        #plt.show()
-
-        #export_path = '/Users/miroslav.polacek/Documents/CNNRundomRubbish/200320_longcoredetections/newaug_E239_conf_0.9'
-        #plt.savefig(os.path.join(export_path, f), dpi=300)
-            # Add small mask to the_mask with the shift of i
-
-            #from skimage.morphology import skeletonize
-            #skeleton = skeletonize(image)
-
-
-# Only for testing the extract_distances
-
-# which should run when run in console
-#if __name__ == "__main__": # i think not necessary at the moment
-#    sliding()

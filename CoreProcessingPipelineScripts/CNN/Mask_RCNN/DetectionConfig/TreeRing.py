@@ -22,12 +22,12 @@ Usage: import the module (see Jupyter notebooks for examples), or run from
 
     # Train a new model starting from ImageNet weights
     python3 TreeRing.py train --dataset=/Users/miroslav.polacek/Dropbox\ \(VBC\)/'Group Folder Swarts'/Research/CNNRings/Mask_RCNN/datasets/treering --weights=imagenet
-    
+
     #Train on Tree Rings starting from ImageNet weights
     python3 TreeRing.py train --dataset=/Users/miroslav.polacek/Dropbox\ \(VBC\)/'Group Folder Swarts'/Research/CNNRings/Mask_RCNN/datasets/treering --weights=imagenet
 
     ##next two should be eventually removed
-    
+
     # Apply color splash to an image
     python3 TreeRing.py splash --weights=/path/to/weights/file.h5 --image=<URL or path to file>
 
@@ -79,20 +79,20 @@ class treeRingConfig(Config):
 
     # Number of training steps per epoch rule of thumb taining images/images per GPU
     STEPS_PER_EPOCH = 420
-    
+
     # Number of validation steps per epoch
     VALIDATION_STEPS = 50
-    
+
     # Backbone network architecture
     # Supported values are: resnet50, resnet101.
-    
+
     BACKBONE = "resnet101"
-    
+
     # If enabled, resizes instance masks to a smaller size to reduce
     # memory load. Recommended when using high-resolution images.
     USE_MINI_MASK = True
     MINI_MASK_SHAPE = (56, 56)  # (height, width) of the mini-mask, default (56, 56)
-    
+
     # Input image resizing
     # Generally, use the "square" resizing mode for training and predicting
     # and it should work well in most cases. In this mode, images are scaled
@@ -120,14 +120,14 @@ class treeRingConfig(Config):
     # up scaling. For example, if set to 2 then images are scaled up to double
     # the width and height, or more, even if MIN_IMAGE_DIM doesn't require it.
     # However, in 'square' mode, it can be overruled by IMAGE_MAX_DIM.
-    
+
     # Length of square anchor side in pixels. The default was (32, 64, 128, 256, 512)
     RPN_ANCHOR_SCALES = (32, 64, 128, 256, 512)
-    
+
     #Non-max suppression threshold to filter RPN proposals.
     # You can increase this during training to generate more propsals.
     RPN_NMS_THRESHOLD = 0.9
-    
+
     # Number of ROIs per image to feed to classifier/mask heads
     # The Mask RCNN paper uses 512 but often the RPN doesn't generate
     # enough positive proposals to fill this and keep a positive:negative
@@ -138,8 +138,8 @@ class treeRingConfig(Config):
 
     # Skip detections with < 90% confidence 0.9 was for baloons
     # for nucleus 0
-    DETECTION_MIN_CONFIDENCE = 0.90
-    
+    DETECTION_MIN_CONFIDENCE = 0.98
+
     # Learning rate and momentum
     # The Mask RCNN paper uses lr=0.02, but on TensorFlow it causes
     # weights to explode. Likely due to differences in optimizer
@@ -159,7 +159,7 @@ class treeRingConfig(Config):
         "mrcnn_bbox_loss": 1.,
         "mrcnn_mask_loss": 1.
     }
-    
+
     # Gradient norm clipping. Default 5.0. Some blog recommanded 10 with LR = 0.01
     GRADIENT_CLIP_NORM = 5.0
 
@@ -213,7 +213,7 @@ class treeRingDataset(utils.Dataset):
             if type(a['regions']) is dict:
                 polygons = [r['shape_attributes'] for r in a['regions'].values()]
             else:
-                polygons = [r['shape_attributes'] for r in a['regions']] 
+                polygons = [r['shape_attributes'] for r in a['regions']]
 
             # load_mask() needs the image size to convert polygons to masks.
             # Unfortunately, VIA doesn't include it in JSON, so we must read
@@ -279,17 +279,17 @@ def train(model):
     dataset_val = treeRingDataset()
     dataset_val.load_treeRing(args.dataset, "val")
     dataset_val.prepare()
-    
+
     # Image augmentation
     # http://imgaug.readthedocs.io/en/latest/source/augmenters.html
-    
+
     augmentation = iaa.SomeOf((1, 3), [
             iaa.Fliplr(0.5),
             iaa.Flipud(0.5),
             iaa.Crop(percent=(0, 0.1)),
             iaa.Affine(rotate=(-90, 90)),
             #iaa.Affine(shear=(-16, 16)), #stretches to the right nad the left
-            #iaa.Affine(scale={"x": (0.5, 1.5), "y": (0.5, 1.5)}), #zooming in and out randomply per every axes by 20%          
+            #iaa.Affine(scale={"x": (0.5, 1.5), "y": (0.5, 1.5)}), #zooming in and out randomply per every axes by 20%
             iaa.GaussianBlur(sigma=(0.0, 0.5)),
             iaa.Multiply((0.5, 1.2)), #changeing brightness
             iaa.Grayscale(alpha=(0.0, 0.9))
@@ -305,22 +305,22 @@ def train(model):
                 epochs=10,
                 #augmentation=augmentation,
                 layers='heads') # 'heads' or 'all'
-                
+
     print("Training network heads")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE/10,
                 epochs=20,
                 #augmentation=augmentation,
-                layers='heads') # 'heads' or 'all' 
-                  
+                layers='heads') # 'heads' or 'all'
+
     print("Training network heads")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE/10,
                 epochs=20,
                 #augmentation=augmentation,
                 layers='all') # 'heads' or 'all'
-                
-    
+
+
 ############################################################
 #  Training
 ############################################################

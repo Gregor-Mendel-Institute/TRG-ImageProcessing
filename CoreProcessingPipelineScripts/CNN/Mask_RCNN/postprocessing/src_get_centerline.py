@@ -185,8 +185,8 @@ def _point_check(outline_points):
         line_segment = LineString([previous, current])
         distances.append(line_segment.length)
 
-    print('max_distance:', np.max(distances))
-    print('final_points:', len(distances))
+    #print('max_distance:', np.max(distances))
+    #print('final_points:', len(distances))
     #print('distances',sorted(distances, reverse = True))
     return distances
 
