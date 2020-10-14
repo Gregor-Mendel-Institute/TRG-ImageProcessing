@@ -275,7 +275,7 @@ def clean_up_mask(mask):
     uint8binary = binary_mask.astype(np.uint8).copy()
 
     #gray_image = cv2.cvtColor(binary_mask, cv2.COLOR_BGR2GRAY)
-    contours, hierarchy = cv2.findContours(uint8binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
+    _, contours, hierarchy = cv2.findContours(uint8binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
     #print('contour_shape:', len(contours))
 
     #### here i extract dimensions and angle of individual contours bigger than threshold

@@ -13,5 +13,5 @@ source activate ~/.conda/envs/TreeRingCNN
 
 
 
-~/.conda/envs/TreeRingCNN/bin/python3 /groups/swarts/lab/ImageProcessingPipeline/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing/postprocessing.py --dpi=13039 --image=/groups/swarts/lab/DendroImages/Plot8CNN_toTest/ --weight=/groups/swarts/lab/ImageProcessingPipeline/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/traintestmlw220200601T2039/mask_rcnn_traintestmlw2_0293.h5 --output_folder=/groups/swarts/lab/ImageProcessingPipeline/TestOutput/
+time ~/.conda/envs/TreeRingCNN/bin/python3 /groups/swarts/lab/ImageProcessingPipeline/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing/postprocessingNewMiddlePlosMinus.py --dpi=13039 --image=/groups/swarts/lab/DendroImages/Plot8CNN_toTest/ --weight=/groups/swarts/lab/ImageProcessingPipeline/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs//traintestmlw220200727T1332/mask_rcnn_traintestmlw2_0957.h5 --output_folder=/groups/swarts/lab/DendroImages/Plot8CNN_toTest/
 
