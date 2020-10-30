@@ -8,7 +8,7 @@ Print the image with mask over it.
 FOR TESTING
 conda activate TreeRingCNN &&
 cd /Users/miroslav.polacek/github/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing &&
-python3 postprocessingNeWMiddlePlosMinus.py --dpi=13039 --image=/Users/miroslav.polacek/Desktop/whole_core_examples/ --weight=/Users/miroslav.polacek/github/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/traintestmlw220200727T1332/mask_rcnn_traintestmlw2_0957.h5 --output_folder=/Users/miroslav.polacek/Documents/CNNTestRunsNewMiddle
+python3 postprocessingNeWMiddlePlosMinus.py --dpi=13039 --input=/Users/miroslav.polacek/Desktop/whole_core_examples/ --weight=/Users/miroslav.polacek/github/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/traintestmlw220200727T1332/mask_rcnn_traintestmlw2_0957.h5 --output_folder=/Users/miroslav.polacek/Documents/CNNTestRunsNewMiddle
 
 AT THE SERVER
 /groups/swarts/lab/ImageProcessingPipeline/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing
@@ -27,9 +27,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--dpi', required=True,
                     help="DPI value for the image")
 
-parser.add_argument('--image', required=True,
+parser.add_argument('--input', required=True,
                     metavar="/path/to/image/",
-                    help="Path to image file")
+                    help="Path to image file of folder")
 parser.add_argument('--weight', required=True,
                     metavar="/path/to/weight/folder",
                     help="Path to weight file")
@@ -156,7 +156,7 @@ def sliding_window_detection(image, overlap = 0.5, cropUpandDown = 0):
     print('image shape', image.shape[:2])
     to_crop = int(imgheight_origin*cropUpandDown)
     new_image = image[to_crop:(imgheight_origin-to_crop), :, :]
-    #print('new image shape', new_image.shape)
+    print('new image shape', new_image.shape)
 
 
     imgheight_for_pad, imgwidth_for_pad = new_image.shape[:2]
@@ -168,14 +168,16 @@ def sliding_window_detection(image, overlap = 0.5, cropUpandDown = 0):
     im_padded = np.concatenate((zero_padding_front, new_image, zero_padding_back), axis=1)
 
     imgheight, imgwidth = im_padded.shape[:2]
-    #print('im_after_pad', im_padded.shape)
+    print('im_after_pad', im_padded.shape)
 
     the_mask = np.zeros(shape=(imgheight, imgwidth)) #combine all the partial masks in the final size of full tiff
-    #print('the_mask', the_mask.shape)
-    looping_list = range(0,imgwidth, int(imgheight-(imgheight*overlap)))
-    cut_end = int(zero_padding_back.shape[1]/int(imgheight-(imgheight*overlap)))
-    #print('cut_end', cut_end)
-    for i in looping_list[:-cut_end]: #defines the slide value
+    print('the_mask', the_mask.shape)
+    looping_range = range(0,imgwidth, int(imgheight-(imgheight*overlap)))
+    looping_list = [i for i in looping_range if i < int(imgheight_for_pad-(imgheight_for_pad*overlap)) + imgwidth_origin]
+    #print('looping_list', looping_list)
+
+    for i in looping_list: #defines the slide value
+        print("i", i)
         # crop the image
         cropped_part = im_padded[:imgheight, i:(i+imgheight)]
         #print('cropped_part, i, i+imheight', cropped_part.shape, i, i+imgheight)
@@ -228,7 +230,7 @@ def sliding_window_detection(image, overlap = 0.5, cropUpandDown = 0):
         combined_mask = maskr1_back + maskr + maskr2_back_cropped
         # merge with the relevant position of the big mask and overlap with previous one
         cropped_the_mask = the_mask[:imgheight, i:(i+imgheight)]
-        #print('the_mask_piece', cropped_the_mask.shape)
+        print('the_mask_piece', cropped_the_mask.shape)
         all_masks_combined = combined_mask + cropped_the_mask
         #print('middle', all_masks_combined.shape)
         end_the_mask = the_mask[:imgheight, (i+imgheight):]
@@ -275,6 +277,7 @@ def clean_up_mask(mask):
     uint8binary = binary_mask.astype(np.uint8).copy()
 
     #gray_image = cv2.cvtColor(binary_mask, cv2.COLOR_BGR2GRAY)
+    #on server has to be like this at the moment '_, contours, hierarchy',because there is different version of openCV 
     _, contours, hierarchy = cv2.findContours(uint8binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
     #print('contour_shape:', len(contours))
 
@@ -406,25 +409,21 @@ def measure_contours(clean_contours, image):
             #print('sorted:', line_coords)
 
             x_dif = abs(x[-1] - x[0])
-            if x_dif < frame_width*.20: #This should be adjusted now it should skip this frame is line is less then 20% of the frame width
+            if x_dif < frame_width*.20: #This should be adjusted now it should skip this frame if a line is less then 20% of the frame width
                 #print(i, 'th is too short')
                 continue
             else:
                 #print(i, "th frame is simple")
-                slope, intercept, rvalue, pvalue, stderr = scipy.stats.linregress(x, y) #I finished here!!!!!!
-                #print("slope:", slope)
-                #dx = 1
-                #dy = slope
-                #angle = math.degrees(math.atan2(dx, -dy)) #to calculate angle in degrees with 180 max and 90 min. Abs value removes the direction.
+                slope, intercept, rvalue, pvalue, stderr = scipy.stats.linregress(x, y)
+                write_run_info("slope:{}".format(slope))
                 angle_index.append([abs(slope), cut_point]) #I add also i here so i can identify distance later
-                if slope > 0:
+                if slope > 0 and slope < 2:
                     PlusMinus = 1
-                elif slope < 0:
+                elif slope < 0 and slope > -2:
                     PlusMinus = 0
+                else:
+                    PlusMinus = []
                 PlusMinus_index.append([PlusMinus, cut_point])
-
-                #print('linestring_x',x_int)
-                #plt.plot(x_int, y_int)
 
         elif intersection.geom_type=='MultiLineString':
             slopes = []
@@ -438,10 +437,7 @@ def measure_contours(clean_contours, image):
                 else:
                     #print(i, "th frame is complex")
                     slope, intercept, rvalue, pvalue, stderr = scipy.stats.linregress(x, y)
-                    #print("slope:", slope)
-                    #dx = 1
-                    #dy = slope
-                    #angle = math.degrees(math.atan2(dx, -dy)) #to calculate angle in degrees with 180 max and 90 min. Abs value removes the direction.
+                    write_run_info("slope:{}".format(slope))
 
                     #print('linestring_x',x_int)
                     #plt.plot(x_int, y_int)
@@ -454,10 +450,12 @@ def measure_contours(clean_contours, image):
                 continue
             else:
                 angle_index.append([abs(mean_slopes), cut_point])
-                if mean_slopes > 0:
+                if mean_slopes > 0 and slope < 2:
                     PlusMinus = 1
-                elif mean_slopes < 0:
+                elif mean_slopes < 0 and slope > -2:
                     PlusMinus = 0
+                else:
+                    PlusMinus = []
                 PlusMinus_index.append([PlusMinus,cut_point])
         else:
             #print('second else????')
@@ -984,29 +982,38 @@ for f in os.listdir(pathpos):
         pos_name = f.split('.')[0]
         pos_list.append(pos_name)
 
-pathin = args.image
-for f in os.listdir(pathin):
+input = args.input
+# check pathin if its folder or file and get file list of either
+if os.path.isfile(input):
+    # get file name and dir to file
+    input_list = [os.path.basename(input)]
+    input_path = os.path.split(input)[0]
+elif os.path.isdir(input):
+    # get a list of files in the dir
+    input_list = os.listdir(input)
+    input_path = input
+else:
+    print("Image argument is neither valid file nor directory")
+    write_run_info("Image argument is neither valid file nor directory")
+print("got until here", input_list, input_path)
+
+for f in input_list:
     if f.endswith('.tif') and f.split('.')[0] not in pos_list:
-        print(f)
         write_run_info("Processing image: {}".format(f))
-        image_path = os.path.join(pathin, f)
-        image_name = os.path.basename(image_path)
+        image_path = os.path.join(input_path, f)
         im_origin = skimage.io.imread(image_path)
 
         detected_mask = sliding_window_detection(image = im_origin, overlap = 0.75, cropUpandDown = 0.17)
-
-
 
         clean_contours = clean_up_mask(detected_mask)
 
         centerlines, measure_points, angle_index = measure_contours(clean_contours, detected_mask)
 
-        file_name = os.path.basename(image_path).split('.')[0]
-        print('file_name', file_name)
+        file_name = f.split('.')[0]
         DPI = float(args.dpi)
         #PithCoordinates = 'none' # NOT YET IMPLEMENTED
 
-        write_to_pos(centerlines, measure_points, file_name, image_name, DPI)
+        write_to_pos(centerlines, measure_points, file_name, f, DPI)
 
         # Ploting lines is moslty for debugging
 
