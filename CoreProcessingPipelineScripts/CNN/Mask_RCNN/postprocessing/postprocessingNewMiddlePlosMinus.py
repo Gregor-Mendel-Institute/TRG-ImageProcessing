@@ -8,7 +8,7 @@ Print the image with mask over it.
 FOR TESTING
 conda activate TreeRingCNN &&
 cd /Users/miroslav.polacek/github/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing &&
-python3 postprocessingNeWMiddlePlosMinus.py --dpi=13039 --input=/Users/miroslav.polacek/Desktop/whole_core_examples/ --weight=/Users/miroslav.polacek/github/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/traintestmlw220200727T1332/mask_rcnn_traintestmlw2_0957.h5 --output_folder=/Users/miroslav.polacek/Documents/CNNTestRunsNewMiddle
+python3 postprocessingNeWMiddlePlosMinus.py --dpi=12926 --input=/Users/miroslav.polacek/Desktop/whole_core_examples/ --weight=/Users/miroslav.polacek/github/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/traintestmlw220200727T1332/mask_rcnn_traintestmlw2_0957.h5 --output_folder=/Users/miroslav.polacek/Documents/CNNTestRunsNewMiddle
 
 AT THE SERVER
 /groups/swarts/lab/ImageProcessingPipeline/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing
@@ -153,10 +153,10 @@ def sliding_window_detection(image, overlap = 0.5, cropUpandDown = 0):
     #crop image top and bottom to avoid detectectig useles part of the image
     imgheight_origin, imgwidth_origin = image.shape[:2]
 
-    print('image shape', image.shape[:2])
+    #print('image shape', image.shape[:2])
     to_crop = int(imgheight_origin*cropUpandDown)
     new_image = image[to_crop:(imgheight_origin-to_crop), :, :]
-    print('new image shape', new_image.shape)
+    #print('new image shape', new_image.shape)
 
 
     imgheight_for_pad, imgwidth_for_pad = new_image.shape[:2]
@@ -168,16 +168,16 @@ def sliding_window_detection(image, overlap = 0.5, cropUpandDown = 0):
     im_padded = np.concatenate((zero_padding_front, new_image, zero_padding_back), axis=1)
 
     imgheight, imgwidth = im_padded.shape[:2]
-    print('im_after_pad', im_padded.shape)
+    #print('im_after_pad', im_padded.shape)
 
     the_mask = np.zeros(shape=(imgheight, imgwidth)) #combine all the partial masks in the final size of full tiff
-    print('the_mask', the_mask.shape)
+    #print('the_mask', the_mask.shape)
     looping_range = range(0,imgwidth, int(imgheight-(imgheight*overlap)))
     looping_list = [i for i in looping_range if i < int(imgheight_for_pad-(imgheight_for_pad*overlap)) + imgwidth_origin]
     #print('looping_list', looping_list)
 
     for i in looping_list: #defines the slide value
-        print("i", i)
+        #print("i", i)
         # crop the image
         cropped_part = im_padded[:imgheight, i:(i+imgheight)]
         #print('cropped_part, i, i+imheight', cropped_part.shape, i, i+imgheight)
@@ -230,7 +230,7 @@ def sliding_window_detection(image, overlap = 0.5, cropUpandDown = 0):
         combined_mask = maskr1_back + maskr + maskr2_back_cropped
         # merge with the relevant position of the big mask and overlap with previous one
         cropped_the_mask = the_mask[:imgheight, i:(i+imgheight)]
-        print('the_mask_piece', cropped_the_mask.shape)
+        #print('the_mask_piece', cropped_the_mask.shape)
         all_masks_combined = combined_mask + cropped_the_mask
         #print('middle', all_masks_combined.shape)
         end_the_mask = the_mask[:imgheight, (i+imgheight):]
@@ -277,8 +277,11 @@ def clean_up_mask(mask):
     uint8binary = binary_mask.astype(np.uint8).copy()
 
     #gray_image = cv2.cvtColor(binary_mask, cv2.COLOR_BGR2GRAY)
-    #on server has to be like this at the moment '_, contours, hierarchy',because there is different version of openCV 
-    _, contours, hierarchy = cv2.findContours(uint8binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
+    # Older version of openCV has slightly different syntax i adjusted for it here
+    if int(cv2.__version__.split(".")[0]) < 4:
+        _, contours, _ = cv2.findContours(uint8binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
+    else:
+        contours, _ = cv2.findContours(uint8binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
     #print('contour_shape:', len(contours))
 
     #### here i extract dimensions and angle of individual contours bigger than threshold
@@ -965,6 +968,7 @@ for f in os.listdir(pathin):
 """
 # TO TEST WITHOUT TRY AND EXCEPT TO GET ERROR MESSAGES AND CRUSHES!!!!
 
+print("cv2_version smaller then 3.2", int(cv2.__version__.split(".")[0]) < 4)
 
 now = datetime.now()
 dt_string_name = now.strftime("D%Y%m%d_T%H%M") #"%Y-%m-%d_%H:%M:%S"
