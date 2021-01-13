@@ -6,9 +6,14 @@ of the size of original image. The detection confidance needs to be set in the c
 Print the image with mask over it.
 
 FOR TESTING
-conda activate TreeRingCNN &&
+conda activate TreeRingCNNtest &&
 cd /Users/miroslav.polacek/github/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing &&
-python3 postprocessingNeWMiddlePlosMinus.py --dpi=12926 --input=/Users/miroslav.polacek/Desktop/whole_core_examples/ --weight=/Users/miroslav.polacek/github/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/traintestmlw220200727T1332/mask_rcnn_traintestmlw2_0957.h5 --output_folder=/Users/miroslav.polacek/Documents/CNNTestRunsNewMiddle
+python3 postprocessingCracks.py --dpi=12926 --run_ID=RUN_ID_SOME_VALUE --input=/Users/miroslav.polacek/Pictures/whole_core_examples --weight=/Users/miroslav.polacek/github/TreeRingCracksCNN/Mask_RCNN/logs/treeringcrackscomb20201119T2220/mask_rcnn_treeringcrackscomb_0222.h5 --output_folder=/Users/miroslav.polacek/Documents/CNNTestRuns
+
+FOR TESTING MINT
+conda activate TreeRingCNN &&
+cd /home/miroslavp/Github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing &&
+python3 postprocessingCracks.py --dpi=12926 --run_ID=RUN_ID_SOME_VALUE --input=/home/miroslavp/Pictures/whole_core_examples --weight=/home/miroslavp/Github/TreeRingCracksCNN/Mask_RCNN/logs/treeringcrackscomb20201119T2220/mask_rcnn_treeringcrackscomb_0284.h5 --output_folder=/home/miroslavp/Documents/CNNTestRuns
 
 AT THE SERVER
 /groups/swarts/lab/ImageProcessingPipeline/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing
@@ -27,16 +32,19 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--dpi', required=True,
                     help="DPI value for the image")
 
+parser.add_argument('--run_ID', required=True,
+                    help="Run ID")
+
 parser.add_argument('--input', required=True,
                     metavar="/path/to/image/",
                     help="Path to image file of folder")
 parser.add_argument('--weight', required=True,
-                    metavar="/path/to/weight/folder",
+                    metavar="/path/to/weight/file",
                     help="Path to weight file")
 
 parser.add_argument('--output_folder', required=True,
-                    metavar="/path/to/weight/folder",
-                    help="Path to weight file")
+                    metavar="/path/to/out/folder",
+                    help="Path to output folder")
 
 args = parser.parse_args()
 
@@ -49,11 +57,12 @@ import random
 import math
 import re
 import cv2
+import json
 import time
 import skimage
 import pandas as pd
 import numpy as np
-import tensorflow as tf
+#import tensorflow as tf
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -75,11 +84,11 @@ from mrcnn import visualize
 import mrcnn.model as modellib
 from mrcnn.model import log
 
-from DetectionConfig import TreeRing
+from DetectionConfig import TreeRingCrack
 
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
-config = TreeRing.treeRingConfig()
+config = TreeRingCrack.treeRingConfig()
 
 class InferenceConfig(config.__class__):
     # Run detection on one image at a time
@@ -98,12 +107,11 @@ print("Loading weights ")
 model.load_weights(weights_path, by_name=True)
 
 #define class names
-class_names = ['BG', 'ring']
+class_names = ['BG', 'ring', 'crack']
 
 #######################################################################
 # apply mask to an original image
 #######################################################################
-
 def apply_mask(image, mask, alpha=0.5):
     """Apply the given mask to the image.
     """
@@ -133,23 +141,21 @@ def apply_mask(image, mask, alpha=0.5):
 def write_run_info(string):
     #get name of the log file in the output dir
     out_dir = args.output_folder
+    run_ID = args.run_ID
     log_files = []
     for f in os.listdir(out_dir):
-        if f.startswith("CNN_"):
+        if f.startswith("CNN_" + run_ID):
             log_files.append(f)
 
     log_file_name = os.path.join(out_dir, log_files[-1])
     with open(log_file_name,"a") as f:
         print(string, file=f)
 
-
 ############################################################################################################
 # Sliding window detection with rotation of each part of image by 90 and 45 degrees and combining the output
-
 ############################################################################################################
-
 def sliding_window_detection(image, overlap = 0.5, cropUpandDown = 0):
-
+    write_run_info("Sliding window overlap = {} and cropUpandDown = {}".format(overlap, cropUpandDown))
     #crop image top and bottom to avoid detectectig useles part of the image
     imgheight_origin, imgwidth_origin = image.shape[:2]
 
@@ -157,7 +163,6 @@ def sliding_window_detection(image, overlap = 0.5, cropUpandDown = 0):
     to_crop = int(imgheight_origin*cropUpandDown)
     new_image = image[to_crop:(imgheight_origin-to_crop), :, :]
     #print('new image shape', new_image.shape)
-
 
     imgheight_for_pad, imgwidth_for_pad = new_image.shape[:2]
 
@@ -170,113 +175,125 @@ def sliding_window_detection(image, overlap = 0.5, cropUpandDown = 0):
     imgheight, imgwidth = im_padded.shape[:2]
     #print('im_after_pad', im_padded.shape)
 
-    the_mask = np.zeros(shape=(imgheight, imgwidth)) #combine all the partial masks in the final size of full tiff
-    #print('the_mask', the_mask.shape)
     looping_range = range(0,imgwidth, int(imgheight-(imgheight*overlap)))
     looping_list = [i for i in looping_range if i < int(imgheight_for_pad-(imgheight_for_pad*overlap)) + imgwidth_origin]
     #print('looping_list', looping_list)
 
-    for i in looping_list: #defines the slide value
-        #print("i", i)
-        # crop the image
-        cropped_part = im_padded[:imgheight, i:(i+imgheight)]
-        #print('cropped_part, i, i+imheight', cropped_part.shape, i, i+imgheight)
-        # run detection on the cropped part of the image
-        results = model.detect([cropped_part], verbose=0)
-        r = results[0]
-        #visualize.display_instances(cropped_part, r['rois'], r['masks'], r['class_ids'], class_names, r['scores']) #just to check
+    combined_masks_per_class = np.empty(shape=(imgheight, imgwidth,0))
+    for class_id in [1,2]: #1 is ring, 2 is crack
+        the_mask = np.zeros(shape=(imgheight, imgwidth)) #combine all the partial masks in the final size of full tiff
+        #print('the_mask', the_mask.shape)
+        for i in looping_list: #defines the slide value
 
-        # rotate image 90 and run detection
-        cropped_part_90 = skimage.transform.rotate(cropped_part, 90, preserve_range=True).astype(np.uint8)
-        results1 = model.detect([cropped_part_90], verbose=0)
-        r1 = results1[0]
-        #visualize.display_instances(cropped_part_90, r1['rois'], r1['masks'], r1['class_ids'], class_names, r1['scores']) #just to check
+            #print("i", i)
+            # crop the image
+            cropped_part = im_padded[:imgheight, i:(i+imgheight)]
+            #print('cropped_part, i, i+imheight', cropped_part.shape, i, i+imgheight)
 
-        # rotate image 45 and run detection
-        cropped_part_45 = skimage.transform.rotate(cropped_part, angle = 45, resize=True).astype(np.uint8)
-        results2 = model.detect([cropped_part_45], verbose=0)
-        r2 = results2[0]
+            # run detection on the cropped part of the image
+            results = model.detect([cropped_part], verbose=0)
+            r = results[0]
+            r_mask = r['masks'][:,:,r['class_ids']==class_id]
+            #visualize.display_instances(cropped_part, r['rois'], r['masks'], r['class_ids'], class_names, r['scores']) #just to check
 
-        ## flatten all in one layer. This should be one layer of zeroes and ones. If applying som e cleaning i would do it before this point or cleaning of the final one might be even better
-        maskr = np.zeros(shape=(imgheight, imgheight))
-        #print('maskr_empty', maskr)
-        nmasks = r['masks'].shape[2]
-        #print(nmasks)
-        for m in range(0,nmasks):
-            maskr = maskr + r['masks'][:,:,m]
-            #print(maskr.sum())
+            # rotate image 90 and run detection
+            cropped_part_90 = skimage.transform.rotate(cropped_part, 90, preserve_range=True).astype(np.uint8)
+            results1 = model.detect([cropped_part_90], verbose=0)
+            r1 = results1[0]
+            r1_mask = r1['masks'][:,:,r1['class_ids']==class_id]
+            #visualize.display_instances(cropped_part_90, r1['rois'], r1['masks'], r1['class_ids'], class_names, r1['scores']) #just to check
 
-        maskr1 = np.zeros(shape=(imgheight, imgheight))
-        nmasks1 = r1['masks'].shape[2]
-        for m in range(0,nmasks1):
-            maskr1 = maskr1 + r1['masks'][:,:,m]
-        ## rotate maskr1 masks back
-        maskr1_back = np.rot90(maskr1, k=-1)
-        # beware different dimensions!!!
+            # rotate image 45 and run detection
+            cropped_part_45 = skimage.transform.rotate(cropped_part, angle = 45, resize=True).astype(np.uint8)
+            results2 = model.detect([cropped_part_45], verbose=0)
+            r2 = results2[0]
+            r2_mask = r2['masks'][:,:,r2['class_ids']==class_id]
 
-        imheight2 = r2['masks'].shape[0]
-        nmasks2 = r2['masks'].shape[2]
-        maskr2 = np.zeros(shape=(imheight2, imheight2))
-        for m in range(0,nmasks2):
-            maskr2 = maskr2 + r2['masks'][:,:,m]
-        #rotate back
-        maskr2_back = skimage.transform.rotate(maskr2, angle = -45, resize=False)
-        #crop to the right size
-        to_crop = int((imheight2 - imgheight)/2)
+            ## flatten all in one layer. This should be one layer of zeroes and ones. If applying som e cleaning i would do it before this point or cleaning of the final one might be even better
+            maskr = np.zeros(shape=(imgheight, imgheight))
+            #print('maskr_empty', maskr)
+            nmasks = r_mask.shape[2]
+            #print(nmasks)
+            for m in range(0,nmasks):
+                maskr = maskr + r_mask[:,:,m]
+                #print(maskr.sum())
 
-        maskr2_back_cropped = maskr2_back[to_crop:(to_crop+int(imgheight)), to_crop:(to_crop+int(imgheight))]
+            maskr1 = np.zeros(shape=(imgheight, imgheight))
+            nmasks1 = r1_mask.shape[2]
+            for m in range(0,nmasks1):
+                maskr1 = maskr1 + r1_mask[:,:,m]
+            ## rotate maskr1 masks back
+            maskr1_back = np.rot90(maskr1, k=-1)
+            # beware different dimensions!!!
 
-        ## put both togather. before this can one turn everything to 0 and 1 or leave it so far but may be it is not too useful to detect very overlapping areas
-        combined_mask = maskr1_back + maskr + maskr2_back_cropped
-        # merge with the relevant position of the big mask and overlap with previous one
-        cropped_the_mask = the_mask[:imgheight, i:(i+imgheight)]
-        #print('the_mask_piece', cropped_the_mask.shape)
-        all_masks_combined = combined_mask + cropped_the_mask
-        #print('middle', all_masks_combined.shape)
-        end_the_mask = the_mask[:imgheight, (i+imgheight):]
+            imheight2 = r2_mask.shape[0]
+            nmasks2 = r2_mask.shape[2]
+            maskr2 = np.zeros(shape=(imheight2, imheight2))
+            for m in range(0,nmasks2):
+                maskr2 = maskr2 + r2_mask[:,:,m]
+            #rotate back
+            maskr2_back = skimage.transform.rotate(maskr2, angle = -45, resize=False)
+            #crop to the right size
+            to_crop = int((imheight2 - imgheight)/2)
 
-        if i == 0: # to solve the begining
-            the_mask = np.concatenate((all_masks_combined, end_the_mask), axis=1)
-        else:
-            begining_the_mask = the_mask[:imgheight, :i]
-            the_mask = np.concatenate((begining_the_mask, all_masks_combined, end_the_mask), axis=1)
+            maskr2_back_cropped = maskr2_back[to_crop:(to_crop+int(imgheight)), to_crop:(to_crop+int(imgheight))]
 
+            ## put both togather. before this can one turn everything to 0 and 1 or leave it so far but may be it is not too useful to detect very overlapping areas
+            combined_mask = maskr1_back + maskr + maskr2_back_cropped
+            # merge with the relevant position of the big mask and overlap with previous one
+            cropped_the_mask = the_mask[:imgheight, i:(i+imgheight)]
+            #print('the_mask_piece', cropped_the_mask.shape)
+            all_masks_combined = combined_mask + cropped_the_mask
+            #print("all_masks_combined", all_masks_combined.shape)
+            #all_masks_combined = np.reshape(all_masks_combined, (all_masks_combined.shape[0],all_masks_combined.shape[1],1))
+            #print('middle', all_masks_combined.shape)
+            end_the_mask = the_mask[:imgheight, (i+imgheight):]
+
+            if i == 0: # to solve the begining
+                the_mask = np.concatenate((all_masks_combined, end_the_mask), axis=1)
+            else:
+                begining_the_mask = the_mask[:imgheight, :i]
+                the_mask = np.concatenate((begining_the_mask, all_masks_combined, end_the_mask), axis=1)
+            #print("the_mask.shape", the_mask.shape)
+
+        the_mask = np.reshape(the_mask, (the_mask.shape[0],the_mask.shape[1],1))
+        combined_masks_per_class = np.append(combined_masks_per_class, the_mask, axis=2)
+        #print("combined_masks_per_class.shape",combined_masks_per_class.shape)
 
     # First remove the padding
     pad_front = zero_padding_front.shape[1]
     #print('front', pad_front)
     pad_back = zero_padding_back.shape[1]
-    the_mask_clean = the_mask[:,pad_front:-pad_back]
-    #print('the_mask', the_mask.shape)
+    the_mask_clean = combined_masks_per_class[:,pad_front:-pad_back,:]
+    #print('the_mask_clean.shape', the_mask_clean.shape)
     #print('the_mask_clean', the_mask_clean.shape)
 
     #here you have to concatanete the top and buttom to fit the original image
 
     missing_part = int((imgheight_origin - the_mask_clean.shape[0])/2)
-    to_concatenate = np.zeros(shape=(missing_part, imgwidth_origin))
+    to_concatenate = np.zeros(shape=(missing_part, imgwidth_origin,2))
+    #print("to_concatenate", to_concatenate.shape)
     the_mask_clean_origin_size = np.concatenate((to_concatenate, the_mask_clean, to_concatenate),axis=0)
     #print('the_mask_clean_origin_size', the_mask_clean_origin_size.shape)
     #plt.imshow(the_mask_clean) # uncomment to print mask layer
     #plt.show()
     # TO PRINT THE MASK OVERLAYING THE IMAGE
 
-    return the_mask_clean_origin_size
+    return the_mask_clean_origin_size[:,:,0], the_mask_clean_origin_size[:,:,1]
 
 #######################################################################
 # Extract distances from the mask
 #######################################################################
-
-def clean_up_mask(mask):
+def clean_up_mask(mask, is_ring=True):
     # detects countours of the masks, removes small contours, fits circle to individual contours and estimates the pith, skeletonizes the detected contours
 
     # make the mask binary
     binary_mask = np.where(mask >= 2, 255, 0) # this part can be cleaned to remove some missdetections setting condition for >=2
     #plt.imshow(binary_mask)
     #plt.show()
-    type(binary_mask)
+    #type(binary_mask)
     uint8binary = binary_mask.astype(np.uint8).copy()
 
-    #gray_image = cv2.cvtColor(binary_mask, cv2.COLOR_BGR2GRAY)
     # Older version of openCV has slightly different syntax i adjusted for it here
     if int(cv2.__version__.split(".")[0]) < 4:
         _, contours, _ = cv2.findContours(uint8binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
@@ -285,10 +302,19 @@ def clean_up_mask(mask):
     #print('contour_shape:', len(contours))
 
     #### here i extract dimensions and angle of individual contours bigger than threshold
-    contours_filtered = []
-    contour_lengths = []
     imgheight, imgwidth = mask.shape[:2]
-    for i in range(0, len(contours)): #len(contours)):
+    if is_ring==True:
+        min_size_threshold = imgheight/5
+    else:
+        min_size_threshold = 1
+    contours_filtered = []
+    x_mins = []
+    for i in range(0, len(contours)):
+        x_only = []
+        for p in range(len(contours[i])):
+            [[x,y]] = contours[i][p]
+            x_only.append(x)
+        x_min = np.min(x_only)
         #remove those that are too short
         rect = cv2.minAreaRect(contours[i])
         #print(rect)
@@ -297,31 +323,28 @@ def clean_up_mask(mask):
         dim1, dim2 = rect[1]
         dim_max = max([dim1, dim2])
         dim_sum = dim1 + dim2 # should capture size and curvature better then just a length
-        if dim_max > imgheight/5: #will take only contours that are bigger than 1/5 of the image
+        if dim_max > min_size_threshold: #will take only contours that are bigger than 1/5 of the image
             contours_filtered.append(contours[i])
-
-            contour_lengths.append(dim_sum)
+            x_mins.append(x_min)
 
     #print('Filtered_contours:', len(contours_filtered))
     #print('contour_lengths:', contour_lengths)
     #print(contours_filtered[0])
 
     #### Extract longest contour to use for center estimate
-    contourszip = zip(contour_lengths, contours_filtered)
+    contourszip = zip(x_mins, contours_filtered)
 
-    ordered_contours = [x for _,x in sorted(contourszip, reverse = True)]
+    ordered_contours = [x for _,x in sorted(contourszip, reverse = False)]
     #print('ordered:', ordered_contours)
-    # in final should return cleaned contours and center coordinates
-    #return  centroide_ordered10, centroide_ordered5, centroide_ordered2, centroide_ordered1
     return ordered_contours # Returns filtered and orderedt contours
 
 #######################################################################
-# Turn contours into lines and find nearest points between them for measure
+# Finds centerines in contours
 #######################################################################
-# return table of distances or paired point coordinates?
-def measure_contours(clean_contours, image):
-    # find center line of contours and find nearest_points for each pair of lines
-    ##first need to reorganise the data
+def find_centerlines(clean_contours):
+    # find ceneterlines
+
+    #first need to reorganise the data
     contours_tuples = []
     x_mins = []
     for i in range(len(clean_contours)):
@@ -375,12 +398,21 @@ def measure_contours(clean_contours, image):
     frame_to_crop = shapely.geometry.box(minx, miny+px_to_cut_off, maxx, maxy-px_to_cut_off)
     Multi_centerlines = Multi_centerlines_to_crop.intersection(frame_to_crop)
     # to check if it cropps something
-    minx, miny, maxx, maxy = Multi_centerlines.bounds
+    #minx, miny, maxx, maxy = Multi_centerlines.bounds
     #print('minx, miny, maxx, maxy after', minx, miny, maxx, maxy)
+
+    return Multi_centerlines
+
+#######################################################################
+# Turn contours into lines and find nearest points between them for measure
+#######################################################################
+# return table of distances or paired point coordinates?
+def measure_contours(Multi_centerlines, image):
+    # find nearest_points for each pair of lines
     imgheight, imgwidth = image.shape[:2]
     print('imgheight, imgwidth', imgheight, imgwidth)
     write_run_info("Image has height {} and width {}".format(imgheight, imgwidth))
-    write_run_info("{} ring boundries were detected".format(len(centerlines)))
+    write_run_info("{} ring boundries were detected".format(len(Multi_centerlines)))
 
     ## Split samples that are crosing center into two then turn the other part around
     #may be I need image dimensions
@@ -446,9 +478,9 @@ def measure_contours(clean_contours, image):
                     #plt.plot(x_int, y_int)
                 slopes.append(slope)
 
-            print('slopes before mean', slopes)
+            #print('slopes before mean', slopes)
             mean_slopes = np.mean(slopes)
-            print('mean_slopes', mean_slopes)
+            #print('mean_slopes', mean_slopes)
             if np.isnan(mean_slopes):
                 continue
             else:
@@ -465,51 +497,12 @@ def measure_contours(clean_contours, image):
             continue
 
     #get cutting point as a global minimum of polynomial function fit to angle indexes
-    print('angle_index', angle_index)
+    #print('angle_index', angle_index)
 
-    """
-    try: #Try whole this block in case angle index is empty it should fail and go the the end
-        angles = []
-        cutting_points = []
-        for i in range(len(angle_index)):
-            angle, cutting_point = angle_index[i]
-            angles.append(angle)
-            cutting_points.append(cutting_point)
-
-        pfit = np.polyfit(cutting_points, angles, 10)
-        c = np.poly1d(pfit)
-        #find the minimum of the functions
-        crit = c.deriv().r
-        r_crit = crit[crit.imag==0].real
-        test = c.deriv(2)(r_crit)
-
-        # compute local minima
-        # excluding range boundaries
-        x_min = r_crit[test>0]
-
-
-        #get the global minimum or dummy angle to use for test next
-        if len(x_min) > 0:
-            #get only x that are within the range of cutting_points
-            x_in_range = [i for i in x_min if i>min(cutting_points)]
-            x_in_range = [i for i in x_in_range if i<max(cutting_points)]
-            y_min = c(x_in_range)
-            yx = sorted(zip(y_min, x_in_range))[0]
-            cutting_point = yx[1]
-            print('polyfit_cutting_point', cutting_point)
-            angle = yx[0]
-            print('final_angle', angle)
-            #print('x_min, y_min', x_in_range, y_min)
-        else:
-            angle = 1 #this seems like very much not elegant solution
-    except Exception as e:
-        print('There was a problem while seatching for cutting point', e)
-        angle = 1 #this seems like very much not elegant solution
-    """
     angle = 1 #remove this after testing
-    print('PlusMinus_index', PlusMinus_index)
+    #print('PlusMinus_index', PlusMinus_index)
 
-    #If the middle was not found in the first way i can try to find it by the change in a slope of the lines
+    # find the middle by the change in a slope of the lines
     if angle >= 0.3:
         cutting_point = []
         test_seq1 = [0,0,1,1]
@@ -527,9 +520,6 @@ def measure_contours(clean_contours, image):
             angle = 0
 
             print('cutting_point_PlusMinus and angle', cutting_point, angle)
-
-
-
 
     print('angle', angle)
     #print('y_diff and frame_number:', y_diff, frame_number)
@@ -599,11 +589,12 @@ def measure_contours(clean_contours, image):
             measure_points=[measure_points1, measure_points2]
             Multi_centerlines = [Multi_centerlines1, Multi_centerlines2]
 
-        return Multi_centerlines, measure_points, angle_index
+        return Multi_centerlines, measure_points, angle_index, cutting_point
 
     else:
         # loop through them to measure pairwise distances. if possible find nearest points and also visualise
         print('middle point was not detected')
+        cutting_point = np.nan
         #reorder the lines
         x_maxs = []
         x_mins = []
@@ -625,35 +616,7 @@ def measure_contours(clean_contours, image):
             points = shapely.ops.nearest_points(Multi_centerlines.geoms[i], Multi_centerlines.geoms[i+1])
             measure_points.append(points)
 
-        return Multi_centerlines, measure_points, angle_index
-#######################################################################
-# Estimate pith position
-#######################################################################
-"""
-def estimate_pith(Multi_centerlines):
-    #### If there is no center write a message its not feasible. If sample is crossing the middle use the same ring on the both sides of the middl
-    to determine the pith position. May be few centermost rings are the most convenient to use.
-
-    x_centers = []
-    y_centers = []
-    for i in range(0, len(contours_filtered)):
-
-        x_cir = []
-        y_cir = []
-        for p in range(0, len(contours_filtered[i])):
-            [[xs, ys]] = contours_filtered[i][p]
-            #print("xs", xs)
-            x_cir.append(xs)
-            y_cir.append(ys)
-
-        data = list(zip(x_cir,y_cir))
-        xc,yc,r,_ = cf.hyper_fit(data)
-        #print('hyper_fit:', xc, yc, r)
-        x_centers.append(xc)
-        y_centers.append(yc)
-    centroide = (np.mean(x_centers),np.mean(y_centers))
-    print(centroide)
-"""
+        return Multi_centerlines, measure_points, angle_index, cutting_point
 
 #######################################################################
 # plot predicted lines and points of measurements to visually assess
@@ -669,16 +632,9 @@ def plot_lines(image, centerlines, measure_points, file_name, angle_index):
     #export_path = '/Users/miroslav.polacek/Documents/CNNRundomRubbish/CropTesting'
     f = file_name + '.png'
 
-    """
-    #original with bad resolution
-    imgheight, imgwidth = image.shape[:2]
-    plot_dpi = 300
-    plt.figure(figsize = (13, 4), dpi=plot_dpi)
-    plt.imshow(image)
-    """
     #save images at original size unles they are bigger then 30000. Should improve diagnostics on the images
     imgheight, imgwidth = image.shape[:2]
-    print('imgheight, imgwidth', imgheight, imgwidth)
+    #sprint('imgheight, imgwidth', imgheight, imgwidth)
     plot_dpi = 100
 
     if imgwidth < 30000:
@@ -783,6 +739,49 @@ def plot_lines(image, centerlines, measure_points, file_name, angle_index):
     plt.savefig(os.path.join(export_path, f), bbox_inches = 'tight', pad_inches = 0)
 
 #######################################################################
+# create a json file for shiny
+#######################################################################
+def write_to_json(image_name, centerlines_rings, clean_contours_rings, clean_contours_cracks, cutting_point, run_ID):
+    # define the structure of json
+    ##pith_infered x,y, pith_from_circles,
+    out_json = {}
+    out_json = {image_name: {'run_ID':run_ID, 'predictions':{}, 'directionality': {}, 'center': {}, 'est_rings_to_pith': {}, 'ring_widths': {}}} #directionality will be added in shiny, {x_value:{'width': VALUE , 'angle': VALUE},...}
+    out_json[image_name]['predictions'] = {'ring_line': {}, 'ring_polygon': {}, 'crack_polygon': {}, 'resin_polygon': {}, 'pith_polygon': {}}
+    out_json[image_name]['center'] = {'cutting_point': cutting_point, 'pith_present': np.nan, 'pith_inferred': {'coords': {'x': [], 'y': []}}} #pith_present is yes/no string if pith is on the image
+    out_json[image_name]['ring_widths'] = {'directionality': {}, 'shortest_distance': {}, 'manual': {}} #each will have format 'undated_1'/year: {{(x1,y1),(x2,y2)},...}
+    # separate x and y coordinates for polygons and line
+    input_vars = [centerlines_rings, clean_contours_rings, clean_contours_cracks]
+    json_names = ['ring_line', 'ring_polygon', 'crack_polygon']
+    for v in range(len(input_vars)):
+        coords = {}
+        for i in range(len(input_vars[v])):
+
+            # if else becasue ring_line is shapely object and clean contours are from opencv and have different structure
+            if json_names[v] == 'ring_line':
+                x_list, y_list = input_vars[v][i].coords.xy
+                x_list = x_list.tolist()
+                y_list = y_list.tolist()
+            else:
+                x_list = []
+                y_list = []
+                for p in range(len(input_vars[v][i])):
+                    [[x,y]] = input_vars[v][i][p]
+                    x_list.append(int(x))
+                    y_list.append(int(y))
+                #print("type(x_list)", type(x_list))
+                #print("type(y_list)", type(y_list))
+            x_min = math.floor(np.min(x_list))
+            the_coord = str(x_min)+'_'+'coords'
+            coords[the_coord] = {}
+            coords[the_coord]['x'] = x_list
+            coords[the_coord]['y'] = y_list
+        #print("coords",type(coords))
+        out_json[image_name]['predictions'][json_names[v]]=coords
+
+    output = os.path.join(args.output_folder,image_name.split('.')[0] + '.json')
+    with open(output,'w') as outfile:
+        json.dump(out_json, outfile, indent=4)
+#######################################################################
 # create a .pos file with measure points
 #######################################################################
 def write_to_pos(centerlines, measure_points, file_name, image_name, DPI):
@@ -807,7 +806,6 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI):
     #print('len centrlines', type(centerlines))
 
     if not isinstance(centerlines, list) and len(centerlines)>2:
-
         #prepare points
         str_measure_points = []
         first_x, first_y = measure_points[0][0].coords.xy
@@ -846,7 +844,6 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI):
     elif isinstance(centerlines, list) and len(centerlines)==2:
         for l in range(2):
 
-
             measure_points1 = measure_points[l]
             print('len of measure_points1', len(measure_points1))
             if len(measure_points1)==0: # is only precoation in case the first part of measure points is empty
@@ -873,7 +870,6 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI):
             str_measure_points1.append(last_point)
 
             #write in the file
-
             if l==0:
                 with open(out_file_path, 'w') as f:
                     print('#DENDRO (Cybis Dendro program compatible format) Coordinate file written as', file=f)
@@ -902,82 +898,19 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI):
                     for i in str_measure_points1:
                         print(i, file=f)
 
-
-
 #######################################################################
 # Run detection on an images
 #######################################################################
-"""
-#initiate run information and create the log file in outpout dir
 now = datetime.now()
 dt_string_name = now.strftime("D%Y%m%d_T%H%M") #"%Y-%m-%d_%H:%M:%S"
 dt_string = now.strftime("%Y-%m-%d_%H:%M:%S")
-file_name = 'CNN_' + dt_string_name + '.log' #"RunID" + dt_string +
-file_path =os.path.join(args.output_folder, file_name)
+run_ID = args.run_ID
+log_file_name = 'CNN_' + run_ID + '_' + dt_string_name + '.log' #"RunID" + dt_string +
+log_file_path =os.path.join(args.output_folder, log_file_name)
 
-with open(file_path,"x") as fi:
+with open(log_file_path,"x") as fi:
     print("Run started:" + dt_string, file=fi)
-
-pathpos = args.output_folder
-pos_list = []
-for f in os.listdir(pathpos):
-    if f.endswith('.pos'):
-        pos_name = f.split('.')[0]
-        pos_list.append(pos_name)
-
-pathin = args.image
-for f in os.listdir(pathin):
-    if f.endswith('.tif') and f.split('.')[0] not in pos_list:
-        print(f)
-        write_run_info("Processing image: {}".format(f))
-        image_path = os.path.join(pathin, f)
-        image_name = os.path.basename(image_path)
-        im_origin = skimage.io.imread(image_path)
-        try:
-            detected_mask = sliding_window_detection(image = im_origin, overlap = 0.5)
-
-        except Exception as e:
-            write_run_info("Function sliding_window_detection failed: {}".format(e))
-
-        try:
-            clean_contours = clean_up_mask(detected_mask)
-        except Exception as e:
-            write_run_info("Function clean_up_mask failed: {}".format(e))
-
-        try:
-            centerlines, measure_points, angle_index = measure_contours(clean_contours, detected_mask)
-        except Exception as e:
-            write_run_info("Function measure_contours failed: {}".format(e))
-
-        file_name = os.path.basename(image_path).split('.')[0]
-        print('file_name', file_name)
-        DPI = float(args.dpi)
-        #PithCoordinates = 'none' # NOT YET IMPLEMENTED
-        try:
-            write_to_pos(centerlines, measure_points, file_name, image_name, DPI)
-        except Exception as e:
-            write_run_info("Function write_to_pos failed: {}".format(e))
-
-        # Ploting lines is moslty for debugging
-        try:
-            masked_image = im_origin.astype(np.uint32).copy()
-            masked_image = apply_mask(masked_image, detected_mask, alpha=0.2)
-            plot_lines(masked_image, centerlines, measure_points, file_name, angle_index)
-        except Exception as e:
-            write_run_info("Ploting lines failed: {}".format(e))
-"""
-# TO TEST WITHOUT TRY AND EXCEPT TO GET ERROR MESSAGES AND CRUSHES!!!!
-
-print("cv2_version smaller then 3.2", int(cv2.__version__.split(".")[0]) < 4)
-
-now = datetime.now()
-dt_string_name = now.strftime("D%Y%m%d_T%H%M") #"%Y-%m-%d_%H:%M:%S"
-dt_string = now.strftime("%Y-%m-%d_%H:%M:%S")
-file_name = 'CNN_' + dt_string_name + '.log' #"RunID" + dt_string +
-file_path =os.path.join(args.output_folder, file_name)
-
-with open(file_path,"x") as fi:
-    print("Run started:" + dt_string, file=fi)
+    print("Weight used:" + weights_path, file=fi)
 
 pathpos = args.output_folder
 pos_list = []
@@ -999,184 +932,31 @@ elif os.path.isdir(input):
 else:
     print("Image argument is neither valid file nor directory")
     write_run_info("Image argument is neither valid file nor directory")
-print("got until here", input_list, input_path)
+#print("got until here", input_list, input_path)
 
 for f in input_list:
     if f.endswith('.tif') and f.split('.')[0] not in pos_list:
+        print("Processing image: {}".format(f))
         write_run_info("Processing image: {}".format(f))
         image_path = os.path.join(input_path, f)
         im_origin = skimage.io.imread(image_path)
 
-        detected_mask = sliding_window_detection(image = im_origin, overlap = 0.75, cropUpandDown = 0.17)
+        detected_mask_rings, detected_mask_cracks = sliding_window_detection(image = im_origin, overlap = 0.75, cropUpandDown = 0.17)
 
-        clean_contours = clean_up_mask(detected_mask)
+        clean_contours_rings = clean_up_mask(detected_mask_rings, is_ring=True)
+        clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
 
-        centerlines, measure_points, angle_index = measure_contours(clean_contours, detected_mask)
+        centerlines_rings = find_centerlines(clean_contours_rings)
 
-        file_name = f.split('.')[0]
-        DPI = float(args.dpi)
-        #PithCoordinates = 'none' # NOT YET IMPLEMENTED
+        centerlines, measure_points, angle_index, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
 
-        write_to_pos(centerlines, measure_points, file_name, f, DPI)
+        write_to_json(f, centerlines_rings, clean_contours_rings, clean_contours_cracks, cutting_point, run_ID)
+        image_name = f.split('.')[0]
+        #DPI = float(args.dpi)
+        #write_to_pos(centerlines, measure_points, image_name, f, DPI)
 
         # Ploting lines is moslty for debugging
-
         masked_image = im_origin.astype(np.uint32).copy()
-        masked_image = apply_mask(masked_image, detected_mask, alpha=0.2)
-        plot_lines(masked_image, centerlines, measure_points, file_name, angle_index)
-
-"""
-#To save variables to test and save time
-
-now = datetime.now()
-dt_string_name = now.strftime("D%Y%m%d_T%H%M") #"%Y-%m-%d_%H:%M:%S"
-dt_string = now.strftime("%Y-%m-%d_%H:%M:%S")
-file_name = 'CNN_' + dt_string_name + '.log' #"RunID" + dt_string +
-file_path =os.path.join(args.output_folder, file_name)
-
-with open(file_path,"x") as fi:
-    print("Run started:" + dt_string, file=fi)
-
-pathpos = args.output_folder
-pos_list = []
-for f in os.listdir(pathpos):
-    if f.endswith('.pos'):
-        pos_name = f.split('.')[0]
-        pos_list.append(pos_name)
-
-pathin = args.image
-for f in os.listdir(pathin):
-    if f.endswith('.tif') and f.split('.')[0] not in pos_list:
-        print(f)
-        write_run_info("Processing image: {}".format(f))
-        image_path = os.path.join(pathin, f)
-        image_name = os.path.basename(image_path)
-        im_origin = skimage.io.imread(image_path)
-
-        detected_mask = sliding_window_detection(image = im_origin, overlap = 0.5)
-        to_save_mask = '/Users/miroslav.polacek/Documents/CNNTestRuns/detected_mask.npy'
-        np.save(to_save_mask, detected_mask)
-
-        clean_contours = clean_up_mask(detected_mask)
-        centerlines, measure_points = measure_contours(clean_contours, detected_mask)
-        to_save_centerlines = '/Users/miroslav.polacek/Documents/CNNTestRuns/centerlines.npy'
-        np.save(to_save_centerlines, centerlines)
-        to_save_measure_points = '/Users/miroslav.polacek/Documents/CNNTestRuns/measure_points.npy'
-        np.save(to_save_measure_points, measure_points)
-"""
-"""
-#to test on saved masks and measure_points
-now = datetime.now()
-dt_string_name = now.strftime("D%Y%m%d_T%H%M") #"%Y-%m-%d_%H:%M:%S"
-dt_string = now.strftime("%Y-%m-%d_%H:%M:%S")
-file_name = 'CNN_' + dt_string_name + '.log' #"RunID" + dt_string
-file_path =os.path.join(args.output_folder, file_name)
-
-with open(file_path,"x") as fi:
-    print("Run started:" + dt_string, file=fi)
-
-pathpos = args.output_folder
-pos_list = []
-for f in os.listdir(pathpos):
-    if f.endswith('.pos'):
-        pos_name = f.split('.')[0]
-        pos_list.append(pos_name)
-
-pathin = args.image
-for f in os.listdir(pathin):
-    if f.endswith('.tif') and f.split('.')[0] not in pos_list:
-        print(f)
-        write_run_info("Processing image: {}".format(f))
-        image_path = os.path.join(pathin, f)
-        image_name = os.path.basename(image_path)
-        im_origin = skimage.io.imread(image_path)
-
-        detected_mask = np.load('/Users/miroslav.polacek/Documents/CNNTestRunsNewMiddle/detected_mask.npy', allow_pickle=True)
-
-        clean_contours = clean_up_mask(detected_mask)
-
-        centerlines, measure_points = measure_contours(clean_contours, detected_mask)
-
-
-        #centerlines = np.load('/Users/miroslav.polacek/Documents/CNNTestRuns/centerlines.npy', allow_pickle=True)
-        #centerlines = list(centerlines) #will work only for the is crossing the center
-        #measure_points = np.load('/Users/miroslav.polacek/Documents/CNNTestRuns/measure_points.npy', allow_pickle=True)
-
-        file_name = os.path.basename(image_path).split('.')[0]
-        print('file_name', file_name)
-        DPI = float(args.dpi)
-        #PithCoordinates = 'none' # NOT YET IMPLEMENTED
-        write_to_pos(centerlines, measure_points, file_name, image_name, DPI)
-
-        masked_image = im_origin.astype(np.uint32).copy()
-        masked_image = apply_mask(masked_image, detected_mask, alpha=0.2)
-        plot_lines(masked_image, centerlines, measure_points, file_name)
-"""
-"""
-# this part can be commented now since i saved the mask separately to save time
-for f in os.listdir(pathin):
-    if f.endswith('.tif'):
-        print(f)
-        image_path = os.path.join(pathin, f)
-        im_origin = skimage.io.imread(image_path)
-        detected_mask = sliding_window_detection(image = im_origin, overlap = 0.5)
-        #to_save_mask = '/Users/miroslav.polacek/Desktop/whole_core_examples/mask_example/detected_mask.npy'
-        #np.save(to_save_mask, detected_mask)
-        masked_image = im_origin.astype(np.uint32).copy()
-        masked_image = apply_mask(masked_image, detected_mask, alpha=0.2)
-        clean_contours = clean_up_mask(detected_mask)
-        centerlines, measure_points = measure_contours(clean_contours)
-        print('centerlines:', len(centerlines))
-        print('measure_points:', len(measure_points))
-        plot_lines(masked_image, centerlines, measure_points)
-
-
-        centroide_ordered10, centroide_ordered5, centroide_ordered2, centroide_ordered1 = clean_up_mask(detected_mask)
-
-        masked_image = im_origin.astype(np.uint32).copy()
-        masked_image = apply_mask(masked_image, detected_mask, alpha=0.3)
-
-        plt.imshow(masked_image)
-        plt.plot(centroide_ordered1[0], centroide_ordered1[1], 'ro', markersize=5)
-        plt.plot(centroide_ordered2[0], centroide_ordered2[1], 'go', markersize=5)
-        plt.plot(centroide_ordered5[0], centroide_ordered5[1], 'bo', markersize=5)
-        plt.plot(centroide_ordered10[0], centroide_ordered10[1], 'co', markersize=5)
-        #plt.plot(centroide_quantiles[0], centroide_quantiles[1], 'mo', markersize=5)
-        #plt.plot(centroide_short_distances[0], centroide_short_distances[1], 'yo', markersize=5)
-        #plt.show()
-        export_path = '/Users/miroslav.polacek/Documents/CNNRundomRubbish/20200424_detections/MLW2_conf95_medians'
-        plt.savefig(os.path.join(export_path, f), dpi=300)
-
-"""
-"""
-# for testing to load saved mask
-
-mask_path = '/Users/miroslav.polacek/Desktop/whole_core_examples/mask_example/detected_mask.npy'
-detected_mask = np.load(mask_path)
-print('mask_shape:', detected_mask.shape)
-
-clean_contours = clean_up_mask(detected_mask)
-centerlines, measure_points = measure_contours(clean_contours, detected_mask)
-print('centerlines:', len(centerlines))
-print('measure_points:', len(measure_points))
-image_name = "example_name"
-plot_lines(detected_mask, centerlines, measure_points, image_name)
-
-#file_name = 'testpos'
-#image = 'sometif'
-#DPI = 13039.0
-
-#write_to_pos(centerlines, measure_points, file_name, image, DPI)
-"""
-"""
-# just to test the functions to fit the circle
-x = [36, 36, 19, 18, 33, 26]
-y = [14, 10, 28, 31, 18, 26]
-data = list(zip(x,y))
-print(data)
-xc,yc,r,_ = cf.least_squares_circle((data))
-print('circle_least_square:', xc, yc, r)
-
-xchf,ychf,rhf,_ = cf.hyper_fit((data))
-print('circle_hyper_fit:', xchf, ychf, rhf)
-"""
+        masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
+        masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
+        plot_lines(masked_image, centerlines, measure_points, image_name, angle_index)

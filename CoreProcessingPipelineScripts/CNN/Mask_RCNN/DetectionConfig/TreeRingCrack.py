@@ -1,6 +1,6 @@
 """
 Mask R-CNN
-Train on the toy treeRing dataset and implement color splash effect.
+Train on the toy Balloon dataset and implement color splash effect.
 
 Copyright (c) 2018 Matterport, Inc.
 Licensed under the MIT License (see LICENSE for details)
@@ -21,7 +21,7 @@ Usage: import the module (see Jupyter notebooks for examples), or run from
     python3 TreeRing.py train --dataset=/Users/miroslav.polacek/Dropbox\ \(VBC\)/'Group Folder Swarts'/Research/CNNRings/Mask_RCNN/datasets/treering --weights=last
 
     # Train a new model starting from ImageNet weights
-    python3 TreeRing.py train --dataset=/Users/miroslav.polacek/Dropbox\ \(VBC\)/'Group Folder Swarts'/Research/CNNRings/Mask_RCNN/datasets/treering --weights=imagenet
+    python3 TreeRing.py train --dataset=/Users/miroslav.polacek/github/TreeRingCracksCNN/Mask_RCNN/datasets/treering --weights=imagenet
 
     #Train on Tree Rings starting from ImageNet weights
     python3 TreeRing.py train --dataset=/Users/miroslav.polacek/Dropbox\ \(VBC\)/'Group Folder Swarts'/Research/CNNRings/Mask_RCNN/datasets/treering --weights=imagenet
@@ -32,7 +32,7 @@ Usage: import the module (see Jupyter notebooks for examples), or run from
     python3 TreeRing.py splash --weights=/path/to/weights/file.h5 --image=<URL or path to file>
 
     # Apply color splash to video using the last weights you trained
-    python3 treeRing.py splash --weights=last --video=<URL or path to file>
+    python3 balloon.py splash --weights=last --video=<URL or path to file>
 """
 
 import os
@@ -68,20 +68,20 @@ class treeRingConfig(Config):
     Derives from the base Config class and overrides some values.
     """
     # Give the configuration a recognizable name
-    NAME = "TreeRing30"
+    NAME = "TreeRingCracks"
 
     # We use a GPU with 12GB memory, which can fit two images.
-    # Adjust down if you use a smaller GPU. V100 should have 32gb memory, seems can manage 6 images 1024x1024
+    # Adjust down if you use a smaller GPU. V100 should have 32gb memory, seems can manage 4 images 1024x1024
     IMAGES_PER_GPU = 4
 
     # Number of classes (including background)
-    NUM_CLASSES = 1 + 1  # Background + ring
+    NUM_CLASSES = 1 + 1 + 1  # Background + ring + crack
 
     # Number of training steps per epoch rule of thumb taining images/images per GPU
-    STEPS_PER_EPOCH = 420
+    STEPS_PER_EPOCH = 50
 
     # Number of validation steps per epoch
-    VALIDATION_STEPS = 50
+    VALIDATION_STEPS = 1
 
     # Backbone network architecture
     # Supported values are: resnet50, resnet101.
@@ -138,7 +138,7 @@ class treeRingConfig(Config):
 
     # Skip detections with < 90% confidence 0.9 was for baloons
     # for nucleus 0
-    DETECTION_MIN_CONFIDENCE = 0.98
+    DETECTION_MIN_CONFIDENCE = 0.50
 
     # Learning rate and momentum
     # The Mask RCNN paper uses lr=0.02, but on TensorFlow it causes
@@ -167,15 +167,16 @@ class treeRingConfig(Config):
 #  Dataset
 ############################################################
 
-class treeRingDataset(utils.Dataset):
+class BalloonDataset(utils.Dataset):
 
-    def load_treeRing(self, dataset_dir, subset):
-        """Load a subset of the treeRing dataset.
+    def load_balloon(self, dataset_dir, subset):
+        """Load a subset of the Balloon dataset.
         dataset_dir: Root directory of the dataset.
         subset: Subset to load: train or val
         """
-        # Add classes. We have only one class to add.
-        self.add_class("ring", 1, "ring")
+        # Add classes.
+        self.add_class("rings", 1, "ring")
+        self.add_class("rings", 2, "crack")
 
         # Train or validation dataset?
         assert subset in ["train", "val"]
@@ -212,23 +213,40 @@ class treeRingDataset(utils.Dataset):
             # The if condition is needed to support VIA versions 1.x and 2.x.
             if type(a['regions']) is dict:
                 polygons = [r['shape_attributes'] for r in a['regions'].values()]
+                class_ids_name = [r['region_attributes'] for r in a['regions'].values()]
             else:
                 polygons = [r['shape_attributes'] for r in a['regions']]
-
+                class_ids_name = [r['region_attributes'] for r in a['regions']]
+            # Change class IDs to integers
+            class_ids = []
+            for i in range(len(class_ids_name)):
+                if class_ids_name[i]['type'] == 'RingBndy':
+                    class_ids.append(1)
+                elif class_ids_name[i]['type'] == 'CrackPoly':
+                    class_ids.append(2)
+                else:
+                    print("Annotation is neither RingBndy nor CrackPoly")
             # load_mask() needs the image size to convert polygons to masks.
             # Unfortunately, VIA doesn't include it in JSON, so we must read
             # the image. This is only managable since the dataset is tiny.
+
             image_path = os.path.join(dataset_dir, a['filename'])
+
+            width = a['size'].split('x')[0]
+            height = a['size'].split('x')[1]
             #print(image_path) #this was only for inspecting tiff loading problems
-            image = skimage.io.imread(image_path)
-            height, width = image.shape[:2]
+            #image = skimage.io.imread(image_path)
+            #height, width = image.shape[:2]
+            #print("MY", my_height, my_width)
+            #print("skimage", height, width)
 
             self.add_image(
-                "ring",
+                "rings",
                 image_id=a['filename'],  # use file name as a unique image id
                 path=image_path,
-                width=width, height=height,
-                polygons=polygons)
+                width=int(width), height=int(height),
+                polygons=polygons,
+                class_ids=class_ids)
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.
@@ -237,9 +255,9 @@ class treeRingDataset(utils.Dataset):
             one mask per instance.
         class_ids: a 1D array of class IDs of the instance masks.
         """
-        # If not a treeRing dataset image, delegate to parent class.
+        # If not a balloon dataset image, delegate to parent class.
         image_info = self.image_info[image_id]
-        if image_info["source"] != "ring":
+        if image_info["source"] != "rings":
             return super(self.__class__, self).load_mask(image_id)
 
         # Convert polygons to a bitmap mask of shape
@@ -254,12 +272,13 @@ class treeRingDataset(utils.Dataset):
 
         # Return mask, and array of class IDs of each instance. Since we have
         # one class ID only, we return an array of 1s
-        return mask.astype(np.bool), np.ones([mask.shape[-1]], dtype=np.int32)
+        #return mask.astype(np.bool), np.ones([mask.shape[-1]], dtype=np.int32) #HERE I NEED TO ADD CLADS IDS TO AN ARRAY OF MASKS
+        return mask.astype(np.bool), np.asarray(info["class_ids"], dtype=np.int32)
 
     def image_reference(self, image_id):
         """Return the path of the image."""
         info = self.image_info[image_id]
-        if info["source"] == "ring":
+        if info["source"] == "rings":
             return info["path"]
         else:
             super(self.__class__, self).image_reference(image_id)
@@ -271,13 +290,13 @@ class treeRingDataset(utils.Dataset):
 def train(model):
     """Train the model."""
     # Training dataset.
-    dataset_train = treeRingDataset()
-    dataset_train.load_treeRing(args.dataset, "train")
+    dataset_train = BalloonDataset()
+    dataset_train.load_balloon(args.dataset, "train")
     dataset_train.prepare()
 
     # Validation dataset
-    dataset_val = treeRingDataset()
-    dataset_val.load_treeRing(args.dataset, "val")
+    dataset_val = BalloonDataset()
+    dataset_val.load_balloon(args.dataset, "val")
     dataset_val.prepare()
 
     # Image augmentation
@@ -303,21 +322,14 @@ def train(model):
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
                 epochs=10,
-                #augmentation=augmentation,
+                augmentation=augmentation,
                 layers='heads') # 'heads' or 'all'
 
     print("Training network heads")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE/10,
-                epochs=20,
-                #augmentation=augmentation,
-                layers='heads') # 'heads' or 'all'
-
-    print("Training network heads")
-    model.train(dataset_train, dataset_val,
-                learning_rate=config.LEARNING_RATE/10,
-                epochs=20,
-                #augmentation=augmentation,
+                epochs=50,
+                augmentation=augmentation,
                 layers='all') # 'heads' or 'all'
 
 
@@ -335,8 +347,8 @@ if __name__ == '__main__':
                         metavar="<command>",
                         help="'train' or 'splash'")
     parser.add_argument('--dataset', required=False,
-                        metavar="/path/to/treeRing/dataset/",
-                        help='Directory of the treeRing dataset')
+                        metavar="/path/to/balloon/dataset/",
+                        help='Directory of the Balloon dataset')
     parser.add_argument('--weights', required=True,
                         metavar="/path/to/weights.h5",
                         help="Path to weights .h5 file or 'coco'")
@@ -365,9 +377,9 @@ if __name__ == '__main__':
 
     # Configurations
     if args.command == "train":
-        config = treeRingConfig()
+        config = BalloonConfig()
     else:
-        class InferenceConfig(treeRingConfig):
+        class InferenceConfig(BalloonConfig):
             # Set batch size to 1 since we'll be running inference on
             # one image at a time. Batch size = GPU_COUNT * IMAGES_PER_GPU
             GPU_COUNT = 1
@@ -395,12 +407,20 @@ if __name__ == '__main__':
     elif args.weights.lower() == "imagenet":
         # Start from ImageNet trained weights
         weights_path = model.get_imagenet_weights()
+    elif args.weights == "BestOnRings":
+        weights_path = os.path.join(ROOT_DIR, "logs/BestOnRings/BestOnRings.h5")
     else:
         weights_path = args.weights
 
     # Load weights
     print("Loading weights ", weights_path)
     if args.weights.lower() == "coco":
+        # Exclude the last layers because they require a matching
+        # number of classes
+        model.load_weights(weights_path, by_name=True, exclude=[
+            "mrcnn_class_logits", "mrcnn_bbox_fc",
+            "mrcnn_bbox", "mrcnn_mask"])
+    if args.weights == "BestOnRings":
         # Exclude the last layers because they require a matching
         # number of classes
         model.load_weights(weights_path, by_name=True, exclude=[
