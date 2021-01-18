@@ -289,7 +289,7 @@ def clean_up_mask(mask, is_ring=True):
 
     # make the mask binary
     binary_mask = np.where(mask >= 2, 255, 0) # this part can be cleaned to remove some missdetections setting condition for >=2
-    #plt.imshow(binary_mask)
+    print("binary_mask shape", binary_mask.shape)
     #plt.show()
     #type(binary_mask)
     uint8binary = binary_mask.astype(np.uint8).copy()
@@ -333,7 +333,8 @@ def clean_up_mask(mask, is_ring=True):
 
     #### Extract longest contour to use for center estimate
     contourszip = zip(x_mins, contours_filtered)
-
+    print("xmins length", len(x_mins))
+    print("contours_filtered shape", contours_filtered.shape)
     ordered_contours = [x for _,x in sorted(contourszip, reverse = False)]
     #print('ordered:', ordered_contours)
     return ordered_contours # Returns filtered and orderedt contours
