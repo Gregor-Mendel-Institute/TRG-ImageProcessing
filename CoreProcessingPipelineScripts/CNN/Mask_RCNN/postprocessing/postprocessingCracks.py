@@ -5,9 +5,9 @@ Fuse all detections in one mask layer and consequently attach all of them to eac
 of the size of original image. The detection confidance needs to be set in the config!
 Print the image with mask over it.
 
-FOR TESTING
+FOR TESTING Mac
 conda activate TreeRingCNNtest &&
-cd /Users/miroslav.polacek/github/TreeCNN/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing &&
+cd /Users/miroslav.polacek/github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing &&
 python3 postprocessingCracks.py --dpi=12926 --run_ID=RUN_ID_SOME_VALUE --input=/Users/miroslav.polacek/Pictures/whole_core_examples --weight=/Users/miroslav.polacek/github/TreeRingCracksCNN/Mask_RCNN/logs/treeringcrackscomb20201119T2220/mask_rcnn_treeringcrackscomb_0222.h5 --output_folder=/Users/miroslav.polacek/Documents/CNNTestRuns
 
 FOR TESTING MINT
