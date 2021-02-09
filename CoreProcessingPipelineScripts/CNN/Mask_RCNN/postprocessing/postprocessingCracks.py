@@ -333,8 +333,6 @@ def clean_up_mask(mask, is_ring=True):
 
     #### Extract longest contour to use for center estimate
     contourszip = zip(x_mins, contours_filtered)
-    print("xmins length", len(x_mins))
-    print("contours_filtered shape", contours_filtered.shape)
     ordered_contours = [x for _,x in sorted(contourszip, reverse = False)]
     #print('ordered:', ordered_contours)
     return ordered_contours # Returns filtered and orderedt contours
