@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 #SBATCH --partition=g
-#SBATCH --gpus-per-task=RTX:5
-#SBATCH --mem=64G
+#SBATCH --gres=gpu:5
+#SBATCH --mem=160G
 #SBATCH --qos=medium
 #SBATCH --time=1-00:00:00
 #SBATCH --output=measureCoresCracksRingsParallel.stdout
