@@ -1,0 +1,6 @@
+logs
+datasets
+model_eval
+*.ipynb
+**.pyc
+**.stdout

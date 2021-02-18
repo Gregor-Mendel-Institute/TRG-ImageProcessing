@@ -1,6 +1,7 @@
 """
 Load tiff image of whole core.
-Run detections for squares in a form of sliding window with certain overlap to prevent problems of having ring directly in at the border.
+Run detections for squares in a form of sliding window with certain overlap to prevent problems of having ring directly at the edge.
+Run detection separately for the best model for Ring detection and the best for Crack.
 Fuse all detections in one mask layer and consequently attach all of them to each other creating mask layer
 of the size of original image. The detection confidance needs to be set in the config!
 Print the image with mask over it.
@@ -10,10 +11,10 @@ conda activate TreeRingCNNtest &&
 cd /Users/miroslav.polacek/github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing &&
 python3 postprocessingCracks.py --dpi=12926 --run_ID=RUN_ID_SOME_VALUE --input=/Users/miroslav.polacek/Pictures/whole_core_examples --weight=/Users/miroslav.polacek/github/TreeRingCracksCNN/Mask_RCNN/logs/treeringcrackscomb20201119T2220/mask_rcnn_treeringcrackscomb_0222.h5 --output_folder=/Users/miroslav.polacek/Documents/CNNTestRuns
 
-FOR TESTING MINT
+FOR TESTING MANJARO
 conda activate TreeRingCNN &&
 cd /home/miroslavp/Github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing &&
-python3 postprocessingCracks.py --dpi=12926 --run_ID=RUN_ID_SOME_VALUE --input=/home/miroslavp/Pictures/whole_core_examples --weight=/home/miroslavp/Github/TreeRingCracksCNN/Mask_RCNN/logs/treeringcrackscomb20201119T2220/mask_rcnn_treeringcrackscomb_0284.h5 --output_folder=/home/miroslavp/Documents/CNNTestRuns
+python3 postprocessingCracksRings.py --dpi=12926 --run_ID=RUN_ID_SOME_VALUE --input=/home/miroslavp/Pictures/whole_core_examples --weightRing=/home/miroslavp/Github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/treeringcrackscomb2_onlyring20210121T1457/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 --weightCrack=/home/miroslavp/Github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/treeringcrackscomb2_onlycracks20210121T2224/mask_rcnn_treeringcrackscomb2_onlycracks_0522.h5 --output_folder=/home/miroslavp/Documents/CNNTestRuns
 
 """
 
@@ -35,7 +36,12 @@ parser.add_argument('--run_ID', required=True,
 parser.add_argument('--input', required=True,
                     metavar="/path/to/image/",
                     help="Path to image file of folder")
-parser.add_argument('--weight', required=True,
+
+parser.add_argument('--weightRing', required=True,
+                    metavar="/path/to/weight/file",
+                    help="Path to weight file")
+
+parser.add_argument('--weightCrack', required=True,
                     metavar="/path/to/weight/file",
                     help="Path to weight file")
 
@@ -81,30 +87,42 @@ from mrcnn import visualize
 import mrcnn.model as modellib
 from mrcnn.model import log
 
-from DetectionConfig import TreeRingCrack
+from DetectionConfig import TreeRing_onlyRing
+from DetectionConfig import TreeRing_onlyCracks
 
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
-config = TreeRingCrack.treeRingConfig()
+configRing = TreeRing_onlyRing.TreeRingConfig()
+configCrack = TreeRing_onlyCracks.TreeRingConfig()
 
-class InferenceConfig(config.__class__):
+class InferenceConfig(configRing.__class__):
     # Run detection on one image at a time
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
 
-config = InferenceConfig()
-config.display()
+configRing = InferenceConfig()
+configRing.display()
 
+class InferenceConfig(configCrack.__class__):
+    # Run detection on one image at a time
+    GPU_COUNT = 1
+    IMAGES_PER_GPU = 1
+
+configCrack = InferenceConfig()
+configCrack.display()
 # Create model in inference mode
-model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=config)
-
+modelRing = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configCrack)
+modelCrack = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configRing)
 # Load weights
-weights_path = args.weight
+weights_path_Ring = args.weightRing
+weights_path_Crack = args.weightCrack
+
 print("Loading weights ")
-model.load_weights(weights_path, by_name=True)
+modelRing.load_weights(weights_path_Ring, by_name=True)
+modelCrack.load_weights(weights_path_Crack, by_name=True)
 
 #define class names
-class_names = ['BG', 'ring', 'crack']
+class_names = ['BG', 'ring']
 
 #######################################################################
 # apply mask to an original image
@@ -177,7 +195,7 @@ def sliding_window_detection(image, overlap = 0.5, cropUpandDown = 0):
     #print('looping_list', looping_list)
 
     combined_masks_per_class = np.empty(shape=(imgheight, imgwidth,0))
-    for class_id in [1,2]: #1 is ring, 2 is crack
+    for model in [modelRing, modelCrack]:
         the_mask = np.zeros(shape=(imgheight, imgwidth)) #combine all the partial masks in the final size of full tiff
         #print('the_mask', the_mask.shape)
         for i in looping_list: #defines the slide value
@@ -190,21 +208,21 @@ def sliding_window_detection(image, overlap = 0.5, cropUpandDown = 0):
             # run detection on the cropped part of the image
             results = model.detect([cropped_part], verbose=0)
             r = results[0]
-            r_mask = r['masks'][:,:,r['class_ids']==class_id]
+            r_mask = r['masks']
             #visualize.display_instances(cropped_part, r['rois'], r['masks'], r['class_ids'], class_names, r['scores']) #just to check
 
             # rotate image 90 and run detection
             cropped_part_90 = skimage.transform.rotate(cropped_part, 90, preserve_range=True).astype(np.uint8)
             results1 = model.detect([cropped_part_90], verbose=0)
             r1 = results1[0]
-            r1_mask = r1['masks'][:,:,r1['class_ids']==class_id]
+            r1_mask = r1['masks']
             #visualize.display_instances(cropped_part_90, r1['rois'], r1['masks'], r1['class_ids'], class_names, r1['scores']) #just to check
 
             # rotate image 45 and run detection
             cropped_part_45 = skimage.transform.rotate(cropped_part, angle = 45, resize=True).astype(np.uint8)
             results2 = model.detect([cropped_part_45], verbose=0)
             r2 = results2[0]
-            r2_mask = r2['masks'][:,:,r2['class_ids']==class_id]
+            r2_mask = r2['masks']
 
             ## flatten all in one layer. This should be one layer of zeroes and ones. If applying som e cleaning i would do it before this point or cleaning of the final one might be even better
             maskr = np.zeros(shape=(imgheight, imgheight))
@@ -301,7 +319,7 @@ def clean_up_mask(mask, is_ring=True):
     #### here i extract dimensions and angle of individual contours bigger than threshold
     imgheight, imgwidth = mask.shape[:2]
     if is_ring==True:
-        min_size_threshold = imgheight/5
+        min_size_threshold = imgheight/5 #will take only contours that are bigger than 1/5 of the image
     else:
         min_size_threshold = 1
     contours_filtered = []
@@ -320,12 +338,12 @@ def clean_up_mask(mask, is_ring=True):
         dim1, dim2 = rect[1]
         dim_max = max([dim1, dim2])
         dim_sum = dim1 + dim2 # should capture size and curvature better then just a length
-        if dim_max > min_size_threshold: #will take only contours that are bigger than 1/5 of the image
+        if dim_max > min_size_threshold:
             contours_filtered.append(contours[i])
             x_mins.append(x_min)
 
-    #print('Filtered_contours:', len(contours_filtered))
-    #print('contour_lengths:', contour_lengths)
+    print('Filtered_contours:', len(contours_filtered))
+
     #print(contours_filtered[0])
 
     #### Extract longest contour to use for center estimate
@@ -906,7 +924,8 @@ log_file_path =os.path.join(args.output_folder, log_file_name)
 
 with open(log_file_path,"x") as fi:
     print("Run started:" + dt_string, file=fi)
-    print("Weight used:" + weights_path, file=fi)
+    print("Ring weights used:" + weights_path_Ring, file=fi)
+    print("Crack weights used:" + weights_path_Crack, file=fi)
 
 pathpos = args.output_folder
 pos_list = []
@@ -938,7 +957,8 @@ for f in input_list:
         im_origin = skimage.io.imread(image_path)
 
         detected_mask_rings, detected_mask_cracks = sliding_window_detection(image = im_origin, overlap = 0.75, cropUpandDown = 0.17)
-
+        print("detected_mask_rings", detected_mask_rings.shape)
+        print("detected_mask_cracks", detected_mask_cracks.shape)
         clean_contours_rings = clean_up_mask(detected_mask_rings, is_ring=True)
         clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
 
