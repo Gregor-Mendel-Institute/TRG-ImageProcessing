@@ -928,9 +928,9 @@ with open(log_file_path,"x") as fi:
     print("Crack weights used:" + weights_path_Crack, file=fi)
 
 pathpos = args.output_folder
-pos_list = []
+json_list = []
 for f in os.listdir(pathpos):
-    if f.endswith('.pos'):
+    if f.endswith('.json'):
         pos_name = f.split('.')[0]
         pos_list.append(pos_name)
 
@@ -950,7 +950,7 @@ else:
 #print("got until here", input_list, input_path)
 
 for f in input_list:
-    if f.endswith('.tif') and f.split('.')[0] not in pos_list:
+    if f.endswith('.tif') and f.split('.')[0] not in json_list:
         print("Processing image: {}".format(f))
         write_run_info("Processing image: {}".format(f))
         image_path = os.path.join(input_path, f)
