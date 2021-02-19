@@ -4,8 +4,8 @@
 #SBATCH --partition=g
 #SBATCH --gres=gpu:RTX:1
 #SBATCH --mem=32G
-#SBATCH --qos=medium
-#SBATCH --time=1-00:00:00
+#SBATCH --qos=long
+#SBATCH --time=4-00:00:00
 #SBATCH --output=measureCoresCracksRings_noPar.stdout
 
 ml load anaconda3/2019.03

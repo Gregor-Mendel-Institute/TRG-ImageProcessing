@@ -303,7 +303,7 @@ def clean_up_mask(mask, is_ring=True):
     # detects countours of the masks, removes small contours, fits circle to individual contours and estimates the pith, skeletonizes the detected contours
 
     # make the mask binary
-    binary_mask = np.where(mask >= 2, 255, 0) # this part can be cleaned to remove some missdetections setting condition for >=2
+    binary_mask = np.where(mask > 2, 255, 0) # this part can be cleaned to remove some missdetections setting condition for >=2
     print("binary_mask shape", binary_mask.shape)
     #plt.show()
     #type(binary_mask)
