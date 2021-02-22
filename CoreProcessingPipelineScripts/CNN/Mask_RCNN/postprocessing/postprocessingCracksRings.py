@@ -369,7 +369,7 @@ def find_centerlines(clean_contours):
             xy_tuples.append((x,y))
             x_only.append(x)
         x_min = np.min(x_only)
-        x_mins.append(x_min)
+        x_mins.append(x_min) 
         contours_tuples.append(xy_tuples)
 
     # order contours by x_min
