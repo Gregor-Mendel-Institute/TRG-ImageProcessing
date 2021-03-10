@@ -155,7 +155,7 @@ def apply_mask(image, mask, alpha=0.5):
 # should find the log file and add data to it
 def write_run_info(string):
     #get name of the log file in the output dir
-    out_dir = args.output_folder
+    out_dir = os.path.join(args.output_folder, args.run_ID)
     run_ID = args.run_ID
     log_files = []
     for f in os.listdir(out_dir):
@@ -369,7 +369,7 @@ def find_centerlines(clean_contours):
             xy_tuples.append((x,y))
             x_only.append(x)
         x_min = np.min(x_only)
-        x_mins.append(x_min) 
+        x_mins.append(x_min)
         contours_tuples.append(xy_tuples)
 
     # order contours by x_min
@@ -635,9 +635,9 @@ def measure_contours(Multi_centerlines, image):
 #######################################################################
 # plot predicted lines and points of measurements to visually assess
 #######################################################################
-def plot_lines(image, centerlines, measure_points, file_name, angle_index):
+def plot_lines(image, centerlines, measure_points, file_name, angle_index, path_out):
     #create pngs folder in output path
-    export_path = os.path.join(args.output_folder, 'pngs')
+    export_path = os.path.join(path_out, 'pngs')
     if not os.path.exists(export_path):
         os.makedirs(export_path)
 
@@ -705,57 +705,13 @@ def plot_lines(image, centerlines, measure_points, file_name, angle_index):
             xc,yc = centerlines1[-1].coords.xy # to print the last point
             plt.plot(xc,yc, color[l])
         #plt.show()
-    #ad subplot for finding the middle to be able to evaluate the function
-    """
-    try:
-        angles = []
-        cutting_points = []
-        for i in range(len(angle_index)):
-            angle, cutting_point = angle_index[i]
-            if np.isnan(angle):
-                continue
-            else:
-                angles.append(angle)
-                cutting_points.append(cutting_point)
 
-        ax2.plot(cutting_points, angles, 'o', color='black')
-        #now try to fit polynomial
-        pfit = np.polyfit(cutting_points, angles, 10)
-        c = np.poly1d(pfit)
-        xc = np.arange(cutting_points[0], cutting_points[-1], 10)
-        ax2.plot(xc, c(xc))
-        #find the minimum of the functions
-        crit = c.deriv().r
-        r_crit = crit[crit.imag==0].real
-        test = c.deriv(2)(r_crit)
-
-
-        # compute local minima
-        # excluding range boundaries
-        x_min = r_crit[test>0]
-        if len(x_min)>0:
-
-            x_in_range = [i for i in x_min if i>min(cutting_points)]
-            x_in_range = [i for i in x_in_range if i<max(cutting_points)]
-            y_min = c(x_in_range)
-
-            #get the global minimum
-            yx = sorted(zip(y_min, x_in_range))[0]
-
-            ax2.plot( yx[1], yx[0], 'o' )
-
-
-
-        fig.savefig(os.path.join(export_path, f), bbox_inches = 'tight', pad_inches = 0)
-    except:
-        fig.savefig(os.path.join(export_path, f), bbox_inches = 'tight', pad_inches = 0)
-    """
     plt.savefig(os.path.join(export_path, f), bbox_inches = 'tight', pad_inches = 0)
 
 #######################################################################
 # create a json file for shiny
 #######################################################################
-def write_to_json(image_name, centerlines_rings, clean_contours_rings, clean_contours_cracks, cutting_point, run_ID):
+def write_to_json(image_name, centerlines_rings, clean_contours_rings, clean_contours_cracks, cutting_point, run_ID, path_out):
     # define the structure of json
     ##pith_infered x,y, pith_from_circles,
     out_json = {}
@@ -792,13 +748,13 @@ def write_to_json(image_name, centerlines_rings, clean_contours_rings, clean_con
         #print("coords",type(coords))
         out_json[image_name]['predictions'][json_names[v]]=coords
 
-    output = os.path.join(args.output_folder,image_name.split('.')[0] + '.json')
+    output = os.path.join(path_out, image_name.replace('.tif','.json'))
     with open(output,'w') as outfile:
         json.dump(out_json, outfile, indent=4)
 #######################################################################
 # create a .pos file with measure points
 #######################################################################
-def write_to_pos(centerlines, measure_points, file_name, image_name, DPI):
+def write_to_pos(centerlines, measure_points, file_name, image_name, DPI, path_out):
     print('Writing .pos file')
     # check if it is one or two parts in measure points
     #if two adjust naming. nothink for the normal one and may be some "x" at the end for the extra
@@ -812,8 +768,8 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI):
     #create paths for output files
     pos_name = file_name + '.pos'
     posX_name = file_name + 'X' + '.pos'
-    out_file_path = os.path.join(args.output_folder, pos_name)
-    out_fileX_path = os.path.join(args.output_folder, posX_name)
+    out_file_path = os.path.join(path_out, pos_name)
+    out_fileX_path = os.path.join(path_out, posX_name)
     #out_folder = '' #to output in the same file
     #print('names done')
     #print('centerline', centerlines)
@@ -915,24 +871,35 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI):
 #######################################################################
 # Run detection on an images
 #######################################################################
+path_out = os.path.join(args.output_folder, args.run_ID)
+ # check if output dir for run_ID exists and if not create it
+if not os.path.isdir(path_out):
+    os.mkdir(path_out)
+
 now = datetime.now()
-dt_string_name = now.strftime("D%Y%m%d_T%H%M") #"%Y-%m-%d_%H:%M:%S"
+dt_string_name = now.strftime("D%Y%m%d") #"%Y-%m-%d_%H:%M:%S"
 dt_string = now.strftime("%Y-%m-%d_%H:%M:%S")
 run_ID = args.run_ID
 log_file_name = 'CNN_' + run_ID + '_' + dt_string_name + '.log' #"RunID" + dt_string +
-log_file_path =os.path.join(args.output_folder, log_file_name)
+log_file_path =os.path.join(path_out, log_file_name)
+# check if the log file already exists
+if os.path.exists(log_file_path):
+    write_run_info("Run started:{}".format(dt_string))
+    write_run_info("Ring weights used:{}".format(weights_path_Ring))
+    write_run_info("Crack weights used:{}".format(weights_path_Crack))
 
-with open(log_file_path,"x") as fi:
-    print("Run started:" + dt_string, file=fi)
-    print("Ring weights used:" + weights_path_Ring, file=fi)
-    print("Crack weights used:" + weights_path_Crack, file=fi)
+elif not os.path.exists(log_file_path):
+    with open(log_file_path,"x") as fi:
+        print("Run started:" + dt_string, file=fi)
+        print("Ring weights used:" + weights_path_Ring, file=fi)
+        print("Crack weights used:" + weights_path_Crack, file=fi)
 
-pathpos = args.output_folder
+# create a list of already exported jsons to prevent re-running the same image
 json_list = []
-for f in os.listdir(pathpos):
+for f in os.listdir(path_out):
     if f.endswith('.json'):
-        pos_name = f.split('.')[0]
-        pos_list.append(pos_name)
+        json_name = f.replace('.json', '')
+        json_list.append(json_name)
 
 input = args.input
 # check pathin if its folder or file and get file list of either
@@ -950,7 +917,7 @@ else:
 #print("got until here", input_list, input_path)
 
 for f in input_list:
-    if f.endswith('.tif') and f.split('.')[0] not in json_list:
+    if f.endswith('.tif') and f.replace('.tif', '') not in json_list:
         print("Processing image: {}".format(f))
         write_run_info("Processing image: {}".format(f))
         image_path = os.path.join(input_path, f)
@@ -966,8 +933,8 @@ for f in input_list:
 
         centerlines, measure_points, angle_index, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
 
-        write_to_json(f, centerlines_rings, clean_contours_rings, clean_contours_cracks, cutting_point, run_ID)
-        image_name = f.split('.')[0]
+        write_to_json(f, centerlines_rings, clean_contours_rings, clean_contours_cracks, cutting_point, run_ID, path_out)
+        image_name = f.replace('.tif', '')
         #DPI = float(args.dpi)
         #write_to_pos(centerlines, measure_points, image_name, f, DPI)
 
@@ -975,4 +942,5 @@ for f in input_list:
         masked_image = im_origin.astype(np.uint32).copy()
         masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
         masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
-        plot_lines(masked_image, centerlines, measure_points, image_name, angle_index)
+        plot_lines(masked_image, centerlines, measure_points, image_name, angle_index, path_out)
+        write_run_info("IMAGE FINISHED")
