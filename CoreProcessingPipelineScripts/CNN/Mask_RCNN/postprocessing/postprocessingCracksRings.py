@@ -404,7 +404,7 @@ def find_centerlines(clean_contours):
             centerlines.append(cline)
 
     ## Cut off upper and lower part of detected lines. It should help with problems of horizontal ends of detections
-    to_cut_off = .1 #based on examples that i used for testing
+    to_cut_off = 0.01 #based on examples that i used for testing
     Multi_centerlines_to_crop = shapely.geometry.MultiLineString(centerlines)
     minx, miny, maxx, maxy = Multi_centerlines_to_crop.bounds
     px_to_cut_off = (maxy-miny)*to_cut_off
