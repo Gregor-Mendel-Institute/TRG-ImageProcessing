@@ -13,7 +13,7 @@ source activate ~/.conda/envs/TreeRingCNN
 
 STITCH_FOLDER='/groups/swarts/lab/DendroImages/Stitch/'
 PLOT=14
-TIFS=$(find ${STITCH_FOLDER} -name "000$PLOT*_pSX*.tif")
+TIFS=$(find ${STITCH_FOLDER} -name "000$PLOT*_pSX*.tif" -o -name "000$PLOT*_pS1*.tif" )
 
 for i in $TIFS; do
 runID_dir=${i%/*}
