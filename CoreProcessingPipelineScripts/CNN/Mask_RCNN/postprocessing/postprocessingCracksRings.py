@@ -933,10 +933,10 @@ for f in input_list:
 
         centerlines, measure_points, angle_index, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
 
-        write_to_json(f, centerlines_rings, clean_contours_rings, clean_contours_cracks, cutting_point, run_ID, path_out)
+        write_to_json(f, centerlines, clean_contours_rings, clean_contours_cracks, cutting_point, run_ID, path_out)
         image_name = f.replace('.tif', '')
         #DPI = float(args.dpi)
-        #write_to_pos(centerlines, measure_points, image_name, f, DPI)
+        write_to_pos(centerlines, measure_points, image_name, f, DPI)
 
         # Ploting lines is moslty for debugging
         masked_image = im_origin.astype(np.uint32).copy()
