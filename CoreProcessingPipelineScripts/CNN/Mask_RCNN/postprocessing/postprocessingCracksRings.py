@@ -160,9 +160,14 @@ def write_run_info(string):
     log_files = []
     for f in os.listdir(out_dir):
         if f.startswith("CNN_" + run_ID):
-            log_files.append(f)
+            path_f = os.path.join(out_dir, f)
+            log_files.append(path_f)
 
-    log_file_name = os.path.join(out_dir, log_files[-1])
+    # sort files by creation times
+    log_files.sort(key=os.path.getctime)
+    #print("sorted log files list", log_files)
+
+    log_file_name = log_files[-1]
     with open(log_file_name,"a") as f:
         print(string, file=f)
 
@@ -464,7 +469,7 @@ def measure_contours(Multi_centerlines, image):
             else:
                 #print(i, "th frame is simple")
                 slope, intercept, rvalue, pvalue, stderr = scipy.stats.linregress(x, y)
-                write_run_info("slope:{}".format(slope))
+                #write_run_info("slope:{}".format(slope))
                 angle_index.append([abs(slope), cut_point]) #I add also i here so i can identify distance later
                 if slope > 0 and slope < 2:
                     PlusMinus = 1
@@ -486,7 +491,7 @@ def measure_contours(Multi_centerlines, image):
                 else:
                     #print(i, "th frame is complex")
                     slope, intercept, rvalue, pvalue, stderr = scipy.stats.linregress(x, y)
-                    write_run_info("slope:{}".format(slope))
+                    #write_run_info("slope:{}".format(slope))
 
                     #print('linestring_x',x_int)
                     #plt.plot(x_int, y_int)
@@ -558,7 +563,7 @@ def measure_contours(Multi_centerlines, image):
             x_mins.append(minx)
 
         x_middle = np.array(x_mins) + (np.array(x_maxs) - np.array(x_mins))/2
-        print('x_middle, x_maxs, x_mins', x_middle, x_maxs, x_mins)
+        #print('x_middle, x_maxs, x_mins', x_middle, x_maxs, x_mins)
         contourszip = zip(x_middle, Multi_centerlines1)
 
         #print('contourszip', contourszip)
@@ -637,6 +642,7 @@ def measure_contours(Multi_centerlines, image):
 #######################################################################
 def plot_lines(image, centerlines, measure_points, file_name, angle_index, path_out):
     #create pngs folder in output path
+    write_run_info("Plotting output as png")
     export_path = os.path.join(path_out, 'pngs')
     if not os.path.exists(export_path):
         os.makedirs(export_path)
@@ -714,6 +720,7 @@ def plot_lines(image, centerlines, measure_points, file_name, angle_index, path_
 def write_to_json(image_name, centerlines_rings, clean_contours_rings, clean_contours_cracks, cutting_point, run_ID, path_out):
     # define the structure of json
     ##pith_infered x,y, pith_from_circles,
+    write_run_info("Writing .json file")
     out_json = {}
     out_json = {image_name: {'run_ID':run_ID, 'predictions':{}, 'directionality': {}, 'center': {}, 'est_rings_to_pith': {}, 'ring_widths': {}}} #directionality will be added in shiny, {x_value:{'width': VALUE , 'angle': VALUE},...}
     out_json[image_name]['predictions'] = {'ring_line': {}, 'ring_polygon': {}, 'crack_polygon': {}, 'resin_polygon': {}, 'pith_polygon': {}}
@@ -756,6 +763,7 @@ def write_to_json(image_name, centerlines_rings, clean_contours_rings, clean_con
 #######################################################################
 def write_to_pos(centerlines, measure_points, file_name, image_name, DPI, path_out):
     print('Writing .pos file')
+    write_run_info("Writing .pos file")
     # check if it is one or two parts in measure points
     #if two adjust naming. nothink for the normal one and may be some "x" at the end for the extra
     #print('measure_point len', len(measure_points))
@@ -877,22 +885,17 @@ if not os.path.isdir(path_out):
     os.mkdir(path_out)
 
 now = datetime.now()
-dt_string_name = now.strftime("D%Y%m%d") #"%Y-%m-%d_%H:%M:%S"
+dt_string_name = now.strftime("D%Y%m%d_%H%M%S") #"%Y-%m-%d_%H:%M:%S"
 dt_string = now.strftime("%Y-%m-%d_%H:%M:%S")
 run_ID = args.run_ID
 log_file_name = 'CNN_' + run_ID + '_' + dt_string_name + '.log' #"RunID" + dt_string +
 log_file_path =os.path.join(path_out, log_file_name)
-# check if the log file already exists
-if os.path.exists(log_file_path):
-    write_run_info("Run started:{}".format(dt_string))
-    write_run_info("Ring weights used:{}".format(weights_path_Ring))
-    write_run_info("Crack weights used:{}".format(weights_path_Crack))
 
-elif not os.path.exists(log_file_path):
-    with open(log_file_path,"x") as fi:
-        print("Run started:" + dt_string, file=fi)
-        print("Ring weights used:" + weights_path_Ring, file=fi)
-        print("Crack weights used:" + weights_path_Crack, file=fi)
+# initiate log file
+with open(log_file_path,"x") as fi:
+    print("Run started:" + dt_string, file=fi)
+    print("Ring weights used:" + weights_path_Ring, file=fi)
+    print("Crack weights used:" + weights_path_Crack, file=fi)
 
 # create a list of already exported jsons to prevent re-running the same image
 json_list = []
@@ -935,8 +938,8 @@ for f in input_list:
 
         write_to_json(f, centerlines, clean_contours_rings, clean_contours_cracks, cutting_point, run_ID, path_out)
         image_name = f.replace('.tif', '')
-        #DPI = float(args.dpi)
-        write_to_pos(centerlines, measure_points, image_name, f, DPI)
+        DPI = float(args.dpi)
+        write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
 
         # Ploting lines is moslty for debugging
         masked_image = im_origin.astype(np.uint32).copy()
