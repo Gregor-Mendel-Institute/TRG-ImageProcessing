@@ -352,10 +352,13 @@ def clean_up_mask(mask, is_ring=True):
     #print(contours_filtered[0])
 
     #### Extract longest contour to use for center estimate
-    contourszip = zip(x_mins, contours_filtered)
-    ordered_contours = [x for _,x in sorted(contourszip, reverse = False)]
-    #print('ordered:', ordered_contours)
-    return ordered_contours # Returns filtered and orderedt contours
+    if is_ring==True:
+        contourszip = zip(x_mins, contours_filtered)
+        contours_out = [x for _,x in sorted(contourszip, reverse = False)]
+    else:
+        contours_out = contours_filtered
+        
+    return contours_out # Returns filtered and orderedt contours
 
 #######################################################################
 # Finds centerines in contours
@@ -936,7 +939,7 @@ for f in input_list:
 
         centerlines, measure_points, angle_index, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
 
-        write_to_json(f, centerlines, clean_contours_rings, clean_contours_cracks, cutting_point, run_ID, path_out)
+        write_to_json(f, centerlines_rings, clean_contours_rings, clean_contours_cracks, cutting_point, run_ID, path_out)
         image_name = f.replace('.tif', '')
         DPI = float(args.dpi)
         write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
