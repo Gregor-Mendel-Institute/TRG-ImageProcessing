@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:RTX:1
 #SBATCH --partition=g
-#SBATCH --mem=32G
+#SBATCH --mem=112G
 #SBATCH --qos=short
 #SBATCH --time=0-08:00:00
 #SBATCH --output=measureCores.stdout
