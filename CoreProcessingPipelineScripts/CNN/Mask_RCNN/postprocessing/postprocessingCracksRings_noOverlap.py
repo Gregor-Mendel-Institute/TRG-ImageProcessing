@@ -932,7 +932,7 @@ for f in input_list:
         image_path = os.path.join(input_path, f)
         im_origin = skimage.io.imread(image_path)
 
-        detected_mask_rings, detected_mask_cracks = sliding_window_detection(image = im_origin, overlap = 0.75, cropUpandDown = 0.17)
+        detected_mask_rings, detected_mask_cracks = sliding_window_detection(image = im_origin, overlap = 0, cropUpandDown = 0.17)
         print("detected_mask_rings", detected_mask_rings.shape)
         print("detected_mask_cracks", detected_mask_cracks.shape)
         clean_contours_rings = clean_up_mask(detected_mask_rings, is_ring=True)
