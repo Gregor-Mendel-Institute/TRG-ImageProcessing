@@ -131,7 +131,6 @@ def apply_mask(image, mask, alpha=0.5):
     """Apply the given mask to the image.
     """
     color = (0.7, 0.0, 0.0)
-
     for c in range(3):
         image[:, :, c] = np.where(mask == 1,
                                   image[:, :, c] * (1 - alpha) + alpha * color[c] * 255,
@@ -174,7 +173,7 @@ def write_run_info(string):
 ############################################################################################################
 # Sliding window detection with rotation of each part of image by 90 and 45 degrees and combining the output
 ############################################################################################################
-def sliding_window_detection(image, overlap = 0, cropUpandDown = 0):
+def sliding_window_detection(image, overlap = 0.5, cropUpandDown = 0):
     write_run_info("Sliding window overlap = {} and cropUpandDown = {}".format(overlap, cropUpandDown))
     #crop image top and bottom to avoid detectectig useles part of the image
     imgheight_origin, imgwidth_origin = image.shape[:2]
@@ -307,11 +306,12 @@ def sliding_window_detection(image, overlap = 0, cropUpandDown = 0):
 #######################################################################
 # Extract distances from the mask
 #######################################################################
-def clean_up_mask(mask, is_ring=True):
-    # detects countours of the masks, removes small contours, fits circle to individual contours and estimates the pith, skeletonizes the detected contours
+def clean_up_mask(mask, overlap_masks=2, is_ring=True):
+    # detects countours of the masks, removes small contours, fits circle to individual contours and estimates the pith
+    # overlap_masks how many detected raw masks have to overlap to be considered as good mask
 
     # make the mask binary
-    binary_mask = np.where(mask > 2, 255, 0) # this part can be cleaned to remove some missdetections setting condition for >=2
+    binary_mask = np.where(mask > overlap_masks, 255, 0) # this part can be cleaned to remove some missdetections setting condition for >=2
     print("binary_mask shape", binary_mask.shape)
     #plt.show()
     #type(binary_mask)
@@ -933,10 +933,10 @@ for f in input_list:
         im_origin = skimage.io.imread(image_path)
 
         detected_mask_rings, detected_mask_cracks = sliding_window_detection(image = im_origin, overlap = 0, cropUpandDown = 0.17)
-        print("detected_mask_rings", detected_mask_rings.shape)
-        print("detected_mask_cracks", detected_mask_cracks.shape)
-        clean_contours_rings = clean_up_mask(detected_mask_rings, is_ring=True)
-        clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
+        write_run_info("detected_masks_rings_raw: {}".format(detected_mask_rings.shape))
+        write_run_info("detected_masks_cracks_raw: {}".format(detected_mask_cracks.shape))
+        clean_contours_rings = clean_up_mask(detected_mask_rings, overlap_masks=0, is_ring=True)
+        clean_contours_cracks = clean_up_mask(detected_mask_cracks, overlap_masks=0, is_ring=False)
 
         centerlines_rings = find_centerlines(clean_contours_rings)
 

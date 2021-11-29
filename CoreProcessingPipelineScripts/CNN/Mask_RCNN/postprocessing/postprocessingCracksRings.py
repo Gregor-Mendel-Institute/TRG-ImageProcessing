@@ -49,6 +49,10 @@ parser.add_argument('--output_folder', required=True,
                     metavar="/path/to/out/folder",
                     help="Path to output folder")
 
+parser.add_argument('--logfile', required=False,
+                    metavar="logfile",
+                    help="logfile name to put in output dir. Prepends other info (used to be 'CNN_')")
+
 args = parser.parse_args()
 
 #######################################################################
@@ -891,7 +895,7 @@ now = datetime.now()
 dt_string_name = now.strftime("D%Y%m%d_%H%M%S") #"%Y-%m-%d_%H:%M:%S"
 dt_string = now.strftime("%Y-%m-%d_%H:%M:%S")
 run_ID = args.run_ID
-log_file_name = 'CNN_' + run_ID + '_' + dt_string_name + '.log' #"RunID" + dt_string +
+log_file_name = args.logfile + run_ID + '_' + dt_string_name + '.log' #"RunID" + dt_string +
 log_file_path =os.path.join(path_out, log_file_name)
 
 # initiate log file
