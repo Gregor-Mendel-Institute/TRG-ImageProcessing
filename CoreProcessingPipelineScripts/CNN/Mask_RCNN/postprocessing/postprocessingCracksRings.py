@@ -79,7 +79,6 @@ from shapely.ops import nearest_points
 import scipy
 from scipy import optimize
 from datetime import datetime
-from src_get_centerline import get_centerline
 from operator import itemgetter
 
 # Import Mask RCNN
@@ -88,6 +87,7 @@ print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library
 from mrcnn import utils
 from mrcnn import visualize
+from mrcnn.src_get_centerline import get_centerline
 import mrcnn.model as modellib
 from mrcnn.model import log
 
@@ -361,7 +361,7 @@ def clean_up_mask(mask, is_ring=True):
         contours_out = [x for _,x in sorted(contourszip, reverse = False)]
     else:
         contours_out = contours_filtered
-        
+
     return contours_out # Returns filtered and orderedt contours
 
 #######################################################################
