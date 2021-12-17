@@ -163,7 +163,7 @@ def write_run_info(string):
     run_ID = args.run_ID
     log_files = []
     for f in os.listdir(out_dir):
-        if f.startswith("CNN_" + run_ID):
+        if f.startswith(str(args.logfile) + run_ID):
             path_f = os.path.join(out_dir, f)
             log_files.append(path_f)
 
@@ -895,7 +895,7 @@ now = datetime.now()
 dt_string_name = now.strftime("D%Y%m%d_%H%M%S") #"%Y-%m-%d_%H:%M:%S"
 dt_string = now.strftime("%Y-%m-%d_%H:%M:%S")
 run_ID = args.run_ID
-log_file_name = args.logfile + run_ID + '_' + dt_string_name + '.log' #"RunID" + dt_string +
+log_file_name = str(args.logfile) + run_ID + '_' + dt_string_name + '.log' #"RunID" + dt_string +
 log_file_path =os.path.join(path_out, log_file_name)
 
 # initiate log file

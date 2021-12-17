@@ -1,6 +1,7 @@
 logs
 datasets
 model_eval
+laptop_debug.sh
 *.ipynb
 **.pyc
 **.stdout
