@@ -5,3 +5,4 @@ laptop_debug.sh
 *.ipynb
 **.pyc
 **.stdout
+__pycache__
