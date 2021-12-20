@@ -8,8 +8,6 @@
 #SBATCH --time=5-00:00:00
 #SBATCH --output="/groups/swarts/lab/DendroImages/CNN_results/measureCoresCracksRings$(date).stdout"
 
-singularity shell --nv /scratch-cbe/shared/containers/trg-imageprocessing_master.sif
-
 STITCH_FOLDER='/groups/swarts/lab/DendroImages/Stitch/'
 PLOT=$1
 TIFS=$(find ${STITCH_FOLDER} -name "000"$PLOT"*_pS1.945*.tif" )
@@ -17,8 +15,7 @@ TIFS=$(find ${STITCH_FOLDER} -name "000"$PLOT"*_pS1.945*.tif" )
 for i in $TIFS; do
 runID_dir=${i%/*}
 runID=${runID_dir##*/}
-/opt/conda/bin/python \
-  /groups/swarts/lab/ImageProcessingPipeline/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing/postprocessingCracksRings.py \
+singularity run --nv /scratch-cbe/shared/containers/trg-imageprocessing_master.sif \
   --dpi=13039 \
   --run_ID=$runID \
   --input=$i \
