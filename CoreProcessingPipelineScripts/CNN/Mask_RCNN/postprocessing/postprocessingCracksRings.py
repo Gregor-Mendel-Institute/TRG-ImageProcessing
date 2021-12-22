@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Load tiff image of whole core.
 Run detections for squares in a form of sliding window with certain overlap to prevent problems of having ring directly at the edge.
