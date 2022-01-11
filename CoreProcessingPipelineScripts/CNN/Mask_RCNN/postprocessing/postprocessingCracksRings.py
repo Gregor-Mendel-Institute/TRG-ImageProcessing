@@ -116,8 +116,8 @@ class InferenceConfig(configCrack.__class__):
 configCrack = InferenceConfig()
 configCrack.display()
 # Create model in inference mode
-modelRing = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configCrack)
-modelCrack = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configRing)
+modelRing = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configRing)
+modelCrack = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configCrack)
 # Load weights
 weights_path_Ring = args.weightRing
 weights_path_Crack = args.weightCrack
