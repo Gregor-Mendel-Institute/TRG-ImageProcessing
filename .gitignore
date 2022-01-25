@@ -2,6 +2,9 @@ logs
 datasets
 model_eval
 laptop_debug.sh
+laptop_Docker_test.sh
+trg-imageprocessing_master.sif
+TRG-process.def
 *.ipynb
 **.pyc
 **.stdout
