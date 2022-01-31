@@ -1,0 +1,33 @@
+name: Podman build
+
+on:
+  push:
+      branches:
+        - master
+        - TRG-ImageProcessing_Clean
+
+env:
+  REGISTRY_USER: treeringgenomics
+  IMAGE_REGISTRY: quay.io
+  REGISTRY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
+
+jobs:
+  push_to_registry:
+    name: Container
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+
+      - name: Log in to quay.io
+        uses: redhat-actions/podman-login@v1
+        with:
+          username: ${{ env.REGISTRY_USER }}
+          password: ${{ env.REGISTRY_PASSWORD }}
+          registry: ${{ env.IMAGE_REGISTRY }}
+
+      - name: Build container
+        run: podman build --format docker --tag treeringgenomics/image-processing CoreProcessingPipelineScripts/CNN/Mask_RCNN
+
+      - name: Push container
+        run: podman push treeringgenomics/image-processing docker://quay.io/treeringgenomics/image-processing:${GITHUB_REF##*/}
