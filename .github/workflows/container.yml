@@ -4,7 +4,6 @@ on:
   push:
       branches:
         - master
-        - TRG-ImageProcessing_Clean
 
 env:
   REGISTRY_USER: treeringgenomics
