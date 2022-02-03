@@ -3,13 +3,21 @@ import logging
 import networkx as nx
 from networkx.exception import NetworkXNoPath
 import numpy as np
+import os
+import sys
 import operator
 import scipy
 from scipy.spatial import Voronoi
 from scipy.ndimage import filters
 from shapely.geometry import LineString, MultiLineString, Point, MultiPoint
-#import matplotlib.pyplot as plt
-from exceptions import CenterlineError
+
+# Root directory of the project
+ROOT_DIR = os.path.abspath("../")
+
+# Import Mask RCNN
+sys.path.append(ROOT_DIR)  # To find local version of the library
+
+from mrcnn.exceptions import CenterlineError
 
 logger = logging.getLogger(__name__)
 
