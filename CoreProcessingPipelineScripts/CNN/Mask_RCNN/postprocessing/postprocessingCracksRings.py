@@ -617,7 +617,7 @@ def measure_contours(Multi_centerlines, image):
         # Loop through them to measure pairwise distances between nearest points
         print('middle point was not detected')
         write_run_info('Middle point was not detected')
-        cutting_point = np.nan
+        cutting_point = {}
         # Reorder the lines
         x_maxs = []
         x_mins = []
@@ -959,6 +959,7 @@ def main():
 
             if args.print_detections == "yes":
                 # Ploting lines is moslty for debugging
+                write_run_info("Printing detection PNGs")
                 print("Printing detection PNGs")
                 masked_image = im_origin.astype(np.uint32).copy()
                 masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
@@ -969,6 +970,7 @@ def main():
                 plot_lines(masked_image, centerlines, measure_points,
                             image_name, path_out)
             write_run_info("IMAGE FINISHED")
+            print("IMAGE FINISHED")
 
 if __name__ == '__main__':
     main()
