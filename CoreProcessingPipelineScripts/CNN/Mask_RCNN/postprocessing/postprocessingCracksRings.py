@@ -50,6 +50,12 @@ parser.add_argument('--output_folder', required=True,
                     metavar="/path/to/out/folder",
                     help="Path to output folder")
 
+parser.add_argument('--cropUpandDown', required=False,
+                    help="Fraction of image hight to crop away on both sides")
+
+parser.add_argument('--sliding_window_overlap', required=False,
+                    help="Proportion of sliding frame that should overlap")
+
 parser.add_argument('--print_detections', required=False,
                     help="yes, if printing is desired")
 
@@ -188,12 +194,13 @@ def write_run_info(string):
 ############################################################################################################
 # Sliding window detection with rotation of each part of image by 90 and 45 degrees and combining the output
 ############################################################################################################
-def sliding_window_detection(image, modelRing=None, modelCrack=None, overlap = 0.5, cropUpandDown = 0):
+def sliding_window_detection(image, modelRing=None, modelCrack=None, overlap = 0.75, cropUpandDown = 0.17):
     write_run_info("Sliding window overlap = {} and cropUpandDown = {}".format(overlap, cropUpandDown))
     # Crop image top and bottom to avoid detectectig useles part of the image
     imgheight_origin, imgwidth_origin = image.shape[:2]
 
     #print('image shape', image.shape[:2])
+    #print('cropUpandDown', cropUpandDown)
     to_crop = int(imgheight_origin*cropUpandDown)
     new_image = image[to_crop:(imgheight_origin-to_crop), :, :]
     #print('new image shape', new_image.shape)
@@ -927,12 +934,22 @@ def main():
             write_run_info("Processing image: {}".format(f))
             image_path = os.path.join(input_path, f)
             im_origin = skimage.io.imread(image_path)
+            # Define cropUpandDown and overlap values if they were not provided as arguments
+            if args.cropUpandDown is not None:
+                cropUpandDown = float(args.cropUpandDown)
+            else:
+                cropUpandDown = 0.17
+
+            if args.sliding_window_overlap is not None:
+                sliding_window_overlap = float(args.sliding_window_overlap)
+            else:
+                sliding_window_overlap = 0.75
 
             detected_mask = sliding_window_detection(image = im_origin,
                                                     modelRing=modelRing,
                                                     modelCrack=modelCrack,
-                                                    overlap = 0.75,
-                                                    cropUpandDown = 0.17)
+                                                    overlap = sliding_window_overlap,
+                                                    cropUpandDown = cropUpandDown)
             detected_mask_rings = detected_mask[:,:,0]
             print("detected_mask_rings", detected_mask_rings.shape)
             clean_contours_rings = clean_up_mask(detected_mask_rings, is_ring=True)
