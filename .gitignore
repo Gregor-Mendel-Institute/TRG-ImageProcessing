@@ -2,8 +2,11 @@ logs
 datasets
 model_eval
 laptop_debug.sh
-laptop_Docker_test.sh
+laptop_docker_test.sh
+laptop_singularity_test.sh
 trg-imageprocessing_master.sif
+Dockerfile_with_Cracks
+Docker_commands
 TRG-process.def
 *.ipynb
 **.pyc
