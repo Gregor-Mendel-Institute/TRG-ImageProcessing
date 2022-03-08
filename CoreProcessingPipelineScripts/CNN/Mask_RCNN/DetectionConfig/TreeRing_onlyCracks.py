@@ -1,33 +1,21 @@
 """
 Mask R-CNN
-Train on the toy Balloon dataset and implement color splash effect.
-
-Copyright (c) 2018 Matterport, Inc.
-Licensed under the MIT License (see LICENSE for details)
-Written by Waleed Abdulla
+Train on the treering dataset.
 
 ------------------------------------------------------------
 
-Usage: import the module (see Jupyter notebooks for examples), or run from
-       the command line as such:
-
-    #current location of TreeRing.py
-    cd /Users/miroslav.polacek/Dropbox\ \(VBC\)/'Group Folder Swarts'/Research/CNNRings/Mask_RCNN/samples/TreeRing
+Usage: run from the command line as such:
 
     # Train a new model starting from pre-trained COCO weights
-    python3 TreeRing.py train --dataset=/Users/miroslav.polacek/Dropbox\ \(VBC\)/'Group Folder Swarts'/Research/CNNRings/Mask_RCNN/datasets/treering --weights=coco
+    python3 TreeRing_onlyCracks.py train --dataset=dataset/folder --weights=coco
 
     # Resume training a model that you had trained earlier
-    python3 TreeRing.py train --dataset=/Users/miroslav.polacek/Dropbox\ \(VBC\)/'Group Folder Swarts'/Research/CNNRings/Mask_RCNN/datasets/treering --weights=last
+    python3 TreeRing_onlyCracs.py train --dataset=dataset/folder --weights=last
 
     # Train a new model starting from ImageNet weights
-    python3 TreeRing.py train --dataset=/Users/miroslav.polacek/github/TreeRingCracksCNN/Mask_RCNN/datasets/treering --weights=imagenet
-
-    #Train on Tree Rings starting from ImageNet weights
-    python3 TreeRing.py train --dataset=/Users/miroslav.polacek/Dropbox\ \(VBC\)/'Group Folder Swarts'/Research/CNNRings/Mask_RCNN/datasets/treering --weights=imagenet
+    python3 TreeRing_onlyCracks.py train --dataset=dataset/folder --weights=imagenet
 
 """
-
 import os
 import sys
 import json
@@ -160,10 +148,10 @@ class TreeRingConfig(Config):
 #  Dataset
 ############################################################
 
-class BalloonDataset(utils.Dataset):
+class TreeringDataset(utils.Dataset):
 
-    def load_balloon(self, dataset_dir, subset):
-        """Load a subset of the Balloon dataset.
+    def load_treering(self, dataset_dir, subset):
+        """Load a subset of the treering dataset.
         dataset_dir: Root directory of the dataset.
         subset: Subset to load: train or val
         """
@@ -252,7 +240,7 @@ class BalloonDataset(utils.Dataset):
             one mask per instance.
         class_ids: a 1D array of class IDs of the instance masks.
         """
-        # If not a balloon dataset image, delegate to parent class.
+        # If not a treering dataset image, delegate to parent class.
         image_info = self.image_info[image_id]
         if image_info["source"] != "rings":
             return super(self.__class__, self).load_mask(image_id)
@@ -286,13 +274,13 @@ class BalloonDataset(utils.Dataset):
 def train(model):
     """Train the model."""
     # Training dataset.
-    dataset_train = BalloonDataset()
-    dataset_train.load_balloon(args.dataset, "train")
+    dataset_train = TreeringDataset()
+    dataset_train.load_treering(args.dataset, "train")
     dataset_train.prepare()
 
     # Validation dataset
-    dataset_val = BalloonDataset()
-    dataset_val.load_balloon(args.dataset, "val")
+    dataset_val = TreeringDataset()
+    dataset_val.load_treering(args.dataset, "val")
     dataset_val.prepare()
 
     # Image augmentation
@@ -358,8 +346,8 @@ if __name__ == '__main__':
                         metavar="<command>",
                         help="'train' or 'splash'")
     parser.add_argument('--dataset', required=False,
-                        metavar="/path/to/balloon/dataset/",
-                        help='Directory of the Balloon dataset')
+                        metavar="/path/to/treering/dataset/",
+                        help='Directory of the Treering dataset')
     parser.add_argument('--weights', required=True,
                         metavar="/path/to/weights.h5",
                         help="Path to weights .h5 file or 'coco'")
