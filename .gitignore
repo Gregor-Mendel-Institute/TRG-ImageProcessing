@@ -1,5 +1,6 @@
 logs
 datasets
+RUNID
 model_eval
 laptop_debug.sh
 laptop_docker_test.sh
@@ -9,6 +10,7 @@ image-processing_master.sif
 Dockerfile_with_Cracks
 Docker_commands
 TRG-process.def
+
 *.ipynb
 **.pyc
 **.stdout
