@@ -934,6 +934,9 @@ def main():
             write_run_info("Processing image: {}".format(f))
             image_path = os.path.join(input_path, f)
             im_origin = skimage.io.imread(image_path)
+            if im_origin.shape[2]==4:
+                im_origin = skimage.color.rgba2rgb(im_origin)
+
             # Define cropUpandDown and overlap values if they were not provided as arguments
             if args.cropUpandDown is not None:
                 cropUpandDown = float(args.cropUpandDown)
