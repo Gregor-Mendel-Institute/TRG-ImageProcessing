@@ -16,4 +16,5 @@ TRG-process.def
 **.stdout
 __pycache__
 postprocessingCracksRings_backup.py
+postprocessingCracksRings_test.py
 Train_onlyRing_test.sh
