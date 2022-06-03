@@ -482,6 +482,10 @@ def measure_contours(Multi_centerlines, image):
         intersection = Multi_centerlines.intersection(frame_poly)
         #print('intersection:', intersection.geom_type)
         if intersection.geom_type=='LineString':
+            if intersection.is_empty: # prevents crushing if segment is empty
+                print("empty intersection")
+                continue
+
             x, y = intersection.coords.xy
 
             #line_coords = sorted(line_coords, reverse = True)# i think i do not need this for slope
