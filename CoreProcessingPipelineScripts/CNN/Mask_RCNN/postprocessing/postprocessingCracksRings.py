@@ -20,14 +20,14 @@ python3 postprocessingCracksRings.py --dpi=12926 --run_ID=RUN_ID_SOME_VALUE --in
 """
 
 #######################################################################
-#Arguments
+# Arguments
 #######################################################################
 import argparse
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(
         description='Segmentation of whole core')
-
+## Compulsary arguments
 parser.add_argument('--dpi', required=True,
                     help="DPI value for the image")
 
@@ -42,13 +42,13 @@ parser.add_argument('--weightRing', required=True,
                     metavar="/path/to/weight/file",
                     help="Path to ring weight file")
 
-parser.add_argument('--weightCrack', required=False,
-                    metavar="/path/to/weight/file",
-                    help="Path to crack weight file")
-
 parser.add_argument('--output_folder', required=True,
                     metavar="/path/to/out/folder",
                     help="Path to output folder")
+## Optional arguments
+parser.add_argument('--weightCrack', required=False,
+                    metavar="/path/to/weight/file",
+                    help="Path to crack weight file")
 
 parser.add_argument('--cropUpandDown', required=False,
                     help="Fraction of image hight to crop away on both sides")
@@ -58,6 +58,9 @@ parser.add_argument('--sliding_window_overlap', required=False,
 
 parser.add_argument('--print_detections', required=False,
                     help="yes, if printing is desired")
+
+parser.add_argument('--min_mask_overlap', required=False,
+                    help="Minimum of detected masks to consider good detection")
 
 parser.add_argument('--logfile', required=False,
                     metavar="logfile",
@@ -141,7 +144,7 @@ if args.weightCrack is not None:
     modelCrack.load_weights(weights_path_Crack, by_name=True)
 else:
     modelCrack = None
-#define class names
+# Define class names
 class_names = ['BG', 'ring']
 
 #######################################################################
@@ -194,7 +197,7 @@ def write_run_info(string):
 ############################################################################################################
 # Sliding window detection with rotation of each part of image by 90 and 45 degrees and combining the output
 ############################################################################################################
-def sliding_window_detection(image, modelRing=None, modelCrack=None, overlap = 0.75, cropUpandDown = 0.17):
+def sliding_window_detection(image, modelRing=None, modelCrack=None, overlap=0.75, cropUpandDown=0.17):
     write_run_info("Sliding window overlap = {} and cropUpandDown = {}".format(overlap, cropUpandDown))
     # Crop image top and bottom to avoid detectectig useles part of the image
     imgheight_origin, imgwidth_origin = image.shape[:2]
@@ -250,7 +253,7 @@ def sliding_window_detection(image, modelRing=None, modelCrack=None, overlap = 0
             #visualize.display_instances(cropped_part_90, r1['rois'], r1['masks'], r1['class_ids'], class_names, r1['scores']) #just to check
 
             # Rotate image 45 and run detection
-            cropped_part_45 = skimage.transform.rotate(cropped_part, angle = 45, resize=True).astype(np.uint8)
+            cropped_part_45 = skimage.transform.rotate(cropped_part, angle=45, resize=True).astype(np.uint8)
             results2 = model.detect([cropped_part_45], verbose=0)
             r2 = results2[0]
             r2_mask = r2['masks']
@@ -278,7 +281,7 @@ def sliding_window_detection(image, modelRing=None, modelCrack=None, overlap = 0
             for m in range(0,nmasks2):
                 maskr2 = maskr2 + r2_mask[:,:,m]
             # Rotate back
-            maskr2_back = skimage.transform.rotate(maskr2, angle = -45, resize=False)
+            maskr2_back = skimage.transform.rotate(maskr2, angle=-45, resize=False)
             # Crop to the right size
             to_crop = int((imheight2 - imgheight)/2)
 
@@ -329,11 +332,11 @@ def sliding_window_detection(image, modelRing=None, modelCrack=None, overlap = 0
 #######################################################################
 # Extract distances from the mask
 #######################################################################
-def clean_up_mask(mask, is_ring=True):
+def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     # Detects countours of the masks, removes small contours
 
     # Make the mask binary
-    binary_mask = np.where(mask > 2, 255, 0) # this part can be cleaned to remove some missdetections setting condition for >=2
+    binary_mask = np.where(mask >= min_mask_overlap, 255, 0) # this part can be cleaned to remove some missdetections setting condition for >=2
     print("binary_mask shape", binary_mask.shape)
     #plt.show()
     #type(binary_mask)
@@ -957,7 +960,14 @@ def main():
                                                     cropUpandDown = cropUpandDown)
             detected_mask_rings = detected_mask[:,:,0]
             print("detected_mask_rings", detected_mask_rings.shape)
-            clean_contours_rings = clean_up_mask(detected_mask_rings, is_ring=True)
+
+            # Define minimum mask overlap if not provided
+            if args.min_mask_overlap is not None:
+                min_mask_overlap = args.min_mask_overlap
+            else:
+                min_mask_overlap = 3
+
+            clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
 
             centerlines_rings = find_centerlines(clean_contours_rings)
 
