@@ -62,6 +62,9 @@ parser.add_argument('--print_detections', required=False,
 parser.add_argument('--min_mask_overlap', required=False,
                     help="Minimum of detected masks to consider good detection")
 
+parser.add_argument('--n_detection_rows', required=False,
+                    help="Minimum of detected masks to consider good detection")
+
 parser.add_argument('--logfile', required=False,
                     metavar="logfile",
                     help="logfile name to put in output dir. Prepends other info (used to be 'CNN_')")
@@ -197,7 +200,7 @@ def write_run_info(string):
 ############################################################################################################
 # Sliding window detection with rotation of each part of image by 90 and 45 degrees and combining the output
 ############################################################################################################
-def sliding_window_detection(image, modelRing=None, modelCrack=None, overlap=0.75, cropUpandDown=0.17):
+def sliding_window_detection_multirow(image, detection_rows=1, modelRing=None, modelCrack=None, overlap=0.75, row_overlap=0.1, cropUpandDown=0.17):
     write_run_info("Sliding window overlap = {} and cropUpandDown = {}".format(overlap, cropUpandDown))
     # Crop image top and bottom to avoid detectectig useles part of the image
     imgheight_origin, imgwidth_origin = image.shape[:2]
@@ -219,8 +222,20 @@ def sliding_window_detection(image, modelRing=None, modelCrack=None, overlap=0.7
     imgheight, imgwidth = im_padded.shape[:2]
     #print('im_after_pad', im_padded.shape)
 
-    looping_range = range(0,imgwidth, int(imgheight-(imgheight*overlap)))
-    looping_list = [i for i in looping_range if i < int(imgheight_for_pad-(imgheight_for_pad*overlap)) + imgwidth_origin]
+    # Define sliding window parameters
+    ## rows
+    if detection_rows > 1:
+        row_overlap = row_overlap
+        row_overlap_height = int((imgheight*row_overlap)/(detection_rows-1))
+        row_height = int(((row_overlap_height*(detection_rows-1))+imgheight)/detection_rows)
+        row_looping_range = range(0, imgheight-(row_height-1), int(row_height-row_overlap_height))
+    else:
+        row_looping_range = [0]
+        row_height = imgheight
+
+    ## columns
+    looping_range = range(0,imgwidth, int(row_height-(row_height*overlap)))
+    looping_list = [i for i in looping_range if i < int(row_height-(row_height*overlap)) + imgwidth_origin]
     #print('looping_list', looping_list)
 
     combined_masks_per_class = np.empty(shape=(imgheight, imgwidth,0))
@@ -230,80 +245,72 @@ def sliding_window_detection(image, modelRing=None, modelCrack=None, overlap=0.7
         models = [modelRing, modelCrack]
 
     for model in models:
-        the_mask = np.zeros(shape=(imgheight, imgwidth)) #combine all the partial masks in the final size of full tiff
+        the_mask = np.zeros(shape=(imgheight, imgwidth)) # combine all the partial masks in the final size of full tiff
         #print('the_mask', the_mask.shape)
-        for i in looping_list: #defines the slide value
+        for rl in row_looping_range:
+            print("r", rl)
+            for i in looping_list: # defines the slide value
+                print("i", i)
 
-            #print("i", i)
-            # crop the image
-            cropped_part = im_padded[:imgheight, i:(i+imgheight)]
-            #print('cropped_part, i, i+imheight', cropped_part.shape, i, i+imgheight)
+                #print("i", i)
+                # crop the image
+                cropped_part = im_padded[rl:rl+row_height, i:i+row_height]
+                #print('cropped_part, i, i+imheight', cropped_part.shape, i, i+imgheight)
 
-            # Run detection on the cropped part of the image
-            results = model.detect([cropped_part], verbose=0)
-            r = results[0]
-            r_mask = r['masks']
-            #visualize.display_instances(cropped_part, r['rois'], r['masks'], r['class_ids'], class_names, r['scores']) #just to check
+                # Run detection on the cropped part of the image
+                results = model.detect([cropped_part], verbose=0)
+                r = results[0]
+                r_mask = r['masks']
+                #visualize.display_instances(cropped_part, r['rois'], r['masks'], r['class_ids'], class_names, r['scores']) #just to check
 
-            # Rotate image 90 and run detection
-            cropped_part_90 = skimage.transform.rotate(cropped_part, 90, preserve_range=True).astype(np.uint8)
-            results1 = model.detect([cropped_part_90], verbose=0)
-            r1 = results1[0]
-            r1_mask = r1['masks']
-            #visualize.display_instances(cropped_part_90, r1['rois'], r1['masks'], r1['class_ids'], class_names, r1['scores']) #just to check
+                # Rotate image 90 and run detection
+                cropped_part_90 = skimage.transform.rotate(cropped_part, 90, preserve_range=True).astype(np.uint8)
+                results1 = model.detect([cropped_part_90], verbose=0)
+                r1 = results1[0]
+                r1_mask = r1['masks']
+                #visualize.display_instances(cropped_part_90, r1['rois'], r1['masks'], r1['class_ids'], class_names, r1['scores']) #just to check
 
-            # Rotate image 45 and run detection
-            cropped_part_45 = skimage.transform.rotate(cropped_part, angle=45, resize=True).astype(np.uint8)
-            results2 = model.detect([cropped_part_45], verbose=0)
-            r2 = results2[0]
-            r2_mask = r2['masks']
+                # Rotate image 45 and run detection
+                cropped_part_45 = skimage.transform.rotate(cropped_part, angle=45, resize=True).astype(np.uint8)
+                results2 = model.detect([cropped_part_45], verbose=0)
+                r2 = results2[0]
+                r2_mask = r2['masks']
 
-            ## Flatten all in one layer
-            maskr = np.zeros(shape=(imgheight, imgheight))
-            #print('maskr_empty', maskr)
-            nmasks = r_mask.shape[2]
-            #print(nmasks)
-            for m in range(0,nmasks):
-                maskr = maskr + r_mask[:,:,m]
-                #print(maskr.sum())
+                ## Flatten all in one layer
+                maskr = np.zeros(shape=(row_height, row_height))
+                #print('maskr_empty', maskr)
+                nmasks = r_mask.shape[2]
+                #print(nmasks)
+                for m in range(0,nmasks):
+                    maskr = maskr + r_mask[:,:,m]
+                    #print(maskr.sum())
 
-            maskr1 = np.zeros(shape=(imgheight, imgheight))
-            nmasks1 = r1_mask.shape[2]
-            for m in range(0,nmasks1):
-                maskr1 = maskr1 + r1_mask[:,:,m]
-            # Rotate maskr1 masks back
-            maskr1_back = np.rot90(maskr1, k=-1)
-            # Beware different dimensions!!!
+                maskr1 = np.zeros(shape=(row_height, row_height))
+                nmasks1 = r1_mask.shape[2]
+                for m in range(0,nmasks1):
+                    maskr1 = maskr1 + r1_mask[:,:,m]
+                # Rotate maskr1 masks back
+                maskr1_back = np.rot90(maskr1, k=-1)
+                # Beware different dimensions!!!
 
-            imheight2 = r2_mask.shape[0]
-            nmasks2 = r2_mask.shape[2]
-            maskr2 = np.zeros(shape=(imheight2, imheight2))
-            for m in range(0,nmasks2):
-                maskr2 = maskr2 + r2_mask[:,:,m]
-            # Rotate back
-            maskr2_back = skimage.transform.rotate(maskr2, angle=-45, resize=False)
-            # Crop to the right size
-            to_crop = int((imheight2 - imgheight)/2)
+                imheight2 = r2_mask.shape[0]
+                nmasks2 = r2_mask.shape[2]
+                maskr2 = np.zeros(shape=(imheight2, imheight2))
+                for m in range(0,nmasks2):
+                    maskr2 = maskr2 + r2_mask[:,:,m]
+                # Rotate back
+                maskr2_back = skimage.transform.rotate(maskr2, angle=-45, resize=False)
+                # Crop to the right size
+                to_crop = int((imheight2 - row_height)/2)
 
-            maskr2_back_cropped = maskr2_back[to_crop:(to_crop+int(imgheight)), to_crop:(to_crop+int(imgheight))]
+                maskr2_back_cropped = maskr2_back[to_crop:(to_crop+int(row_height)), to_crop:(to_crop+int(row_height))]
 
-            # Put both togather
-            combined_mask = maskr1_back + maskr + maskr2_back_cropped
-            # Merge with the relevant position of the big mask and overlap with previous one
-            cropped_the_mask = the_mask[:imgheight, i:(i+imgheight)]
-            #print('the_mask_piece', cropped_the_mask.shape)
-            all_masks_combined = combined_mask + cropped_the_mask
-            #print("all_masks_combined", all_masks_combined.shape)
-            #all_masks_combined = np.reshape(all_masks_combined, (all_masks_combined.shape[0],all_masks_combined.shape[1],1))
-            #print('middle', all_masks_combined.shape)
-            end_the_mask = the_mask[:imgheight, (i+imgheight):]
-
-            if i == 0: # to solve the begining
-                the_mask = np.concatenate((all_masks_combined, end_the_mask), axis=1)
-            else:
-                begining_the_mask = the_mask[:imgheight, :i]
-                the_mask = np.concatenate((begining_the_mask, all_masks_combined, end_the_mask), axis=1)
-            #print("the_mask.shape", the_mask.shape)
+                # Put all togather
+                combined_mask = maskr1_back + maskr + maskr2_back_cropped
+                print("combined mask shape", combined_mask.shape)
+                print("the_mask shape", the_mask.shape)
+                print("the_mask[] type", the_mask[rl:rl+row_height, i:i+row_height].shape)
+                the_mask[rl:rl+row_height, i:i+row_height] = the_mask[rl:rl+row_height, i:i+row_height] + combined_mask
 
         the_mask = np.reshape(the_mask, (the_mask.shape[0],the_mask.shape[1],1))
         combined_masks_per_class = np.append(combined_masks_per_class, the_mask, axis=2)
@@ -942,7 +949,7 @@ def main():
             image_path = os.path.join(input_path, f)
             im_origin = skimage.io.imread(image_path)
 
-            # Define cropUpandDown and overlap values if they were not provided as arguments
+            # Define cropUpandDown, overlap and detection_rows values if they were not provided as arguments
             if args.cropUpandDown is not None:
                 cropUpandDown = float(args.cropUpandDown)
             else:
@@ -953,11 +960,18 @@ def main():
             else:
                 sliding_window_overlap = 0.75
 
-            detected_mask = sliding_window_detection(image = im_origin,
+            if args.n_detection_rows is None or args.n_detection_rows==1:
+                detection_rows = 1
+            else:
+                detection_rows=int(args.n_detection_rows)
+
+            detected_mask = sliding_window_detection_multirow(image = im_origin,
+                                                    detection_rows=detection_rows,
                                                     modelRing=modelRing,
                                                     modelCrack=modelCrack,
                                                     overlap = sliding_window_overlap,
                                                     cropUpandDown = cropUpandDown)
+
             detected_mask_rings = detected_mask[:,:,0]
             print("detected_mask_rings", detected_mask_rings.shape)
 
