@@ -24,3 +24,47 @@ singularity run --nv image-processing_master.sif \
   --input=/folder/with/images \
   --output_folder=/desired/output/folder
 ```
+## Arguments
+### Compulsary
+```
+--dpi
+```
+DPI (Dots per Inch) is necessary to convert distance from pixels to mm. This should be part of microscope metadata or derived manually from a size standard.
+```
+--run_ID
+```
+Run_ID is dataset specific identifier, a subfolder with this ID will be created in the output_folder to store all associated results.
+```
+--input
+```
+Input can be either path to an individual core image or a folder containing images for batch processing.
+```
+--output_folder
+```
+Output_folder specifies the location where to save results.
+
+### Optional
+```
+--cropUpandDown
+```
+Proportion of the top and bottom of image height of the full-size core image that should be cropped out to remove the sloping edge of the increment core or background.
+```
+--n_detection_rows
+```
+Number or rows of sliding window to use to extract squared sections for detection. More will extract smaller squares which can improve detection of narrower rings in some cases but processing time is increasing significantly. Values bigger than 4 does not seem to make sense. Default is 1.
+```
+--sliding_window_overlap
+```
+Overlap of squared sections on horizontal line. Default is 0.75
+```
+--min_mask_overlap
+```
+How many overlapping masks should be considered a good detection. Default is 3
+```
+--print_detections=yes
+```
+Saves images with detected masks and distances in “pngs” subfolder within output folder. Default is no.
+```
+--weightRing
+```
+Retrained weights in a form of .h5 file can be passed using this argument.
