@@ -11,10 +11,11 @@ Dockerfile_with_Cracks
 Docker_commands
 TRG-process.def
 
+*.pyc
 *.ipynb
 **.pyc
 **.stdout
-__pycache__
+__pycache__/
 postprocessingCracksRings_backup.py
 postprocessingCracksRings_test.py
 Train_onlyRing_test.sh
