@@ -944,6 +944,7 @@ def main():
 
     for f in input_list:
         if f.endswith('.tif') and f.replace('.tif', '') not in json_list:
+            image_start_time = time.time()
             print("Processing image: {}".format(f))
             write_run_info("Processing image: {}".format(f))
             image_path = os.path.join(input_path, f)
@@ -977,7 +978,7 @@ def main():
 
             # Define minimum mask overlap if not provided
             if args.min_mask_overlap is not None:
-                min_mask_overlap = args.min_mask_overlap
+                min_mask_overlap = int(args.min_mask_overlap)
             else:
                 min_mask_overlap = 3
 
@@ -1016,6 +1017,9 @@ def main():
                 plot_lines(masked_image, centerlines, measure_points,
                             image_name, path_out)
             write_run_info("IMAGE FINISHED")
+            image_finished_time = time.time()
+            image_run_time = image_finished_time - image_start_time
+            write_run_info(f"Image run time: {image_run_time} s")
             print("IMAGE FINISHED")
 
 if __name__ == '__main__':
