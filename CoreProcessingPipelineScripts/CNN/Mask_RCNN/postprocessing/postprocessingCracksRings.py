@@ -566,6 +566,9 @@ def measure_contours(Multi_centerlines, image):
             break
         cutting_point = PlusMinus_index[i+1][1] + ((PlusMinus_index[i+2][1] - PlusMinus_index[i+1][1])/2)
         cutting_point_detected = 1
+        #if cutting_point is immediately at the beggining of the sample ignore it
+        if cutting_point < imgheight*2: # if cutting point is within 2*image height it will be ignored
+            cutting_point_detected = 0
 
     # Split sequence where it is crossing the middle
     if cutting_point_detected==1:
