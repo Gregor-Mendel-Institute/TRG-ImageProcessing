@@ -1016,7 +1016,7 @@ def main():
                 image_run_time = image_finished_time - image_start_time
                 write_run_info(f"Image run time: {image_run_time} s")
                 print("IMAGE FINISHED")
-            except Exception as e::
+            except Exception as e:
                 write_run_info(e)
                 write_run_info("IMAGE WAS NOT FINISHED")
                 print(e)
