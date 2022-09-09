@@ -6,17 +6,6 @@ Run detection separately for the best model for Ring detection and the best for 
 Fuse all detections in one mask layer and consequently attach all of them to each other creating mask layer
 of the size of original image. The detection confidance needs to be set in the config!
 Print the image with mask over it.
-
-FOR TESTING Mac
-conda activate TreeRingCNNtest &&
-cd /Users/miroslav.polacek/github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing &&
-python3 postprocessingCracks.py --dpi=12926 --run_ID=RUN_ID_SOME_VALUE --input=/Users/miroslav.polacek/Pictures/whole_core_examples --weight=/Users/miroslav.polacek/github/TreeRingCracksCNN/Mask_RCNN/logs/treeringcrackscomb20201119T2220/mask_rcnn_treeringcrackscomb_0222.h5 --output_folder=/Users/miroslav.polacek/Documents/CNNTestRuns
-
-FOR TESTING MANJARO
-conda activate TreeRingCNN &&
-cd /home/miroslavp/Github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing &&
-python3 postprocessingCracksRings.py --dpi=12926 --run_ID=RUN_ID_SOME_VALUE --input=/home/miroslavp/Pictures/whole_core_examples --weightRing=/home/miroslavp/Github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/treeringcrackscomb2_onlyring20210121T1457/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 --weightCrack=/home/miroslavp/Github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/treeringcrackscomb2_onlycracks20210121T2224/mask_rcnn_treeringcrackscomb2_onlycracks_0522.h5 --output_folder=/home/miroslavp/Documents/CNNTestRuns
-
 """
 
 #######################################################################
@@ -27,6 +16,7 @@ import argparse
 # Parse command line arguments
 parser = argparse.ArgumentParser(
         description='Segmentation of whole core')
+
 ## Compulsary arguments
 parser.add_argument('--dpi', required=True,
                     help="DPI value for the image")
@@ -45,6 +35,7 @@ parser.add_argument('--weightRing', required=True,
 parser.add_argument('--output_folder', required=True,
                     metavar="/path/to/out/folder",
                     help="Path to output folder")
+
 ## Optional arguments
 parser.add_argument('--weightCrack', required=False,
                     metavar="/path/to/weight/file",
@@ -1025,7 +1016,10 @@ def main():
                 image_run_time = image_finished_time - image_start_time
                 write_run_info(f"Image run time: {image_run_time} s")
                 print("IMAGE FINISHED")
-            except:
+            except Exception as e::
+                write_run_info(e)
+                write_run_info("IMAGE WAS NOT FINISHED")
+                print(e)
                 print("IMAGE WAS NOT FINISHED")
 
 
