@@ -15,8 +15,8 @@ source activate ~/.conda/envs/TreeRingCNN
   --dpi=13039 \
   --run_ID=Image_time_test \
   --input=/groups/swarts/lab/DendroImages/CNN_test/AlexPOS/MEECNNPaperTreeringSupplementalInfo/Tiff \
-  --weightRing=/home/miroslavp/Github/test/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/onlyring/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 \
-  --output_folder=/home/miroslavp/Pictures/new_val_detections/curent_debug \
+  --weightRing=/users/miroslav.polacek/TRG_testing/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/onlyring/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 \
+  --output_folder=/users/miroslav.polacek/Time_results \
   --n_detection_rows=1 \
   --cropUpandDown=0.17 \
   --sliding_window_overlap=0.75 \
