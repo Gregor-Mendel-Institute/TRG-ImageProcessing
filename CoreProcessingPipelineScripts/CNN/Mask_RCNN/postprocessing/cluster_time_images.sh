@@ -17,8 +17,3 @@ source activate ~/.conda/envs/TreeRingCNN
   --input=/groups/swarts/lab/DendroImages/CNN_test/AlexPOS/MEECNNPaperTreeringSupplementalInfo/Tiffs \
   --weightRing=/users/miroslav.polacek/TRG_testing/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/onlyring/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 \
   --output_folder=/users/miroslav.polacek/Time_results \
-  --n_detection_rows=1 \
-  --cropUpandDown=0.17 \
-  --sliding_window_overlap=0.75 \
-  --min_mask_overlap=3 \
-  --print_detections=yes \
