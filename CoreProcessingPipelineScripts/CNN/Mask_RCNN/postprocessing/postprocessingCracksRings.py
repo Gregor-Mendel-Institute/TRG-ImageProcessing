@@ -938,91 +938,90 @@ def main():
 
     for f in input_list:
         if f.endswith('.tif') and f.replace('.tif', '') not in json_list:
-            #try:
-            image_start_time = time.time()
-            print("Processing image: {}".format(f))
-            write_run_info("Processing image: {}".format(f))
-            image_path = os.path.join(input_path, f)
-            im_origin = skimage.io.imread(image_path)
+            try:
+                image_start_time = time.time()
+                print("Processing image: {}".format(f))
+                write_run_info("Processing image: {}".format(f))
+                image_path = os.path.join(input_path, f)
+                im_origin = skimage.io.imread(image_path)
 
-            # Define cropUpandDown, overlap and detection_rows values if they were not provided as arguments
-            if args.cropUpandDown is not None:
-                cropUpandDown = float(args.cropUpandDown)
-            else:
-                cropUpandDown = 0.17
+                # Define cropUpandDown, overlap and detection_rows values if they were not provided as arguments
+                if args.cropUpandDown is not None:
+                    cropUpandDown = float(args.cropUpandDown)
+                else:
+                    cropUpandDown = 0.17
 
-            if args.sliding_window_overlap is not None:
-                sliding_window_overlap = float(args.sliding_window_overlap)
-            else:
-                sliding_window_overlap = 0.75
+                if args.sliding_window_overlap is not None:
+                    sliding_window_overlap = float(args.sliding_window_overlap)
+                else:
+                    sliding_window_overlap = 0.75
 
-            if args.n_detection_rows is None or args.n_detection_rows==1:
-                detection_rows = 1
-            else:
-                detection_rows=int(args.n_detection_rows)
+                if args.n_detection_rows is None or args.n_detection_rows==1:
+                    detection_rows = 1
+                else:
+                    detection_rows=int(args.n_detection_rows)
 
-            detected_mask = sliding_window_detection_multirow(image = im_origin,
-                                                    detection_rows=detection_rows,
-                                                    modelRing=modelRing,
-                                                    modelCrack=modelCrack,
-                                                    overlap = sliding_window_overlap,
-                                                    cropUpandDown = cropUpandDown)
+                detected_mask = sliding_window_detection_multirow(image = im_origin,
+                                                        detection_rows=detection_rows,
+                                                        modelRing=modelRing,
+                                                        modelCrack=modelCrack,
+                                                        overlap = sliding_window_overlap,
+                                                        cropUpandDown = cropUpandDown)
 
-            detected_mask_rings = detected_mask[:,:,0]
-            print("detected_mask_rings", detected_mask_rings.shape)
+                detected_mask_rings = detected_mask[:,:,0]
+                print("detected_mask_rings", detected_mask_rings.shape)
 
-            # Define minimum mask overlap if not provided
-            if args.min_mask_overlap is not None:
-                min_mask_overlap = int(args.min_mask_overlap)
-            else:
-                min_mask_overlap = 3
+                # Define minimum mask overlap if not provided
+                if args.min_mask_overlap is not None:
+                    min_mask_overlap = int(args.min_mask_overlap)
+                else:
+                    min_mask_overlap = 3
 
-            clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
+                clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
 
-            centerlines_rings = find_centerlines(clean_contours_rings)
+                centerlines_rings = find_centerlines(clean_contours_rings)
 
-            centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
+                centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
 
-            # If cracks are detected
-            clean_contours_cracks = None
-            if args.weightCrack is not None:
-                detected_mask_cracks = detected_mask[:,:,1]
-                print("detected_mask_cracks", detected_mask_cracks.shape)
-                clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
-
-            write_to_json(image_name=f,cutting_point=cutting_point, run_ID=run_ID,
-                            path_out=path_out, centerlines_rings=centerlines_rings,
-                            clean_contours_rings=clean_contours_rings,
-                            clean_contours_cracks=clean_contours_cracks)
-
-            image_name = f.replace('.tif', '')
-            DPI = float(args.dpi)
-            write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
-
-            if args.print_detections == "yes":
-                # Ploting lines is moslty for debugging
-                write_run_info("Printing detection PNGs")
-                print("Printing detection PNGs")
-                masked_image = im_origin.astype(np.uint32).copy()
-                masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
-
+                # If cracks are detected
+                clean_contours_cracks = None
                 if args.weightCrack is not None:
-                    masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
+                    detected_mask_cracks = detected_mask[:,:,1]
+                    print("detected_mask_cracks", detected_mask_cracks.shape)
+                    clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
 
-                plot_lines(masked_image, centerlines, measure_points,
-                            image_name, path_out)
-            write_run_info("IMAGE FINISHED")
-            image_finished_time = time.time()
-            image_run_time = image_finished_time - image_start_time
-            write_run_info(f"Image run time: {image_run_time} s")
-            print("IMAGE FINISHED")
-            """
+                write_to_json(image_name=f,cutting_point=cutting_point, run_ID=run_ID,
+                                path_out=path_out, centerlines_rings=centerlines_rings,
+                                clean_contours_rings=clean_contours_rings,
+                                clean_contours_cracks=clean_contours_cracks)
+
+                image_name = f.replace('.tif', '')
+                DPI = float(args.dpi)
+                write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
+
+                if args.print_detections == "yes":
+                    # Ploting lines is moslty for debugging
+                    write_run_info("Printing detection PNGs")
+                    print("Printing detection PNGs")
+                    masked_image = im_origin.astype(np.uint32).copy()
+                    masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
+
+                    if args.weightCrack is not None:
+                        masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
+
+                    plot_lines(masked_image, centerlines, measure_points,
+                                image_name, path_out)
+                write_run_info("IMAGE FINISHED")
+                image_finished_time = time.time()
+                image_run_time = image_finished_time - image_start_time
+                write_run_info(f"Image run time: {image_run_time} s")
+                print("IMAGE FINISHED")
+
             except Exception as e:
                 write_run_info(e)
                 write_run_info("IMAGE WAS NOT FINISHED")
                 print(e)
                 print("IMAGE WAS NOT FINISHED")
-            """
 
 
 if __name__ == '__main__':
