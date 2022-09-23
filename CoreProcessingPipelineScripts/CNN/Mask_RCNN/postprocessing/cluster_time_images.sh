@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:RTX:1
 #SBATCH --mem=32G
 #SBATCH --qos=short
-#SBATCH --time=00-02:00:00
+#SBATCH --time=00-20:00:00
 #SBATCH --output=Time_images.stdout
 
 ml load anaconda3/2019.03
