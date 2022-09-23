@@ -4,19 +4,9 @@ Load tiff image of whole core.
 Run detections for squares in a form of sliding window with certain overlap to prevent problems of having ring directly at the edge.
 Run detection separately for the best model for Ring detection and the best for Crack.
 Fuse all detections in one mask layer and consequently attach all of them to each other creating mask layer
-of the size of original image. The detection confidance needs to be set in the config!
+of the size of original image. The detection confidence needs to be set in the config!
+Export JSON and POS files.
 Print the image with mask over it.
-
-FOR TESTING Mac
-conda activate TreeRingCNNtest &&
-cd /Users/miroslav.polacek/github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing &&
-python3 postprocessingCracks.py --dpi=12926 --run_ID=RUN_ID_SOME_VALUE --input=/Users/miroslav.polacek/Pictures/whole_core_examples --weight=/Users/miroslav.polacek/github/TreeRingCracksCNN/Mask_RCNN/logs/treeringcrackscomb20201119T2220/mask_rcnn_treeringcrackscomb_0222.h5 --output_folder=/Users/miroslav.polacek/Documents/CNNTestRuns
-
-FOR TESTING MANJARO
-conda activate TreeRingCNN &&
-cd /home/miroslavp/Github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing &&
-python3 postprocessingCracksRings.py --dpi=12926 --run_ID=RUN_ID_SOME_VALUE --input=/home/miroslavp/Pictures/whole_core_examples --weightRing=/home/miroslavp/Github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/treeringcrackscomb2_onlyring20210121T1457/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 --weightCrack=/home/miroslavp/Github/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/treeringcrackscomb2_onlycracks20210121T2224/mask_rcnn_treeringcrackscomb2_onlycracks_0522.h5 --output_folder=/home/miroslavp/Documents/CNNTestRuns
-
 """
 
 #######################################################################
@@ -27,6 +17,7 @@ import argparse
 # Parse command line arguments
 parser = argparse.ArgumentParser(
         description='Segmentation of whole core')
+
 ## Compulsary arguments
 parser.add_argument('--dpi', required=True,
                     help="DPI value for the image")
@@ -45,6 +36,7 @@ parser.add_argument('--weightRing', required=True,
 parser.add_argument('--output_folder', required=True,
                     metavar="/path/to/out/folder",
                     help="Path to output folder")
+
 ## Optional arguments
 parser.add_argument('--weightCrack', required=False,
                     metavar="/path/to/weight/file",
@@ -76,24 +68,17 @@ args = parser.parse_args()
 #######################################################################
 import os
 import sys
-import random
 import math
-import re
 import cv2
 import json
 import time
 import skimage
-import pandas as pd
 import numpy as np
-#import tensorflow as tf
-import matplotlib
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 import shapely
 from shapely.geometry import box
 from shapely.ops import nearest_points
 import scipy
-from scipy import optimize
 from datetime import datetime
 from operator import itemgetter
 
@@ -101,11 +86,8 @@ from operator import itemgetter
 ROOT_DIR = os.path.abspath("../")
 print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library
-from mrcnn import utils
-from mrcnn import visualize
 from mrcnn.src_get_centerline import get_centerline
 import mrcnn.model as modellib
-from mrcnn.model import log
 from DetectionConfig import TreeRing_onlyRing
 from DetectionConfig import TreeRing_onlyCracks
 
@@ -349,7 +331,7 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     #type(binary_mask)
     uint8binary = binary_mask.astype(np.uint8).copy()
 
-    # Older version of openCV has slightly different syntax i adjusted for it here
+    # Older version of openCV has slightly different syntax I adjusted for it here
     if int(cv2.__version__.split(".")[0]) < 4:
         _, contours, _ = cv2.findContours(uint8binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
     else:
@@ -566,6 +548,9 @@ def measure_contours(Multi_centerlines, image):
             break
         cutting_point = PlusMinus_index[i+1][1] + ((PlusMinus_index[i+2][1] - PlusMinus_index[i+1][1])/2)
         cutting_point_detected = 1
+        #if cutting_point is immediately at the beggining of the sample ignore it
+        if cutting_point < imgheight*2: # if cutting point is within 2*image height it will be ignored
+            cutting_point_detected = 0
 
     # Split sequence where it is crossing the middle
     if cutting_point_detected==1:
@@ -944,79 +929,91 @@ def main():
 
     for f in input_list:
         if f.endswith('.tif') and f.replace('.tif', '') not in json_list:
-            print("Processing image: {}".format(f))
-            write_run_info("Processing image: {}".format(f))
-            image_path = os.path.join(input_path, f)
-            im_origin = skimage.io.imread(image_path)
+            try:
+                image_start_time = time.time()
+                print("Processing image: {}".format(f))
+                write_run_info("Processing image: {}".format(f))
+                image_path = os.path.join(input_path, f)
+                im_origin = skimage.io.imread(image_path)
 
-            # Define cropUpandDown, overlap and detection_rows values if they were not provided as arguments
-            if args.cropUpandDown is not None:
-                cropUpandDown = float(args.cropUpandDown)
-            else:
-                cropUpandDown = 0.17
+                # Define default values if they were not provided as arguments
+                if args.cropUpandDown is not None:
+                    cropUpandDown = float(args.cropUpandDown)
+                else:
+                    cropUpandDown = 0.17
 
-            if args.sliding_window_overlap is not None:
-                sliding_window_overlap = float(args.sliding_window_overlap)
-            else:
-                sliding_window_overlap = 0.75
+                if args.sliding_window_overlap is not None:
+                    sliding_window_overlap = float(args.sliding_window_overlap)
+                else:
+                    sliding_window_overlap = 0.75
 
-            if args.n_detection_rows is None or args.n_detection_rows==1:
-                detection_rows = 1
-            else:
-                detection_rows=int(args.n_detection_rows)
+                if args.n_detection_rows is None or args.n_detection_rows==1:
+                    detection_rows = 1
+                else:
+                    detection_rows=int(args.n_detection_rows)
 
-            detected_mask = sliding_window_detection_multirow(image = im_origin,
-                                                    detection_rows=detection_rows,
-                                                    modelRing=modelRing,
-                                                    modelCrack=modelCrack,
-                                                    overlap = sliding_window_overlap,
-                                                    cropUpandDown = cropUpandDown)
+                detected_mask = sliding_window_detection_multirow(image = im_origin,
+                                                        detection_rows=detection_rows,
+                                                        modelRing=modelRing,
+                                                        modelCrack=modelCrack,
+                                                        overlap = sliding_window_overlap,
+                                                        cropUpandDown = cropUpandDown)
 
-            detected_mask_rings = detected_mask[:,:,0]
-            print("detected_mask_rings", detected_mask_rings.shape)
+                detected_mask_rings = detected_mask[:,:,0]
+                print("detected_mask_rings", detected_mask_rings.shape)
 
-            # Define minimum mask overlap if not provided
-            if args.min_mask_overlap is not None:
-                min_mask_overlap = args.min_mask_overlap
-            else:
-                min_mask_overlap = 3
+                # Define minimum mask overlap if not provided
+                if args.min_mask_overlap is not None:
+                    min_mask_overlap = int(args.min_mask_overlap)
+                else:
+                    min_mask_overlap = 3
 
-            clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
+                clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
 
-            centerlines_rings = find_centerlines(clean_contours_rings)
+                centerlines_rings = find_centerlines(clean_contours_rings)
 
-            centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
+                centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
 
-            # If cracks are detected
-            clean_contours_cracks = None
-            if args.weightCrack is not None:
-                detected_mask_cracks = detected_mask[:,:,1]
-                print("detected_mask_cracks", detected_mask_cracks.shape)
-                clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
-
-            write_to_json(image_name=f,cutting_point=cutting_point, run_ID=run_ID,
-                            path_out=path_out, centerlines_rings=centerlines_rings,
-                            clean_contours_rings=clean_contours_rings,
-                            clean_contours_cracks=clean_contours_cracks)
-
-            image_name = f.replace('.tif', '')
-            DPI = float(args.dpi)
-            write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
-
-            if args.print_detections == "yes":
-                # Ploting lines is moslty for debugging
-                write_run_info("Printing detection PNGs")
-                print("Printing detection PNGs")
-                masked_image = im_origin.astype(np.uint32).copy()
-                masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
-
+                # If cracks are detected
+                clean_contours_cracks = None
                 if args.weightCrack is not None:
-                    masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
+                    detected_mask_cracks = detected_mask[:,:,1]
+                    print("detected_mask_cracks", detected_mask_cracks.shape)
+                    clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
 
-                plot_lines(masked_image, centerlines, measure_points,
-                            image_name, path_out)
-            write_run_info("IMAGE FINISHED")
-            print("IMAGE FINISHED")
+                write_to_json(image_name=f,cutting_point=cutting_point, run_ID=run_ID,
+                                path_out=path_out, centerlines_rings=centerlines_rings,
+                                clean_contours_rings=clean_contours_rings,
+                                clean_contours_cracks=clean_contours_cracks)
+
+                image_name = f.replace('.tif', '')
+                DPI = float(args.dpi)
+                write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
+
+                if args.print_detections == "yes":
+                    # Ploting lines is moslty for debugging
+                    write_run_info("Printing detection PNGs")
+                    print("Printing detection PNGs")
+                    masked_image = im_origin.astype(np.uint32).copy()
+                    masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
+
+                    if args.weightCrack is not None:
+                        masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
+
+                    plot_lines(masked_image, centerlines, measure_points,
+                                image_name, path_out)
+                write_run_info("IMAGE FINISHED")
+                image_finished_time = time.time()
+                image_run_time = image_finished_time - image_start_time
+                write_run_info(f"Image run time: {image_run_time} s")
+                print("IMAGE FINISHED")
+
+            except Exception as e:
+                write_run_info(e)
+                write_run_info("IMAGE WAS NOT FINISHED")
+                print(e)
+                print("IMAGE WAS NOT FINISHED")
+
 
 if __name__ == '__main__':
     main()

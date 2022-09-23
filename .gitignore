@@ -1,4 +1,5 @@
 logs
+data
 datasets
 RUNID
 model_eval
@@ -7,14 +8,17 @@ laptop_docker_test.sh
 laptop_singularity_test.sh
 trg-imageprocessing_master.sif
 image-processing_master.sif
+cluster_time_images.sh
+
 Dockerfile_with_Cracks
 Docker_commands
 TRG-process.def
 
+*.pyc
 *.ipynb
 **.pyc
 **.stdout
-__pycache__
+__pycache__/
 postprocessingCracksRings_backup.py
 postprocessingCracksRings_test.py
 Train_onlyRing_test.sh
