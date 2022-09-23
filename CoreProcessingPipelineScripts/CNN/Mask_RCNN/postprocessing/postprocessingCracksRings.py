@@ -4,7 +4,8 @@ Load tiff image of whole core.
 Run detections for squares in a form of sliding window with certain overlap to prevent problems of having ring directly at the edge.
 Run detection separately for the best model for Ring detection and the best for Crack.
 Fuse all detections in one mask layer and consequently attach all of them to each other creating mask layer
-of the size of original image. The detection confidance needs to be set in the config!
+of the size of original image. The detection confidence needs to be set in the config!
+Export JSON and POS files.
 Print the image with mask over it.
 """
 
@@ -67,24 +68,17 @@ args = parser.parse_args()
 #######################################################################
 import os
 import sys
-import random
 import math
-import re
 import cv2
 import json
 import time
 import skimage
-import pandas as pd
 import numpy as np
-#import tensorflow as tf
-import matplotlib
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 import shapely
 from shapely.geometry import box
 from shapely.ops import nearest_points
 import scipy
-from scipy import optimize
 from datetime import datetime
 from operator import itemgetter
 
@@ -92,11 +86,8 @@ from operator import itemgetter
 ROOT_DIR = os.path.abspath("../")
 print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library
-from mrcnn import utils
-from mrcnn import visualize
 from mrcnn.src_get_centerline import get_centerline
 import mrcnn.model as modellib
-from mrcnn.model import log
 from DetectionConfig import TreeRing_onlyRing
 from DetectionConfig import TreeRing_onlyCracks
 
@@ -340,7 +331,7 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     #type(binary_mask)
     uint8binary = binary_mask.astype(np.uint8).copy()
 
-    # Older version of openCV has slightly different syntax i adjusted for it here
+    # Older version of openCV has slightly different syntax I adjusted for it here
     if int(cv2.__version__.split(".")[0]) < 4:
         _, contours, _ = cv2.findContours(uint8binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
     else:
@@ -945,7 +936,7 @@ def main():
                 image_path = os.path.join(input_path, f)
                 im_origin = skimage.io.imread(image_path)
 
-                # Define cropUpandDown, overlap and detection_rows values if they were not provided as arguments
+                # Define default values if they were not provided as arguments
                 if args.cropUpandDown is not None:
                     cropUpandDown = float(args.cropUpandDown)
                 else:
