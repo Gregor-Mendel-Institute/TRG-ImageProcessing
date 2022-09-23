@@ -4,7 +4,7 @@
 #SBATCH --partition=g
 #SBATCH --gres=gpu:RTX:1
 #SBATCH --mem=32G
-#SBATCH --qos=short
+#SBATCH --qos=medium
 #SBATCH --time=00-20:00:00
 #SBATCH --output=Time_images.stdout
 
