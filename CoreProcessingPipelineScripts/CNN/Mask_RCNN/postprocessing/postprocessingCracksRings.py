@@ -73,6 +73,8 @@ import cv2
 import json
 import time
 import skimage
+import skimage.io
+from skimage import exposure, img_as_ubyte
 import numpy as np
 import matplotlib.pyplot as plt
 import shapely
@@ -183,6 +185,7 @@ def write_run_info(string):
 # Sliding window detection with rotation of each part of image by 90 and 45 degrees and combining the output
 ############################################################################################################
 def sliding_window_detection_multirow(image, detection_rows=1, modelRing=None, modelCrack=None, overlap=0.75, row_overlap=0.1, cropUpandDown=0.17):
+    print("sliding_window_detection_multirow started")
     write_run_info("Sliding window overlap = {} and cropUpandDown = {}".format(overlap, cropUpandDown))
     # Crop image top and bottom to avoid detectectig useles part of the image
     imgheight_origin, imgwidth_origin = image.shape[:2]
@@ -230,9 +233,9 @@ def sliding_window_detection_multirow(image, detection_rows=1, modelRing=None, m
         the_mask = np.zeros(shape=(imgheight, imgwidth)) # combine all the partial masks in the final size of full tiff
         #print('the_mask', the_mask.shape)
         for rl in row_looping_range:
-            print("r", rl)
+            #print("r", rl)
             for i in looping_list: # defines the slide value
-                print("i", i)
+                #print("i", i)
 
                 #print("i", i)
                 # crop the image
@@ -289,27 +292,25 @@ def sliding_window_detection_multirow(image, detection_rows=1, modelRing=None, m
 
                 # Put all togather
                 combined_mask = maskr1_back + maskr + maskr2_back_cropped
-                print("combined mask shape", combined_mask.shape)
-                print("the_mask shape", the_mask.shape)
-                print("the_mask[] type", the_mask[rl:rl+row_height, i:i+row_height].shape)
+                #print("combined mask shape", combined_mask.shape)
+                #print("the_mask shape", the_mask.shape)
                 the_mask[rl:rl+row_height, i:i+row_height] = the_mask[rl:rl+row_height, i:i+row_height] + combined_mask
 
         the_mask = np.reshape(the_mask, (the_mask.shape[0],the_mask.shape[1],1))
         combined_masks_per_class = np.append(combined_masks_per_class, the_mask, axis=2)
-        print("combined_masks_per_class.shape", combined_masks_per_class.shape)
 
     # First remove the padding
     pad_front = zero_padding_front.shape[1]
-    print('front', pad_front)
+    #print('front', pad_front)
     pad_back = zero_padding_back.shape[1]
     the_mask_clean = combined_masks_per_class[:,pad_front:-pad_back,:]
-    print('the_mask_clean.shape', the_mask_clean.shape)
+    #print('the_mask_clean.shape', the_mask_clean.shape)
 
 
     # Concatanete the top and buttom to fit the original image
     missing_part = int((imgheight_origin - the_mask_clean.shape[0])/2)
     to_concatenate = np.zeros(shape=(missing_part, imgwidth_origin, the_mask_clean.shape[2]))
-    print("to_concatenate", to_concatenate.shape)
+    #print("to_concatenate", to_concatenate.shape)
     the_mask_clean_origin_size = np.concatenate((to_concatenate, the_mask_clean, to_concatenate),axis=0)
     #print('the_mask_clean_origin_size', the_mask_clean_origin_size.shape)
     #plt.imshow(the_mask_clean) # uncomment to print mask layer
@@ -323,10 +324,10 @@ def sliding_window_detection_multirow(image, detection_rows=1, modelRing=None, m
 #######################################################################
 def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     # Detects countours of the masks, removes small contours
-
+    print("clean_up_mask started")
     # Make the mask binary
     binary_mask = np.where(mask >= min_mask_overlap, 255, 0) # this part can be cleaned to remove some missdetections setting condition for >=2
-    print("binary_mask shape", binary_mask.shape)
+    #print("binary_mask shape", binary_mask.shape)
     #plt.show()
     #type(binary_mask)
     uint8binary = binary_mask.astype(np.uint8).copy()
@@ -379,11 +380,11 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     return contours_out
 
 #######################################################################
-# Finds centerines in contours
+# Finds centerlines in contours
 #######################################################################
 def find_centerlines(clean_contours):
     # Find ceneterlines
-
+    print("find_centerlines started")
     # First need to reorganise the data
     contours_tuples = []
     x_mins = []
@@ -424,6 +425,8 @@ def find_centerlines(clean_contours):
         #to remove horizontal lines
         _, miny, _, maxy = cline.bounds
         line_y_diff = maxy - miny
+        print("miny and maxy", miny, maxy)
+        print("line_y_diff", line_y_diff)
         if line_y_diff < 100: # This threshold can be adjusted
             continue
         else:
@@ -432,7 +435,9 @@ def find_centerlines(clean_contours):
     ## Cut off upper and lower part of detected lines. It should help with problems of horizontal ends of detections
     to_cut_off = 0.01 # Based on examples that i used for testing
     Multi_centerlines_to_crop = shapely.geometry.MultiLineString(centerlines)
+    print("before suspect2")
     minx, miny, maxx, maxy = Multi_centerlines_to_crop.bounds
+    print("after suspect2")
     px_to_cut_off = (maxy-miny)*to_cut_off
     #print('minx, miny, maxx, maxy', minx, miny, maxx, maxy)
     frame_to_crop = shapely.geometry.box(minx, miny+px_to_cut_off, maxx, maxy-px_to_cut_off)
@@ -448,6 +453,7 @@ def find_centerlines(clean_contours):
 #######################################################################
 # Return table of distances or paired point coordinates
 def measure_contours(Multi_centerlines, image):
+    print("measure_contours started")
     imgheight, imgwidth = image.shape[:2]
     print('imgheight, imgwidth', imgheight, imgwidth)
     write_run_info("Image has height {} and width {}".format(imgheight, imgwidth))
@@ -654,6 +660,7 @@ def measure_contours(Multi_centerlines, image):
 def plot_lines(image, centerlines, measure_points, file_name, path_out):
     # Create pngs folder in output path
     write_run_info("Plotting output as png")
+    print("Plotting output as png")
     export_path = os.path.join(path_out, 'pngs')
     if not os.path.exists(export_path):
         os.makedirs(export_path)
@@ -886,7 +893,7 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI, path_o
 #######################################################################
 def main():
     path_out = os.path.join(args.output_folder, args.run_ID)
-     # Check if output dir for run_ID exists and if not create it
+    # Check if output dir for run_ID exists and if not create it
     if not os.path.isdir(path_out):
         os.mkdir(path_out)
 
@@ -936,6 +943,20 @@ def main():
                 image_path = os.path.join(input_path, f)
                 im_origin = skimage.io.imread(image_path)
 
+                # check number of channels and if 4 assume rgba and convert to rgb
+                # conversion if image is not 8bit convert to 8 bit
+                if im_origin.dtype == 'uint8' and im_origin.shape[2] == 3:
+                    print("Image was 8bit and RGB")
+                    write_run_info("Image was 8bit and RGB")
+                elif im_origin.shape[2] == 4:
+                    print("Image has 4 channels, assuming RGBA, trying to convert")
+                    write_run_info("Image has 4 channels, assuming RGBA, trying to convert")
+                    im_origin = img_as_ubyte(skimage.color.rgba2rgb(im_origin))
+                elif im_origin.dtype != 'uint8':
+                    print("Image converted to 8bit")
+                    write_run_info("Image converted to 8bit")
+                    im_origin = img_as_ubyte(exposure.rescale_intensity(im_origin))  # with rescaling should be better
+
                 # Define default values if they were not provided as arguments
                 if args.cropUpandDown is not None:
                     cropUpandDown = float(args.cropUpandDown)
@@ -959,8 +980,10 @@ def main():
                                                         overlap = sliding_window_overlap,
                                                         cropUpandDown = cropUpandDown)
 
+                write_run_info("sliding_window_detection_multirow done")
+                print("sliding_window_detection_multirow done")
                 detected_mask_rings = detected_mask[:,:,0]
-                print("detected_mask_rings", detected_mask_rings.shape)
+                #print("detected_mask_rings", detected_mask_rings.shape)
 
                 # Define minimum mask overlap if not provided
                 if args.min_mask_overlap is not None:
@@ -969,17 +992,23 @@ def main():
                     min_mask_overlap = 3
 
                 clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
-
+                write_run_info("clean_up_mask done")
+                print("clean_up_mask done")
+                #print(clean_contours_rings.shape)
                 centerlines_rings = find_centerlines(clean_contours_rings)
-
+                write_run_info("find_centerlines done")
+                print("find_centerlines done")
                 centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
-
+                write_run_info("measure_contours done")
+                print("measure_contours done")
                 # If cracks are detected
                 clean_contours_cracks = None
                 if args.weightCrack is not None:
                     detected_mask_cracks = detected_mask[:,:,1]
                     print("detected_mask_cracks", detected_mask_cracks.shape)
                     clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
+                    write_run_info("clean_up_mask cracks done")
+                    print("clean_up_mask cracks done")
 
                 write_to_json(image_name=f,cutting_point=cutting_point, run_ID=run_ID,
                                 path_out=path_out, centerlines_rings=centerlines_rings,
@@ -1003,10 +1032,10 @@ def main():
                     plot_lines(masked_image, centerlines, measure_points,
                                 image_name, path_out)
                 write_run_info("IMAGE FINISHED")
+                print("IMAGE FINISHED")
                 image_finished_time = time.time()
                 image_run_time = image_finished_time - image_start_time
                 write_run_info(f"Image run time: {image_run_time} s")
-                print("IMAGE FINISHED")
 
             except Exception as e:
                 write_run_info(e)
