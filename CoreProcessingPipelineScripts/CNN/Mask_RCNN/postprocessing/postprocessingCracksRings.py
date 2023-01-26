@@ -86,7 +86,7 @@ from operator import itemgetter
 
 # Import Mask RCNN
 ROOT_DIR = os.path.abspath("../")
-print('ROOT_DIR', ROOT_DIR)
+#print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library
 from mrcnn.src_get_centerline import get_centerline
 import mrcnn.model as modellib
@@ -382,8 +382,10 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
 #######################################################################
 # Finds centerlines in contours
 #######################################################################
-def find_centerlines(clean_contours):
-    # Find ceneterlines
+def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
+    # Find ceneterlines in polygons
+    # cut_off clips upper and lower edges which are sometimes turning horizontal and affect measurements
+    # y_length_threshold removes lines that are too short on y axes thus most probably horizontal misdetections
     print("find_centerlines started")
     # First need to reorganise the data
     contours_tuples = []
@@ -425,26 +427,29 @@ def find_centerlines(clean_contours):
         #to remove horizontal lines
         _, miny, _, maxy = cline.bounds
         line_y_diff = maxy - miny
-        print("miny and maxy", miny, maxy)
-        print("line_y_diff", line_y_diff)
-        if line_y_diff < 100: # This threshold can be adjusted
+        #print("miny and maxy", miny, maxy)
+        #print("line_y_diff", line_y_diff)
+        if line_y_diff < y_length_threshold: # This threshold is in px. Originaly 100
             continue
         else:
             centerlines.append(cline)
 
-    ## Cut off upper and lower part of detected lines. It should help with problems of horizontal ends of detections
-    to_cut_off = 0.01 # Based on examples that i used for testing
-    Multi_centerlines_to_crop = shapely.geometry.MultiLineString(centerlines)
-    print("before suspect2")
-    minx, miny, maxx, maxy = Multi_centerlines_to_crop.bounds
-    print("after suspect2")
-    px_to_cut_off = (maxy-miny)*to_cut_off
-    #print('minx, miny, maxx, maxy', minx, miny, maxx, maxy)
-    frame_to_crop = shapely.geometry.box(minx, miny+px_to_cut_off, maxx, maxy-px_to_cut_off)
-    Multi_centerlines = Multi_centerlines_to_crop.intersection(frame_to_crop)
-    # To check if it cropps something
-    #minx, miny, maxx, maxy = Multi_centerlines.bounds
-    #print('minx, miny, maxx, maxy after', minx, miny, maxx, maxy)
+    # test if centerline list contains something and if not abort and give a message
+    if not centerlines: # empty list is False
+        print("NO LINES LEFT AFTER CLEANING")
+        write_run_info("NO LINES LEFT AFTER CLEANING")
+        return
+    else:
+        ## Cut off upper and lower part of detected lines. It should help with problems of horizontal ends of detections
+        Multi_centerlines_to_crop = shapely.geometry.MultiLineString(centerlines)
+        minx, miny, maxx, maxy = Multi_centerlines_to_crop.bounds
+        px_to_cut_off = (maxy-miny)*cut_off
+        #print('minx, miny, maxx, maxy', minx, miny, maxx, maxy)
+        frame_to_crop = shapely.geometry.box(minx, miny+px_to_cut_off, maxx, maxy-px_to_cut_off)
+        Multi_centerlines = Multi_centerlines_to_crop.intersection(frame_to_crop)
+        # To check if it cropps something
+        #minx, miny, maxx, maxy = Multi_centerlines.bounds
+        #print('minx, miny, maxx, maxy after', minx, miny, maxx, maxy)
 
     return Multi_centerlines
 
@@ -995,7 +1000,12 @@ def main():
                 write_run_info("clean_up_mask done")
                 print("clean_up_mask done")
                 #print(clean_contours_rings.shape)
-                centerlines_rings = find_centerlines(clean_contours_rings)
+                centerlines_rings = find_centerlines(clean_contours_rings, cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
+                if centerlines_rings is None:
+                    write_run_info("IMAGE WAS NOT FINISHED")
+                    print("IMAGE WAS NOT FINISHED")
+                    continue
+
                 write_run_info("find_centerlines done")
                 print("find_centerlines done")
                 centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
