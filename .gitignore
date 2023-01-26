@@ -4,6 +4,7 @@ datasets
 RUNID
 model_eval
 laptop_debug.sh
+cluster_debug.sh
 laptop_docker_test.sh
 laptop_singularity_test.sh
 trg-imageprocessing_master.sif
