@@ -326,7 +326,7 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     # Detects countours of the masks, removes small contours
     print("clean_up_mask started")
     # Make the mask binary
-    binary_mask = np.where(mask >= min_mask_overlap, 255, 0) # this part can be cleaned to remove some missdetections setting condition for >=2
+    binary_mask = np.where(mask >= min_mask_overlap, 255, 0) # this part can be cleaned to remove some missdetections setting condition for higher value
     #print("binary_mask shape", binary_mask.shape)
     #plt.show()
     #type(binary_mask)
@@ -364,6 +364,7 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
         if dim_max > min_size_threshold:
             contours_filtered.append(contours[i])
             x_mins.append(x_min)
+            print("contour shape", contours[i].shape)
 
     print('Filtered_contours:', len(contours_filtered))
 
@@ -372,7 +373,7 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     # Extract longest contour to use for center estimate
     if is_ring==True:
         contourszip = zip(x_mins, contours_filtered)
-        contours_out = [x for _,x in sorted(contourszip, reverse = False)]
+        contours_out = [x for _, x in sorted(contourszip, reverse=False)]
     else:
         contours_out = contours_filtered
 
@@ -572,7 +573,7 @@ def measure_contours(Multi_centerlines, image):
         Multi_centerlines1= Multi_centerlines.intersection(cut_frame1_poly)
         cut_frame2_poly = shapely.geometry.box(cutting_point, 0, imgwidth, imgheight)
         Multi_centerlines2= Multi_centerlines.intersection(cut_frame2_poly)
-        write_run_info("Multi_centerlines2 type {}".format(Multi_centerlines2.geom_type))
+        #write_run_info("Multi_centerlines2 type {}".format(Multi_centerlines2.geom_type))
         measure_points1 = []
         measure_points2 = [] # I initiate it alredy here so i can use it in the test later
         # Reorder Multi_centerlines1
@@ -940,7 +941,10 @@ def main():
     #print("got until here", input_list, input_path)
 
     for f in input_list:
-        if f.endswith('.tif') and f.replace('.tif', '') not in json_list:
+        if f.endswith('.tif') and f.replace('.tif', '') in json_list:
+            print("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
+            write_run_info("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
+        elif f.endswith('.tif') and f.replace('.tif', '') not in json_list:
             try:
                 image_start_time = time.time()
                 print("Processing image: {}".format(f))
@@ -1031,8 +1035,6 @@ def main():
 
                 if args.print_detections == "yes":
                     # Ploting lines is moslty for debugging
-                    write_run_info("Printing detection PNGs")
-                    print("Printing detection PNGs")
                     masked_image = im_origin.astype(np.uint32).copy()
                     masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
 
