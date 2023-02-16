@@ -14,7 +14,7 @@ image-processing_master.sif
 Dockerfile_with_Cracks
 Docker_commands
 TRG-process.def
-
+*.pkl
 *.pyc
 *.ipynb
 **.pyc

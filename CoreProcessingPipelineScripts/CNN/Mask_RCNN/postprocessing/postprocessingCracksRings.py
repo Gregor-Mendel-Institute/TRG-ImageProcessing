@@ -74,6 +74,7 @@ import json
 import time
 import skimage
 import skimage.io
+import pickle
 from skimage import exposure, img_as_ubyte
 import numpy as np
 import matplotlib.pyplot as plt
@@ -372,8 +373,13 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
 
     # Extract longest contour to use for center estimate
     if is_ring==True:
-        contourszip = zip(x_mins, contours_filtered)
-        contours_out = [x for _, x in sorted(contourszip, reverse=False)]
+        ##### FOR DEBUG ONLY ####
+        with open("DebugContoursFiltered.pkl", 'wb') as f:
+            pickle.dump([contours_filtered, x_mins], f)
+        #######
+        unique_vector = range(len(x_mins)) # added to prevent sorting problems if x_mins values are the same
+        contourszip = zip(x_mins, unique_vector, contours_filtered)
+        contours_out = [x for _,_, x in sorted(contourszip, reverse=False)]
     else:
         contours_out = contours_filtered
 
@@ -942,6 +948,9 @@ def main():
 
     for f in input_list:
         if f.endswith('.tif') and f.replace('.tif', '') in json_list:
+            # print image name first to keep the output consistent
+            print("Processing image: {}".format(f))
+            write_run_info("Processing image: {}".format(f))
             print("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
             write_run_info("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
         elif f.endswith('.tif') and f.replace('.tif', '') not in json_list:
