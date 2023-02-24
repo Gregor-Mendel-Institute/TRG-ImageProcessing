@@ -373,10 +373,6 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
 
     # Extract longest contour to use for center estimate
     if is_ring==True:
-        ##### FOR DEBUG ONLY ####
-        with open("DebugContoursFiltered.pkl", 'wb') as f:
-            pickle.dump([contours_filtered, x_mins], f)
-        #######
         unique_vector = range(len(x_mins)) # added to prevent sorting problems if x_mins values are the same
         contourszip = zip(x_mins, unique_vector, contours_filtered)
         contours_out = [x for _,_, x in sorted(contourszip, reverse=False)]
@@ -445,6 +441,9 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
     if not centerlines: # empty list is False
         print("NO LINES LEFT AFTER CLEANING")
         write_run_info("NO LINES LEFT AFTER CLEANING")
+        write_run_info("One reason could be that your images have too much background."
+                       "Ideally, there should not be too much background above and below the core."
+                       "Try to crop tighter.")
         return
     else:
         ## Cut off upper and lower part of detected lines. It should help with problems of horizontal ends of detections
@@ -749,7 +748,6 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
     print("Writing .json file")
     write_run_info("Writing .json file")
     # Define the structure of json
-    write_run_info("Writing .json file")
     out_json = {}
     out_json = {image_name: {'run_ID':run_ID, 'predictions':{}, 'directionality': {},
                             'center': {}, 'est_rings_to_pith': {}, 'ring_widths': {}}}
