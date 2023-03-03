@@ -2336,15 +2336,25 @@ class MaskRCNN():
             os.makedirs(self.log_dir)
 
         # Callbacks
-        callbacks = [
-            keras.callbacks.TensorBoard(log_dir=self.log_dir,
-                                        histogram_freq=0, write_graph=True, write_images=False),
-            keras.callbacks.ModelCheckpoint(self.checkpoint_path,
-                                            verbose=0, save_weights_only=True),
-        ]
+        # modified for retraining so its saving only the best weights and does not take over hard drive
+        # it monitors val_loss by default so no need to specify
+        if custom_callbacks=="only_best":
+            callbacks = [
+                keras.callbacks.TensorBoard(log_dir=self.log_dir,
+                                            histogram_freq=0, write_graph=True, write_images=False),
+                keras.callbacks.ModelCheckpoint(self.checkpoint_path,
+                                                verbose=0, save_best_only=False, save_weights_only=True),
+            ]
+        else:
+            callbacks = [
+                keras.callbacks.TensorBoard(log_dir=self.log_dir,
+                                            histogram_freq=0, write_graph=True, write_images=False),
+                keras.callbacks.ModelCheckpoint(self.checkpoint_path,
+                                                verbose=0, save_weights_only=True),
+            ]
 
         # Add custom callbacks to the list
-        if custom_callbacks:
+        if isinstance(custom_callbacks, list):
             callbacks += custom_callbacks
 
         # Train
