@@ -20,7 +20,6 @@ Usage: run from the command line as such:
 import os
 import sys
 import json
-import datetime
 import numpy as np
 import skimage.draw
 from imgaug import augmenters as iaa
@@ -315,9 +314,13 @@ def retraining(weights, dataset, logs):
     # Validate arguments
     assert dataset, "Argument --dataset is required for training"
 
-    print("Weights: ", weights)
+    print("Initial weights: ", weights)
     print("Dataset: ", dataset)
     print("Logs: ", logs)
+
+    # Check if dataset contains annotations
+    # elif not create them from CVAT annotations
+    # else give a warning there are no annotations in folders
 
     # Configurations
 

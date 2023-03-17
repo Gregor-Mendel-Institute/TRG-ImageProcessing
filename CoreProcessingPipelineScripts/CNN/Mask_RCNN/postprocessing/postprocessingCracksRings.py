@@ -105,6 +105,7 @@ import mrcnn.model as modellib
 from DetectionConfig import TreeRing_onlyRing
 from DetectionConfig import TreeRing_onlyCracks
 from training.retraining_container import retraining
+from training.prepareAnnotations import prepareAnnotations
 
 
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
@@ -915,9 +916,15 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI, path_o
 # Run detection on the forlder or images
 #######################################################################
 def main():
+    # Retraining
     if args.dataset is not None:
+        # Check and prepare annotations
+        prepareAnnotations(dataset=args.dataset, overwrite_existing=True)
+
+        # Start retraining
         retraining(weights=args.weightRing, dataset=args.dataset, logs=args.logs)
 
+    # Detection
     else:
         path_out = os.path.join(args.output_folder, args.run_ID)
         # Check if output dir for run_ID exists and if not create it
