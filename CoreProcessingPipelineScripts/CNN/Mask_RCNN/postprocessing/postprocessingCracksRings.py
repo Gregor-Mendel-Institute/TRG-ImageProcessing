@@ -18,7 +18,7 @@ import argparse
 parser = argparse.ArgumentParser(
         description='Segmentation of whole core')
 
-## Compulsary arguments
+## Compulsory arguments
 parser.add_argument('--dpi', required=False,
                     help="DPI value for the image")
 
@@ -918,6 +918,7 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI, path_o
 def main():
     # Retraining
     if args.dataset is not None:
+        print("Starting retraining mode")
         # Check and prepare annotations
         prepareAnnotations(dataset=args.dataset, overwrite_existing=True)
 
@@ -926,6 +927,25 @@ def main():
 
     # Detection
     else:
+        print("Starting inference mode")
+        # Check compulsary argument and print which are missing
+        print('Checking compulsory arguments')
+        if args.input==None:
+            print("Compulsory argument --input is missing. Specify the path to image file of folder")
+            exit()
+        if args.weightRing==None:
+            print("Compulsory argument --weightRing is missing. Specify the path to ring weight file")
+            exit()
+        if args.output_folder==None:
+            print("Compulsory argument --output_folder is missing. Specify the path to output folder")
+            exit()
+        if args.dpi==None:
+            print("Compulsory argument --dpi is missing. Specify the DPI value for the image")
+            exit()
+        if args.run_ID==None:
+            print("Compulsory argument --run_ID is missing. Specify the Run ID")
+            exit()
+
         path_out = os.path.join(args.output_folder, args.run_ID)
         # Check if output dir for run_ID exists and if not create it
         if not os.path.isdir(path_out):
