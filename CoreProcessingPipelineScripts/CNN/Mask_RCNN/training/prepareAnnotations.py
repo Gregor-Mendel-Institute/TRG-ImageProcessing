@@ -105,11 +105,11 @@ def annottoimages(image_folder, annotation_file):
 # PROCESS
 ####################################
 
-DATASETPATH = "/Users/miroslav.polacek/Github/TRG_retraining/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/training/retrain_testing_dataset"
+#DATASETPATH = "/Users/miroslav.polacek/Github/TRG_retraining/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/training/retrain_testing_dataset"
 def prepareAnnotations(dataset, overwrite_existing=False):
 
-    TRAIN_PATH = os.path.join(DATASETPATH, "train")
-    VAL_PATH = os.path.join(DATASETPATH, "val")
+    TRAIN_PATH = os.path.join(dataset, "train")
+    VAL_PATH = os.path.join(dataset, "val")
 
     folder_paths =[TRAIN_PATH, VAL_PATH]
     # process and unite all xml files and prepare json with all annotations
