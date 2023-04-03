@@ -919,6 +919,10 @@ def main():
     # Retraining
     if args.dataset is not None:
         print("Starting retraining mode")
+        # Check compulsary argument and print which are missing
+        if args.weightRing==None:
+            print("Compulsory argument --weightRing is missing. Specify the path to ring weight file")
+            exit()
         # Check and prepare annotations
         prepareAnnotations(dataset=args.dataset, overwrite_existing=True)
 
