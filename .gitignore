@@ -14,7 +14,7 @@ image-processing_master.sif
 Dockerfile_with_Cracks
 Docker_commands
 TRG-process.def
-
+*.pkl
 *.pyc
 *.ipynb
 **.pyc
@@ -22,4 +22,5 @@ TRG-process.def
 __pycache__/
 postprocessingCracksRings_backup.py
 postprocessingCracksRings_test.py
+postprocessingFunctions.py
 Train_onlyRing_test.sh
