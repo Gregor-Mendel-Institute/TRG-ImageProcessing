@@ -46,7 +46,7 @@ DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 
 
 class TreeringConfig(Config):
-    """Configuration for training on the toy  dataset.
+    """Configuration for training on the toy dataset.
     Derives from the base Config class and overrides some values.
     """
     # Give the configuration a recognizable name
@@ -59,7 +59,7 @@ class TreeringConfig(Config):
     # Number of classes (including background)
     NUM_CLASSES = 1 + 1  # Background + ring
 
-    # Number of training steps per epoch rule of thumb taining images/images per GPU
+    # Number of training steps per epoch rule of thumb training images/images per GPU
     STEPS_PER_EPOCH = 650
 
     # Number of validation steps per epoch
@@ -299,9 +299,6 @@ def train(model):
         ])
 
     # *** This training schedule is an example. Update to your needs ***
-    # Since we're using a very small dataset, and starting from
-    # COCO trained weights, we don't need to train too long. Also,
-    # no need to train all layers, just the heads should do it.
     print("Training network heads")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
