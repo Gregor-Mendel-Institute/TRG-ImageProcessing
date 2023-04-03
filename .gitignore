@@ -22,4 +22,5 @@ TRG-process.def
 __pycache__/
 postprocessingCracksRings_backup.py
 postprocessingCracksRings_test.py
+postprocessingFunctions.py
 Train_onlyRing_test.sh

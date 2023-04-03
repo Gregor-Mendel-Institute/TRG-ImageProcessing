@@ -142,7 +142,6 @@ def apply_mask(image, mask, alpha=0.5):
     """Apply the given mask to the image.
     """
     color = (0.7, 0.0, 0.0)
-
     for c in range(3):
         image[:, :, c] = np.where(mask == 1,
                                   image[:, :, c] * (1 - alpha) + alpha * color[c] * 255,
@@ -200,8 +199,8 @@ def sliding_window_detection_multirow(image, detection_rows=1, modelRing=None, m
     imgheight_for_pad, imgwidth_for_pad = new_image.shape[:2]
 
     # add zero padding at the begining and the end according to overlap so every part of the picture is detected same number of times
-    zero_padding_front = np.zeros(shape=(imgheight_for_pad, int(imgheight_for_pad-(imgheight_for_pad*overlap)),3))
-    zero_padding_back = np.zeros(shape=(imgheight_for_pad, imgheight_for_pad,3))
+    zero_padding_front = np.zeros(shape=(imgheight_for_pad, int(imgheight_for_pad*overlap),3), dtype=int)
+    zero_padding_back = np.zeros(shape=(imgheight_for_pad, imgheight_for_pad,3), dtype=int)
     #print('padding', zero_padding.shape)
     im_padded = np.concatenate((zero_padding_front, new_image, zero_padding_back), axis=1)
 
@@ -231,7 +230,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, modelRing=None, m
         models = [modelRing, modelCrack]
 
     for model in models:
-        the_mask = np.zeros(shape=(imgheight, imgwidth)) # combine all the partial masks in the final size of full tiff
+        the_mask = np.zeros(shape=(imgheight, imgwidth), dtype=int) # combine all the partial masks in the final size of full tiff
         #print('the_mask', the_mask.shape)
         for rl in row_looping_range:
             #print("r", rl)
@@ -250,20 +249,21 @@ def sliding_window_detection_multirow(image, detection_rows=1, modelRing=None, m
                 #visualize.display_instances(cropped_part, r['rois'], r['masks'], r['class_ids'], class_names, r['scores']) #just to check
 
                 # Rotate image 90 and run detection
-                cropped_part_90 = skimage.transform.rotate(cropped_part, 90, preserve_range=True).astype(np.uint8)
+                cropped_part_90 = skimage.transform.rotate(cropped_part, angle=90, preserve_range=True).astype(np.uint8)
                 results1 = model.detect([cropped_part_90], verbose=0)
                 r1 = results1[0]
                 r1_mask = r1['masks']
                 #visualize.display_instances(cropped_part_90, r1['rois'], r1['masks'], r1['class_ids'], class_names, r1['scores']) #just to check
 
                 # Rotate image 45 and run detection
-                cropped_part_45 = skimage.transform.rotate(cropped_part, angle=45, resize=True).astype(np.uint8)
+                cropped_part_45 = skimage.transform.rotate(cropped_part, angle=45,
+                                                           preserve_range=True, resize=True).astype(np.uint8)
                 results2 = model.detect([cropped_part_45], verbose=0)
                 r2 = results2[0]
                 r2_mask = r2['masks']
 
                 ## Flatten all in one layer
-                maskr = np.zeros(shape=(row_height, row_height))
+                maskr = np.zeros(shape=(row_height, row_height), dtype=int)
                 #print('maskr_empty', maskr)
                 nmasks = r_mask.shape[2]
                 #print(nmasks)
@@ -271,7 +271,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, modelRing=None, m
                     maskr = maskr + r_mask[:,:,m]
                     #print(maskr.sum())
 
-                maskr1 = np.zeros(shape=(row_height, row_height))
+                maskr1 = np.zeros(shape=(row_height, row_height), dtype=int)
                 nmasks1 = r1_mask.shape[2]
                 for m in range(0,nmasks1):
                     maskr1 = maskr1 + r1_mask[:,:,m]
@@ -281,7 +281,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, modelRing=None, m
 
                 imheight2 = r2_mask.shape[0]
                 nmasks2 = r2_mask.shape[2]
-                maskr2 = np.zeros(shape=(imheight2, imheight2))
+                maskr2 = np.zeros(shape=(imheight2, imheight2), dtype=int)
                 for m in range(0,nmasks2):
                     maskr2 = maskr2 + r2_mask[:,:,m]
                 # Rotate back
@@ -310,7 +310,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, modelRing=None, m
 
     # Concatanete the top and buttom to fit the original image
     missing_part = int((imgheight_origin - the_mask_clean.shape[0])/2)
-    to_concatenate = np.zeros(shape=(missing_part, imgwidth_origin, the_mask_clean.shape[2]))
+    to_concatenate = np.zeros(shape=(missing_part, imgwidth_origin, the_mask_clean.shape[2]), dtype=int)
     #print("to_concatenate", to_concatenate.shape)
     the_mask_clean_origin_size = np.concatenate((to_concatenate, the_mask_clean, to_concatenate),axis=0)
     #print('the_mask_clean_origin_size', the_mask_clean_origin_size.shape)
