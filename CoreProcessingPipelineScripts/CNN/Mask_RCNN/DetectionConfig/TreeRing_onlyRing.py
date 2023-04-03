@@ -23,7 +23,7 @@ import json
 import datetime
 import numpy as np
 import skimage.draw
-from imgaug import augmenters as iaa
+#from imgaug import augmenters as iaa # its not available up from python 3.8, should be replaced wth thensorflow augmentation
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath("../../")

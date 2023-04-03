@@ -72,6 +72,7 @@ import math
 import cv2
 import json
 import time
+import pickle
 import skimage
 import skimage.io
 from skimage import exposure, img_as_ubyte
@@ -91,7 +92,7 @@ sys.path.append(ROOT_DIR)  # To find local version of the library
 from mrcnn.src_get_centerline import get_centerline
 import mrcnn.model as modellib
 from DetectionConfig import TreeRing_onlyRing
-from DetectionConfig import TreeRing_onlyCracks
+
 
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
@@ -114,6 +115,7 @@ modelRing.load_weights(weights_path_Ring, by_name=True)
 # Load cracks model only if cracks weights are provided
 if args.weightCrack is not None:
     # Prepare crack model
+    from DetectionConfig import TreeRing_onlyCracks
     configCrack = TreeRing_onlyCracks.TreeRingConfig()
     class InferenceConfig(configCrack.__class__):
         # Run detection on one image at a time
@@ -463,7 +465,8 @@ def measure_contours(Multi_centerlines, image):
     imgheight, imgwidth = image.shape[:2]
     print('imgheight, imgwidth', imgheight, imgwidth)
     write_run_info("Image has height {} and width {}".format(imgheight, imgwidth))
-    write_run_info("{} ring boundries were detected".format(len(Multi_centerlines)))
+
+    write_run_info("{} ring boundries were detected".format(len(Multi_centerlines.geoms)))
 
     # Split samples that are crosing center into two then turn the second part around
     PlusMinus_index = []
@@ -579,7 +582,7 @@ def measure_contours(Multi_centerlines, image):
         # Reorder Multi_centerlines1
         x_maxs = []
         x_mins = []
-        for i in range(len(Multi_centerlines1)):
+        for i in range(len(Multi_centerlines1.geoms)):
             minx, _, maxx,_ = Multi_centerlines1[i].bounds
             x_maxs.append(maxx)
             x_mins.append(minx)
@@ -604,7 +607,7 @@ def measure_contours(Multi_centerlines, image):
             # Order contours by x_maxs
             x_maxs = []
             x_mins = []
-            for i in range(len(Multi_centerlines2)):
+            for i in range(len(Multi_centerlines2.geoms)):
                 minx, _, maxx,_ = Multi_centerlines2[i].bounds
                 x_maxs.append(maxx)
                 x_mins.append(minx)
@@ -639,13 +642,13 @@ def measure_contours(Multi_centerlines, image):
         # Reorder the lines
         x_maxs = []
         x_mins = []
-        for i in range(len(Multi_centerlines)):
-            minx, _, maxx,_ = Multi_centerlines[i].bounds
+        for i in range(len(Multi_centerlines.geoms)):
+            minx, _, maxx,_ = Multi_centerlines.geoms[i].bounds
             x_maxs.append(maxx)
             x_mins.append(minx)
 
         x_middle = np.array(x_mins) + (np.array(x_maxs) - np.array(x_mins))/2
-        contourszip = zip(x_middle, Multi_centerlines)
+        contourszip = zip(x_middle, Multi_centerlines.geoms)
 
         #print('contourszip', contourszip)
         #print('x_maxs', x_maxs)
@@ -690,7 +693,7 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
 
 
     # Plot the lines to the image
-    if not isinstance(centerlines, list) and len(centerlines)>2:
+    if not isinstance(centerlines, list) and len(centerlines.geoms)>2:
 
         #plt.figure(figsize = (30,15))
         #plt.imshow(image)
@@ -698,14 +701,14 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
             #print('loop', i)
             points = measure_points[i]
 
-            xc,yc = centerlines[i].coords.xy
+            xc,yc = centerlines.geoms[i].coords.xy
             plt.plot(xc,yc,'g')
 
             xp, yp = points[0].coords.xy
             xp1, yp1 = points[1].coords.xy
             plt.plot([xp, xp1], [yp, yp1], 'r')
 
-        xc,yc = centerlines[-1].coords.xy
+        xc,yc = centerlines.geoms[-1].coords.xy
         plt.plot(xc,yc,'g')
         #plt.show()
 
@@ -721,7 +724,7 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
             for i in range(len(centerlines1.geoms)-1):
                 #print('loop', i)
 
-                xc,yc = centerlines1[i].coords.xy
+                xc,yc = centerlines1.geoms[i].coords.xy
                 plt.plot(xc,yc,color[l])
 
                 points = measure_points1[i]
@@ -729,7 +732,7 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
                 xp1, yp1 = points[1].coords.xy
                 plt.plot([xp, xp1], [yp, yp1], 'r')
 
-            xc,yc = centerlines1[-1].coords.xy # To print the last point
+            xc,yc = centerlines1.geoms[-1].coords.xy # To print the last point
             plt.plot(xc,yc, color[l])
         #plt.show()
 
@@ -762,14 +765,15 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
     json_names = ['ring_line', 'ring_polygon', 'crack_polygon']
     for v in range(len(input_vars)):
         coords = {}
-        for i in range(len(input_vars[v])):
-
-            # 'If else' becasue ring_line is shapely object and clean contours are from opencv and have different structure
-            if json_names[v] == 'ring_line':
-                x_list, y_list = input_vars[v][i].coords.xy
+        # 'If else' becasue ring_line is shapely object and clean contours are from opencv and have different structure
+        print(json_names[v]) #### just for debug, remove
+        if json_names[v] == 'ring_line':
+            for i in range(len(input_vars[v].geoms)):
+                x_list, y_list = input_vars[v].geoms[i].coords.xy
                 x_list = x_list.tolist()
                 y_list = y_list.tolist()
-            else:
+        else:
+            for i in range(len(input_vars[v])):
                 x_list = []
                 y_list = []
                 for p in range(len(input_vars[v][i])):
@@ -796,7 +800,7 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI, path_o
     print("Writing .pos file")
     write_run_info("Writing .pos file")
     # Check if it is one or two parts in measure points
-    # If two adjust naming. Nothink for the normal one and add "x" at the end for the second part
+    # If two adjust naming. Nothing for the normal one and add "x" at the end for the second part
     #print('measure_point len', len(measure_points))
     #print('measure_point', measure_points)
     # Prepare date, time
@@ -814,7 +818,7 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI, path_o
     #print('centerline', centerlines)
     #print('len centrlines', type(centerlines))
 
-    if not isinstance(centerlines, list) and len(centerlines)>2:
+    if not isinstance(centerlines, list) and len(centerlines.geoms)>2:
         # Prepare points
         str_measure_points = []
         first_x, first_y = measure_points[0][0].coords.xy
@@ -945,115 +949,116 @@ def main():
             print("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
             write_run_info("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
         elif f.endswith('.tif') and f.replace('.tif', '') not in json_list:
-            try:
-                image_start_time = time.time()
-                print("Processing image: {}".format(f))
-                write_run_info("Processing image: {}".format(f))
-                image_path = os.path.join(input_path, f)
-                im_origin = skimage.io.imread(image_path)
+            #try:
+            image_start_time = time.time()
+            print("Processing image: {}".format(f))
+            write_run_info("Processing image: {}".format(f))
+            image_path = os.path.join(input_path, f)
+            im_origin = skimage.io.imread(image_path)
 
-                # check number of channels and if 4 assume rgba and convert to rgb
-                # conversion if image is not 8bit convert to 8 bit
-                if im_origin.dtype == 'uint8' and im_origin.shape[2] == 3:
-                    print("Image was 8bit and RGB")
-                    write_run_info("Image was 8bit and RGB")
-                elif im_origin.shape[2] == 4:
-                    print("Image has 4 channels, assuming RGBA, trying to convert")
-                    write_run_info("Image has 4 channels, assuming RGBA, trying to convert")
-                    im_origin = img_as_ubyte(skimage.color.rgba2rgb(im_origin))
-                elif im_origin.dtype != 'uint8':
-                    print("Image converted to 8bit")
-                    write_run_info("Image converted to 8bit")
-                    im_origin = img_as_ubyte(exposure.rescale_intensity(im_origin))  # with rescaling should be better
+            # check number of channels and if 4 assume rgba and convert to rgb
+            # conversion if image is not 8bit convert to 8 bit
+            if im_origin.dtype == 'uint8' and im_origin.shape[2] == 3:
+                print("Image was 8bit and RGB")
+                write_run_info("Image was 8bit and RGB")
+            elif im_origin.shape[2] == 4:
+                print("Image has 4 channels, assuming RGBA, trying to convert")
+                write_run_info("Image has 4 channels, assuming RGBA, trying to convert")
+                im_origin = img_as_ubyte(skimage.color.rgba2rgb(im_origin))
+            elif im_origin.dtype != 'uint8':
+                print("Image converted to 8bit")
+                write_run_info("Image converted to 8bit")
+                im_origin = img_as_ubyte(exposure.rescale_intensity(im_origin))  # with rescaling should be better
 
-                # Define default values if they were not provided as arguments
-                if args.cropUpandDown is not None:
-                    cropUpandDown = float(args.cropUpandDown)
-                else:
-                    cropUpandDown = 0.17
+            # Define default values if they were not provided as arguments
+            if args.cropUpandDown is not None:
+                cropUpandDown = float(args.cropUpandDown)
+            else:
+                cropUpandDown = 0.17
 
-                if args.sliding_window_overlap is not None:
-                    sliding_window_overlap = float(args.sliding_window_overlap)
-                else:
-                    sliding_window_overlap = 0.75
+            if args.sliding_window_overlap is not None:
+                sliding_window_overlap = float(args.sliding_window_overlap)
+            else:
+                sliding_window_overlap = 0.75
 
-                if args.n_detection_rows is None or args.n_detection_rows==1:
-                    detection_rows = 1
-                else:
-                    detection_rows=int(args.n_detection_rows)
+            if args.n_detection_rows is None or args.n_detection_rows==1:
+                detection_rows = 1
+            else:
+                detection_rows=int(args.n_detection_rows)
 
-                detected_mask = sliding_window_detection_multirow(image = im_origin,
-                                                        detection_rows=detection_rows,
-                                                        modelRing=modelRing,
-                                                        modelCrack=modelCrack,
-                                                        overlap = sliding_window_overlap,
-                                                        cropUpandDown = cropUpandDown)
+            detected_mask = sliding_window_detection_multirow(image = im_origin,
+                                                    detection_rows=detection_rows,
+                                                    modelRing=modelRing,
+                                                    modelCrack=modelCrack,
+                                                    overlap = sliding_window_overlap,
+                                                    cropUpandDown = cropUpandDown)
 
-                write_run_info("sliding_window_detection_multirow done")
-                print("sliding_window_detection_multirow done")
-                detected_mask_rings = detected_mask[:,:,0]
-                #print("detected_mask_rings", detected_mask_rings.shape)
+            write_run_info("sliding_window_detection_multirow done")
+            print("sliding_window_detection_multirow done")
+            detected_mask_rings = detected_mask[:,:,0]
+            #print("detected_mask_rings", detected_mask_rings.shape)
 
-                # Define minimum mask overlap if not provided
-                if args.min_mask_overlap is not None:
-                    min_mask_overlap = int(args.min_mask_overlap)
-                else:
-                    min_mask_overlap = 3
+            # Define minimum mask overlap if not provided
+            if args.min_mask_overlap is not None:
+                min_mask_overlap = int(args.min_mask_overlap)
+            else:
+                min_mask_overlap = 3
 
-                clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
-                write_run_info("clean_up_mask done")
-                print("clean_up_mask done")
-                #print(clean_contours_rings.shape)
-                centerlines_rings = find_centerlines(clean_contours_rings, cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
-                if centerlines_rings is None:
-                    write_run_info("IMAGE WAS NOT FINISHED")
-                    print("IMAGE WAS NOT FINISHED")
-                    continue
+            clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
+            write_run_info("clean_up_mask done")
+            print("clean_up_mask done")
+            #print(clean_contours_rings.shape)
+            centerlines_rings = find_centerlines(clean_contours_rings, cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
+            if centerlines_rings is None:
+                write_run_info("IMAGE WAS NOT FINISHED")
+                print("IMAGE WAS NOT FINISHED")
+                continue
 
-                write_run_info("find_centerlines done")
-                print("find_centerlines done")
-                centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
-                write_run_info("measure_contours done")
-                print("measure_contours done")
-                # If cracks are detected
-                clean_contours_cracks = None
+            write_run_info("find_centerlines done")
+            print("find_centerlines done")
+            centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
+            write_run_info("measure_contours done")
+            print("measure_contours done")
+            # If cracks are detected
+            clean_contours_cracks = None
+            if args.weightCrack is not None:
+                detected_mask_cracks = detected_mask[:,:,1]
+                print("detected_mask_cracks", detected_mask_cracks.shape)
+                clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
+                write_run_info("clean_up_mask cracks done")
+                print("clean_up_mask cracks done")
+
+            write_to_json(image_name=f,cutting_point=cutting_point, run_ID=run_ID,
+                            path_out=path_out, centerlines_rings=centerlines_rings,
+                            clean_contours_rings=clean_contours_rings,
+                            clean_contours_cracks=clean_contours_cracks)
+
+            image_name = f.replace('.tif', '')
+            DPI = float(args.dpi)
+            write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
+
+            if args.print_detections == "yes":
+                # Ploting lines is moslty for debugging
+                masked_image = im_origin.astype(np.uint32).copy()
+                masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
+
                 if args.weightCrack is not None:
-                    detected_mask_cracks = detected_mask[:,:,1]
-                    print("detected_mask_cracks", detected_mask_cracks.shape)
-                    clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
-                    write_run_info("clean_up_mask cracks done")
-                    print("clean_up_mask cracks done")
+                    masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
 
-                write_to_json(image_name=f,cutting_point=cutting_point, run_ID=run_ID,
-                                path_out=path_out, centerlines_rings=centerlines_rings,
-                                clean_contours_rings=clean_contours_rings,
-                                clean_contours_cracks=clean_contours_cracks)
-
-                image_name = f.replace('.tif', '')
-                DPI = float(args.dpi)
-                write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
-
-                if args.print_detections == "yes":
-                    # Ploting lines is moslty for debugging
-                    masked_image = im_origin.astype(np.uint32).copy()
-                    masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
-
-                    if args.weightCrack is not None:
-                        masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
-
-                    plot_lines(masked_image, centerlines, measure_points,
-                                image_name, path_out)
-                write_run_info("IMAGE FINISHED")
-                print("IMAGE FINISHED")
-                image_finished_time = time.time()
-                image_run_time = image_finished_time - image_start_time
-                write_run_info(f"Image run time: {image_run_time} s")
-
+                plot_lines(masked_image, centerlines, measure_points,
+                            image_name, path_out)
+            write_run_info("IMAGE FINISHED")
+            print("IMAGE FINISHED")
+            image_finished_time = time.time()
+            image_run_time = image_finished_time - image_start_time
+            write_run_info(f"Image run time: {image_run_time} s")
+            """
             except Exception as e:
                 write_run_info(e)
                 write_run_info("IMAGE WAS NOT FINISHED")
                 print(e)
                 print("IMAGE WAS NOT FINISHED")
+            """
 
 
 if __name__ == '__main__':
