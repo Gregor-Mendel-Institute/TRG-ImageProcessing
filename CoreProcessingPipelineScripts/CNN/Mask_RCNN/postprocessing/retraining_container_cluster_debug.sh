@@ -13,6 +13,6 @@ source activate ~/.conda/envs/TreeRingCNN
 
 time ~/.conda/envs/TreeRingCNN/bin/python3 \
 postprocessingCracksRings.py \
---dataset=../training/retrain_testing_dataset  \
+--dataset=../training/sample_dataset  \
 --weightRing=/groups/swarts/lab/ImageProcessingPipeline/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/treeringcrackscomb2_onlyring20210121T1457/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 \
 
