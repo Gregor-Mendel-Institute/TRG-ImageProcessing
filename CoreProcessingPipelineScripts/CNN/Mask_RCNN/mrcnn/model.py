@@ -2092,7 +2092,7 @@ class MaskRCNN():
         checkpoint = os.path.join(dir_name, checkpoints[-1])
         return checkpoint
 
-    def load_weights(self, filepath, by_name=False, exclude=None):
+    def load_weights(self, filepath, by_name=False, exclude=None, start_new=False):
         """Modified version of the corresponding Keras function with
         the addition of multi-GPU support and the ability to exclude
         some layers from loading.
@@ -2134,7 +2134,7 @@ class MaskRCNN():
             f.close()
 
         # Update the log directory
-        self.set_log_dir(filepath)
+        self.set_log_dir(filepath, start_new=start_new)
 
     def get_imagenet_weights(self):
         """Downloads ImageNet trained weights from Keras.
@@ -2235,7 +2235,7 @@ class MaskRCNN():
                 log("{}{:20}   ({})".format(" " * indent, layer.name,
                                             layer.__class__.__name__))
 
-    def set_log_dir(self, model_path=None):
+    def set_log_dir(self, model_path=None, start_new=False):
         """Sets the model log directory and epoch counter.
 
         model_path: If None, or a format different from what this code uses
@@ -2248,7 +2248,7 @@ class MaskRCNN():
         now = datetime.datetime.now()
 
         # If we have a model path with date and epochs use them
-        if model_path:
+        if model_path and start_new==False:
             # Continue from we left of. Get epoch and date from the file name
             # A sample model path might look like:
             # \path\to\logs\coco20171029T2315\mask_rcnn_coco_0001.h5 (Windows)
@@ -2336,15 +2336,25 @@ class MaskRCNN():
             os.makedirs(self.log_dir)
 
         # Callbacks
-        callbacks = [
-            keras.callbacks.TensorBoard(log_dir=self.log_dir,
-                                        histogram_freq=0, write_graph=True, write_images=False),
-            keras.callbacks.ModelCheckpoint(self.checkpoint_path,
-                                            verbose=0, save_weights_only=True),
-        ]
+        # modified for retraining so its saving only the best weights and does not take over hard drive
+        # it monitors val_loss by default so no need to specify
+        if custom_callbacks=="only_best":
+            callbacks = [
+                keras.callbacks.TensorBoard(log_dir=self.log_dir,
+                                            histogram_freq=0, write_graph=True, write_images=False),
+                keras.callbacks.ModelCheckpoint(self.checkpoint_path,
+                                                verbose=0, save_best_only=True, save_weights_only=True),
+            ]
+        else:
+            callbacks = [
+                keras.callbacks.TensorBoard(log_dir=self.log_dir,
+                                            histogram_freq=0, write_graph=True, write_images=False),
+                keras.callbacks.ModelCheckpoint(self.checkpoint_path,
+                                                verbose=0, save_weights_only=True),
+            ]
 
         # Add custom callbacks to the list
-        if custom_callbacks:
+        if isinstance(custom_callbacks, list):
             callbacks += custom_callbacks
 
         # Train
