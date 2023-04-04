@@ -309,7 +309,7 @@ def train(model, dataset):
 # Configurations
 config = TreeringConfig()
 config.display()
-def retraining(weights, dataset, logs):
+def retraining(weights, dataset, logs, start_new=True):
 
     # Validate arguments
     assert dataset, "Argument --dataset is required for training"
@@ -337,7 +337,7 @@ def retraining(weights, dataset, logs):
 
     # Load weights
     print("Loading weights ", weights_path)
-    model.load_weights(weights_path, by_name=True)
+    model.load_weights(weights_path, by_name=True, start_new=start_new)
 
     # Train
     train(model, dataset)

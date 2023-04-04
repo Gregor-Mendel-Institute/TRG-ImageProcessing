@@ -71,6 +71,10 @@ parser.add_argument('--logs', required=False,
                     metavar="/path/to/logs/",
                     help='Logs and checkpoints directory (default="./logs")')
 
+parser.add_argument('--start_new', required=False,
+                    default="False",
+                    help='If True retraining wil start from the beginning else continue from provided weight')
+
 
 args = parser.parse_args()
 
@@ -924,10 +928,10 @@ def main():
             print("Compulsory argument --weightRing is missing. Specify the path to ring weight file")
             exit()
         # Check and prepare annotations
-        prepareAnnotations(dataset=args.dataset, overwrite_existing=True)
+        prepareAnnotations(dataset=args.dataset, overwrite_existing=False)
 
         # Start retraining
-        retraining(weights=args.weightRing, dataset=args.dataset, logs=args.logs)
+        retraining(weights=args.weightRing, dataset=args.dataset, logs=args.logs, start_new=args.start_new)
 
     # Detection
     else:
