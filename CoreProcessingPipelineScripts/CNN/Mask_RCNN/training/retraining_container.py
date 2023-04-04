@@ -40,7 +40,7 @@ class TreeringConfig(Config):
     Derives from the base Config class and overrides some values.
     """
     # Give the configuration a recognizable name
-    NAME = "TrainRings"
+    NAME = "RetrainedRings"
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU. V100 should have 32gb memory, seems can manage 6 images 1024x1024
