@@ -1,0 +1,21 @@
+# Conda enviroment to run the app with a GPU
+
+
+# try python 3.11 with tf
+
+ml load build-env/f2022 # required for anaconda
+ml load anaconda3/2022.05
+
+conda create -n TRGTF2.12P3.11GPU python=3.11 opencv scikit-image shapely pandas matplotlib lxml
+
+conda activate TRGTF2.12P3.11GPU
+
+# as instructed from tensor flow web page
+
+# conda install -c conda-forge cudatoolkit=11.8.0 # this version did not work
+
+conda install -c conda-forge cudatoolkit=11.7.0
+
+pip install nvidia-cudnn-cu11==8.6.0.163 tensorflow==2.12.*
+
+pip install --no-dependencies imgaug

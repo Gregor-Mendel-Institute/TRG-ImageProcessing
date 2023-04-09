@@ -7,11 +7,9 @@ Licensed under the MIT License (see LICENSE for details)
 Written by Waleed Abdulla
 """
 
-import sys
-import os
 import logging
-import math
 import random
+import cv2 as cv
 import numpy as np
 import tensorflow as tf
 import scipy
@@ -384,7 +382,6 @@ class Dataset(object):
         class_ids = np.empty([0], np.int32)
         return mask, class_ids
 
-
 def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square"):
     """Resizes an image keeping the aspect ratio unchanged.
 
@@ -443,9 +440,9 @@ def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square
             scale = max_dim / image_max
 
     # Resize image using bilinear interpolation
-    if scale != 1:
-        image = resize(image, (round(h * scale), round(w * scale)),
-                       preserve_range=True)
+    if scale != 1.:
+        # image = resize(image, (round(h * scale), round(w * scale)), preserve_range=True)
+        image = cv.resize(image, (int(round(w * scale)), int(round(h * scale))))
 
     # Need padding or cropping?
     if mode == "square":
@@ -523,14 +520,14 @@ def minimize_mask(bbox, mask, mini_shape):
     mini_mask = np.zeros(mini_shape + (mask.shape[-1],), dtype=bool)
     for i in range(mask.shape[-1]):
         # Pick slice and cast to bool in case load_mask() returned wrong dtype
-        m = mask[:, :, i].astype(bool)
+        m = mask[:, :, i]
         y1, x1, y2, x2 = bbox[i][:4]
         m = m[y1:y2, x1:x2]
         if m.size == 0:
             raise Exception("Invalid bounding box with area of zero")
         # Resize with bilinear interpolation
         m = resize(m, mini_shape)
-        mini_mask[:, :, i] = np.around(m).astype(bool)
+        mini_mask[:, :, i] = m.astype(bool)
     return mini_mask
 
 
@@ -542,13 +539,13 @@ def expand_mask(bbox, mini_mask, image_shape):
     """
     mask = np.zeros(image_shape[:2] + (mini_mask.shape[-1],), dtype=bool)
     for i in range(mask.shape[-1]):
-        m = mini_mask[:, :, i]
+        m = mini_mask[:, :, i].astype(np.uint8)
         y1, x1, y2, x2 = bbox[i][:4]
         h = y2 - y1
         w = x2 - x1
         # Resize with bilinear interpolation
         m = resize(m, (h, w))
-        mask[y1:y2, x1:x2, i] = np.around(m).astype(bool)
+        mask[y1:y2, x1:x2, i] = m.astype(bool)
     return mask
 
 

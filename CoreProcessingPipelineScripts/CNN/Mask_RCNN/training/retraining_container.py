@@ -62,7 +62,8 @@ class TreeringConfig(Config):
 
     # If enabled, resizes instance masks to a smaller size to reduce
     # memory load. Recommended when using high-resolution images.
-    USE_MINI_MASK = True
+    # makes problem in TF2 version
+    USE_MINI_MASK = False
     MINI_MASK_SHAPE = (56, 56)  # (height, width) of the mini-mask, default (56, 56)
 
     # Input image resizing
@@ -134,6 +135,9 @@ class TreeringConfig(Config):
 
     # Gradient norm clipping. Default 5.0. Some blog recommanded 10 with LR = 0.01
     GRADIENT_CLIP_NORM = 5.0
+
+    # TF2 feature - now you can run the model interactively
+    RUN_EAGERLY = False
 
 ############################################################
 #  Dataset
@@ -245,7 +249,7 @@ class TreeringDataset(utils.Dataset):
             mask[rr, cc, i] = 1
 
         # Return mask, and array of class IDs of each instance. Since we have
-        return mask.astype(np.bool), np.asarray(info["class_ids"], dtype=np.int32)
+        return mask.astype(bool), np.asarray(info["class_ids"], dtype=np.int32)
 
     def image_reference(self, image_id):
         """Return the path of the image."""
@@ -273,7 +277,7 @@ def train(model, dataset):
 
     # Image augmentation
     # http://imgaug.readthedocs.io/en/latest/source/augmenters.html
-
+    """
     augmentation = iaa.SomeOf((1, 5), [
             iaa.Fliplr(0.5),
             iaa.Flipud(0.5),
@@ -286,7 +290,7 @@ def train(model, dataset):
             iaa.Multiply((0.5, 1.2)), #changeing brightness
             iaa.Grayscale(alpha=(0.0, 0.9))
         ])
-
+    """
     # *** This training schedule is an example. Update to your needs ***
     # As it is only fine tuning I think training all layers should be fine
 
@@ -294,7 +298,7 @@ def train(model, dataset):
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
                 epochs=200,
-                augmentation=augmentation,
+                #augmentation=augmentation,
                 custom_callbacks="only_best",
                 layers='all') # 'heads' or 'all'
 
@@ -331,7 +335,6 @@ def retraining(weights, dataset, logs):
 
     model = modellib.MaskRCNN(mode="training", config=config,
                                   model_dir=logs)
-
     # Weights file to load
     weights_path = weights
 

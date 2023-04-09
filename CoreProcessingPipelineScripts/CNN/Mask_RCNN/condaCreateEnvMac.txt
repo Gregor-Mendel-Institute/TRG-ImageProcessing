@@ -1,0 +1,21 @@
+# Minimal conda enviroment to run debug of the script on a laptop without a GPU
+# to imitate the env used for the tf2 version from github
+conda create -n TRGTF2.7P3.8 python=3.8 tensorflow=2.7 opencv scikit-image shapely pandas matplotlib imgaug
+
+# to try highest possible
+## imgaug goes only until python 3.8 but can be replaced by tenserflow buildin augmentation!!!!
+conda create -n TRGTF2.11 python=3.10 tensorflow=2.11 opencv scikit-image shapely pandas matplotlib
+
+# try lower version
+conda create -n TRGTF2.6P3.8 python=3.8 tensorflow=2.6 opencv scikit-image shapely pandas matplotlib imgaug
+
+# try python 3.11 with tf-nightly
+conda create -n TRGTFnightlyP3.11 python=3.11 opencv scikit-image shapely pandas matplotlib imgaug
+
+# try python 3.11 with tf
+conda create -n TRGTF2.12P3.11 python=3.11  opencv scikit-image shapely pandas matplotlib lxml
+pip install tensorflow=2.12
+pip install --no-dependencies imgaug
+
+# to test with 2.4 when many of versions for tf 2 were createdwere created
+conda create -n TRGTF2.4P3.8 python=3.8 tensorflow=2.4 opencv scikit-image shapely pandas matplotlib imgaug lxml

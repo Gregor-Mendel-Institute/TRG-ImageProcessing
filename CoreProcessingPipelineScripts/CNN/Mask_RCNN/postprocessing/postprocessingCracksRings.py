@@ -90,7 +90,6 @@ from skimage import exposure, img_as_ubyte
 import numpy as np
 import matplotlib.pyplot as plt
 import shapely
-from shapely.geometry import box
 from shapely.ops import nearest_points
 import scipy
 from datetime import datetime
@@ -103,7 +102,9 @@ sys.path.append(ROOT_DIR)  # To find local version of the library
 from mrcnn.src_get_centerline import get_centerline
 import mrcnn.model as modellib
 from DetectionConfig import TreeRing_onlyRing
-from DetectionConfig import TreeRing_onlyCracks
+
+
+# for this i have to change augmentations with tensorflow 
 from training.retraining_container import retraining
 from training.prepareAnnotations import prepareAnnotations
 
@@ -129,6 +130,7 @@ modelRing.load_weights(weights_path_Ring, by_name=True)
 # Load cracks model only if cracks weights are provided
 if args.weightCrack is not None:
     # Prepare crack model
+    from DetectionConfig import TreeRing_onlyCracks
     configCrack = TreeRing_onlyCracks.TreeRingConfig()
     class InferenceConfig(configCrack.__class__):
         # Run detection on one image at a time
@@ -926,7 +928,7 @@ def main():
             print("Compulsory argument --weightRing is missing. Specify the path to ring weight file")
             exit()
         # Check and prepare annotations
-        prepareAnnotations(dataset=args.dataset, overwrite_existing=True)
+        prepareAnnotations(dataset=args.dataset, overwrite_existing=False)
 
         # Start retraining
         retraining(weights=args.weightRing, dataset=args.dataset, logs=args.logs)
@@ -990,8 +992,8 @@ def main():
             input_list = os.listdir(input)
             input_path = input
         else:
-            print("Image argument is neither valid file nor directory")
-            write_run_info("Image argument is neither valid file nor directory")
+            print("Input argument is neither valid file nor directory")
+            write_run_info("Input argument is neither valid file nor directory")
         #print("got until here", input_list, input_path)
 
         for f in input_list:
