@@ -608,7 +608,7 @@ def measure_contours(Multi_centerlines, image):
 
         x_middle = np.array(x_mins) + (np.array(x_maxs) - np.array(x_mins))/2
         #print('x_middle, x_maxs, x_mins', x_middle, x_maxs, x_mins)
-        contourszip = zip(x_middle, Multi_centerlines1)
+        contourszip = zip(x_middle, Multi_centerlines1.geoms)
 
         #print('contourszip', contourszip)
         #print('x_maxs', x_maxs)
@@ -632,7 +632,7 @@ def measure_contours(Multi_centerlines, image):
                 x_mins.append(minx)
 
             x_middle = np.array(x_mins) + (np.array(x_maxs) - np.array(x_mins))/2
-            contourszip = zip(x_middle, Multi_centerlines2)
+            contourszip = zip(x_middle, Multi_centerlines2.geoms)
 
             #print('contourszip', contourszip)
             #print('x_maxs', x_maxs)
