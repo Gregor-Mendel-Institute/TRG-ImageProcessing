@@ -602,7 +602,7 @@ def measure_contours(Multi_centerlines, image):
         x_maxs = []
         x_mins = []
         for i in range(len(Multi_centerlines1.geoms)):
-            minx, _, maxx,_ = Multi_centerlines1[i].bounds
+            minx, _, maxx,_ = Multi_centerlines1.geoms[i].bounds
             x_maxs.append(maxx)
             x_mins.append(minx)
 
@@ -627,7 +627,7 @@ def measure_contours(Multi_centerlines, image):
             x_maxs = []
             x_mins = []
             for i in range(len(Multi_centerlines2.geoms)):
-                minx, _, maxx,_ = Multi_centerlines2[i].bounds
+                minx, _, maxx,_ = Multi_centerlines2.geoms[i].bounds
                 x_maxs.append(maxx)
                 x_mins.append(minx)
 
