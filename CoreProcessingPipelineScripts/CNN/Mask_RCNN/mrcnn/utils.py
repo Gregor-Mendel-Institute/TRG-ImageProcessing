@@ -441,8 +441,9 @@ def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square
 
     # Resize image using bilinear interpolation
     if scale != 1.:
-        # image = resize(image, (round(h * scale), round(w * scale)), preserve_range=True)
-        image = cv.resize(image, (int(round(w * scale)), int(round(h * scale))))
+        # image = resize(image, (round(h * scale), round(w * scale)), preserve_range=True) # pre tf2 based on skimage
+        image = cv.resize(image, (int(round(w * scale)), int(round(h * scale))), interpolation=cv.INTER_NEAREST_EXACT)
+        # according to the documentation interpolation=cv.INTER_NEAREST_EXACT should be the same as skimage uses
 
     # Need padding or cropping?
     if mode == "square":

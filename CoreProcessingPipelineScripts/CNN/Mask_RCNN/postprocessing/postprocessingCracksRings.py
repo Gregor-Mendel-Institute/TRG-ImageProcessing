@@ -1004,115 +1004,116 @@ def main():
                 print("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
                 write_run_info("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
             elif f.endswith('.tif') and f.replace('.tif', '') not in json_list:
-                try:
-                    image_start_time = time.time()
-                    print("Processing image: {}".format(f))
-                    write_run_info("Processing image: {}".format(f))
-                    image_path = os.path.join(input_path, f)
-                    im_origin = skimage.io.imread(image_path)
+                # try: ########commented only for debugging
+                image_start_time = time.time()
+                print("Processing image: {}".format(f))
+                write_run_info("Processing image: {}".format(f))
+                image_path = os.path.join(input_path, f)
+                im_origin = skimage.io.imread(image_path)
 
-                    # check number of channels and if 4 assume rgba and convert to rgb
-                    # conversion if image is not 8bit convert to 8 bit
-                    if im_origin.dtype == 'uint8' and im_origin.shape[2] == 3:
-                        print("Image was 8bit and RGB")
-                        write_run_info("Image was 8bit and RGB")
-                    elif im_origin.shape[2] == 4:
-                        print("Image has 4 channels, assuming RGBA, trying to convert")
-                        write_run_info("Image has 4 channels, assuming RGBA, trying to convert")
-                        im_origin = img_as_ubyte(skimage.color.rgba2rgb(im_origin))
-                    elif im_origin.dtype != 'uint8':
-                        print("Image converted to 8bit")
-                        write_run_info("Image converted to 8bit")
-                        im_origin = img_as_ubyte(exposure.rescale_intensity(im_origin))  # with rescaling should be better
+                # check number of channels and if 4 assume rgba and convert to rgb
+                # conversion if image is not 8bit convert to 8 bit
+                if im_origin.dtype == 'uint8' and im_origin.shape[2] == 3:
+                    print("Image was 8bit and RGB")
+                    write_run_info("Image was 8bit and RGB")
+                elif im_origin.shape[2] == 4:
+                    print("Image has 4 channels, assuming RGBA, trying to convert")
+                    write_run_info("Image has 4 channels, assuming RGBA, trying to convert")
+                    im_origin = img_as_ubyte(skimage.color.rgba2rgb(im_origin))
+                elif im_origin.dtype != 'uint8':
+                    print("Image converted to 8bit")
+                    write_run_info("Image converted to 8bit")
+                    im_origin = img_as_ubyte(exposure.rescale_intensity(im_origin))  # with rescaling should be better
 
-                    # Define default values if they were not provided as arguments
-                    if args.cropUpandDown is not None:
-                        cropUpandDown = float(args.cropUpandDown)
-                    else:
-                        cropUpandDown = 0.17
+                # Define default values if they were not provided as arguments
+                if args.cropUpandDown is not None:
+                    cropUpandDown = float(args.cropUpandDown)
+                else:
+                    cropUpandDown = 0.17
 
-                    if args.sliding_window_overlap is not None:
-                        sliding_window_overlap = float(args.sliding_window_overlap)
-                    else:
-                        sliding_window_overlap = 0.75
+                if args.sliding_window_overlap is not None:
+                    sliding_window_overlap = float(args.sliding_window_overlap)
+                else:
+                    sliding_window_overlap = 0.75
 
-                    if args.n_detection_rows is None or args.n_detection_rows==1:
-                        detection_rows = 1
-                    else:
-                        detection_rows=int(args.n_detection_rows)
+                if args.n_detection_rows is None or args.n_detection_rows==1:
+                    detection_rows = 1
+                else:
+                    detection_rows=int(args.n_detection_rows)
 
-                    detected_mask = sliding_window_detection_multirow(image = im_origin,
-                                                            detection_rows=detection_rows,
-                                                            modelRing=modelRing,
-                                                            modelCrack=modelCrack,
-                                                            overlap = sliding_window_overlap,
-                                                            cropUpandDown = cropUpandDown)
+                detected_mask = sliding_window_detection_multirow(image = im_origin,
+                                                        detection_rows=detection_rows,
+                                                        modelRing=modelRing,
+                                                        modelCrack=modelCrack,
+                                                        overlap = sliding_window_overlap,
+                                                        cropUpandDown = cropUpandDown)
 
-                    write_run_info("sliding_window_detection_multirow done")
-                    print("sliding_window_detection_multirow done")
-                    detected_mask_rings = detected_mask[:,:,0]
-                    #print("detected_mask_rings", detected_mask_rings.shape)
+                write_run_info("sliding_window_detection_multirow done")
+                print("sliding_window_detection_multirow done")
+                detected_mask_rings = detected_mask[:,:,0]
+                #print("detected_mask_rings", detected_mask_rings.shape)
 
-                    # Define minimum mask overlap if not provided
-                    if args.min_mask_overlap is not None:
-                        min_mask_overlap = int(args.min_mask_overlap)
-                    else:
-                        min_mask_overlap = 3
+                # Define minimum mask overlap if not provided
+                if args.min_mask_overlap is not None:
+                    min_mask_overlap = int(args.min_mask_overlap)
+                else:
+                    min_mask_overlap = 3
 
-                    clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
-                    write_run_info("clean_up_mask done")
-                    print("clean_up_mask done")
-                    #print(clean_contours_rings.shape)
-                    centerlines_rings = find_centerlines(clean_contours_rings, cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
-                    if centerlines_rings is None:
-                        write_run_info("IMAGE WAS NOT FINISHED")
-                        print("IMAGE WAS NOT FINISHED")
-                        continue
+                clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
+                write_run_info("clean_up_mask done")
+                print("clean_up_mask done")
+                #print(clean_contours_rings.shape)
+                centerlines_rings = find_centerlines(clean_contours_rings, cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
+                if centerlines_rings is None:
+                    write_run_info("IMAGE WAS NOT FINISHED")
+                    print("IMAGE WAS NOT FINISHED")
+                    continue
 
-                    write_run_info("find_centerlines done")
-                    print("find_centerlines done")
-                    centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
-                    write_run_info("measure_contours done")
-                    print("measure_contours done")
-                    # If cracks are detected
-                    clean_contours_cracks = None
+                write_run_info("find_centerlines done")
+                print("find_centerlines done")
+                centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
+                write_run_info("measure_contours done")
+                print("measure_contours done")
+                # If cracks are detected
+                clean_contours_cracks = None
+                if args.weightCrack is not None:
+                    detected_mask_cracks = detected_mask[:,:,1]
+                    print("detected_mask_cracks", detected_mask_cracks.shape)
+                    clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
+                    write_run_info("clean_up_mask cracks done")
+                    print("clean_up_mask cracks done")
+
+                write_to_json(image_name=f,cutting_point=cutting_point, run_ID=run_ID,
+                                path_out=path_out, centerlines_rings=centerlines_rings,
+                                clean_contours_rings=clean_contours_rings,
+                                clean_contours_cracks=clean_contours_cracks)
+
+                image_name = f.replace('.tif', '')
+                DPI = float(args.dpi)
+                write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
+
+                if args.print_detections == "yes":
+                    # Ploting lines is moslty for debugging
+                    masked_image = im_origin.astype(np.uint32).copy()
+                    masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
+
                     if args.weightCrack is not None:
-                        detected_mask_cracks = detected_mask[:,:,1]
-                        print("detected_mask_cracks", detected_mask_cracks.shape)
-                        clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
-                        write_run_info("clean_up_mask cracks done")
-                        print("clean_up_mask cracks done")
+                        masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
 
-                    write_to_json(image_name=f,cutting_point=cutting_point, run_ID=run_ID,
-                                    path_out=path_out, centerlines_rings=centerlines_rings,
-                                    clean_contours_rings=clean_contours_rings,
-                                    clean_contours_cracks=clean_contours_cracks)
-
-                    image_name = f.replace('.tif', '')
-                    DPI = float(args.dpi)
-                    write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
-
-                    if args.print_detections == "yes":
-                        # Ploting lines is moslty for debugging
-                        masked_image = im_origin.astype(np.uint32).copy()
-                        masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
-
-                        if args.weightCrack is not None:
-                            masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
-
-                        plot_lines(masked_image, centerlines, measure_points,
-                                    image_name, path_out)
-                    write_run_info("IMAGE FINISHED")
-                    print("IMAGE FINISHED")
-                    image_finished_time = time.time()
-                    image_run_time = image_finished_time - image_start_time
-                    write_run_info(f"Image run time: {image_run_time} s")
-
+                    plot_lines(masked_image, centerlines, measure_points,
+                                image_name, path_out)
+                write_run_info("IMAGE FINISHED")
+                print("IMAGE FINISHED")
+                image_finished_time = time.time()
+                image_run_time = image_finished_time - image_start_time
+                write_run_info(f"Image run time: {image_run_time} s")
+                """
                 except Exception as e:
                     write_run_info(e)
                     write_run_info("IMAGE WAS NOT FINISHED")
                     print(e)
                     print("IMAGE WAS NOT FINISHED")
+                """
 
 
 if __name__ == '__main__':
