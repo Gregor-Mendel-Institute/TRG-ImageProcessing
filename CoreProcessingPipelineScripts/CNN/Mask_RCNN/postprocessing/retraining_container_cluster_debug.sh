@@ -8,10 +8,11 @@
 #SBATCH --time=0-04:00:00
 #SBATCH --output=retraining_container_debug.stdout
 
-ml load anaconda3/2019.03
-source activate ~/.conda/envs/TreeRingCNN
+ml load build-env/f2022 # required for anaconda3/2022.05
+ml load anaconda3/2022.05
+source activate ~/.conda/envs/TRGTF2.12P3.11GPUtesting
 
-time ~/.conda/envs/TreeRingCNN/bin/python3 \
+time ~/.conda/envs/TRGTF2.12P3.11GPUtesting/bin/python3 \
 postprocessingCracksRings.py \
 --dataset=../training/sample_dataset  \
 --weightRing=/groups/swarts/lab/ImageProcessingPipeline/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/treeringcrackscomb2_onlyring20210121T1457/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 \
