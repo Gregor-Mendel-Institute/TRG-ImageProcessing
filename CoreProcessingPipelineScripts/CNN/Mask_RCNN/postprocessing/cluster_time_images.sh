@@ -14,8 +14,8 @@ source activate ~/.conda/envs/TRGTF2.12P3.11GPUtesting
 
 ~/.conda/envs/TRGTF2.12P3.11GPUtesting/bin/python3 postprocessingCracksRings.py \
   --dpi=13039 \
-  --run_ID=Inf_time_test_tf2 \
+  --run_ID=Inf_time_test_tf2_EagerFalse_noPNG \
   --input=/groups/swarts/lab/DendroImages/CNN_test/AlexPOS/MEECNNPaperTreeringSupplementalInfo/Tiffs \
   --weightRing=/groups/swarts/lab/ImageProcessingPipeline/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/treeringcrackscomb2_onlyring20210121T1457/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 \
   --output_folder=../output \
-  --print_detections=yes \
+  --print_detections=no \

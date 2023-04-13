@@ -145,6 +145,9 @@ class TreeRingConfig(Config):
     # Gradient norm clipping. Default 5.0. Some blog recommanded 10 with LR = 0.01
     GRADIENT_CLIP_NORM = 5.0
 
+    # TF2 feature - now you can run the model interactively if True
+    RUN_EAGERLY = False
+
 ############################################################
 #  Dataset
 ############################################################
