@@ -146,7 +146,7 @@ class TreeRingConfig(Config):
     GRADIENT_CLIP_NORM = 5.0
 
     # TF2 feature - now you can run the model interactively if True
-    RUN_EAGERLY = False
+    RUN_EAGERLY = True
 
 ############################################################
 #  Dataset
