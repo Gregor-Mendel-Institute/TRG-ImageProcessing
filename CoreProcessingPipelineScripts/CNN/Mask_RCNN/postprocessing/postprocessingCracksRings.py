@@ -939,7 +939,7 @@ def main():
     # Detection
     else:
         print("Starting inference mode")
-        # Check compulsary argument and print which are missing
+        # Check compulsory argument and print which are missing
         print('Checking compulsory arguments')
         if args.input==None:
             print("Compulsory argument --input is missing. Specify the path to image file of folder")
@@ -981,7 +981,8 @@ def main():
         json_list = []
         for f in os.listdir(path_out):
             if f.endswith('.json'):
-                json_name = f.replace('.json', '')
+                json_name = os.path.splitext(f)[0]
+                #json_name = f.replace('.json', '')
                 json_list.append(json_name)
 
         input = args.input
@@ -1000,13 +1001,16 @@ def main():
         #print("got until here", input_list, input_path)
 
         for f in input_list:
-            if f.endswith('.tif') and f.replace('.tif', '') in json_list:
+            supported_extensions = ['.tif', '.tiff']
+            file_extension = os.path.splitext(f)[1]
+
+            if file_extension in supported_extensions and os.path.splitext(f)[0] in json_list:
                 # print image name first to keep the output consistent
                 print("Processing image: {}".format(f))
                 write_run_info("Processing image: {}".format(f))
                 print("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
                 write_run_info("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
-            elif f.endswith('.tif') and f.replace('.tif', '') not in json_list:
+            elif file_extension in supported_extensions and os.path.splitext(f)[0] not in json_list:
                 # try: ########commented only for debugging
                 image_start_time = time.time()
                 print("Processing image: {}".format(f))

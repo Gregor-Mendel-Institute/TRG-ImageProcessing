@@ -19,4 +19,4 @@ time ~/.conda/envs/TRGTF2.12P3.11GPUtesting/bin/python3 \
 postprocessingCracksRings.py \
 --dataset=../training/sample_dataset  \
 --weightRing=/groups/swarts/lab/ImageProcessingPipeline/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/treeringcrackscomb2_onlyring20210121T1457/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 \
---start_new=True
+--start_new=True \
