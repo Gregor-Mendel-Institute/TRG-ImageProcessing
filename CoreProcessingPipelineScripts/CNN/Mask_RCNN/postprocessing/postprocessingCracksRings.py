@@ -71,6 +71,9 @@ parser.add_argument('--logs', required=False,
                     metavar="/path/to/logs/",
                     help='Logs and checkpoints directory (default="./logs")')
 
+parser.add_argument('--start_new', required=False,
+                    default="True",
+                    help='If True retraining will start from the epoch 0 else continue from provided weight number')
 
 args = parser.parse_args()
 
@@ -931,7 +934,7 @@ def main():
         prepareAnnotations(dataset=args.dataset, overwrite_existing=False)
 
         # Start retraining
-        retraining(weights=args.weightRing, dataset=args.dataset, logs=args.logs)
+        retraining(weights=args.weightRing, dataset=args.dataset, logs=args.logs, start_new=args.start_new)
 
     # Detection
     else:
