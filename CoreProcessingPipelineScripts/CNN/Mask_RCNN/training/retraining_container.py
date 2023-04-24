@@ -44,7 +44,7 @@ class TreeringConfig(Config):
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU. V100 should have 32gb memory, seems can manage 6 images 1024x1024
-    IMAGES_PER_GPU = 4
+    IMAGES_PER_GPU = 2
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 1  # Background + ring
@@ -297,7 +297,8 @@ def train(model, dataset):
     print("Train all")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
-                epochs=200,
+                #epochs=200,
+                epochs=20, # reduced for debuging
                 #augmentation=augmentation,
                 custom_callbacks="only_best",
                 layers='all') # 'heads' or 'all'
