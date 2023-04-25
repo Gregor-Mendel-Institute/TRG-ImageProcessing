@@ -724,11 +724,11 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
             points = measure_points[i]
 
             xc,yc = centerlines.geoms[i].coords.xy
-            plt.plot(xc,yc,'g')
+            plt.plot(xc,yc,'g', linewidth=3)
 
             xp, yp = points[0].coords.xy
             xp1, yp1 = points[1].coords.xy
-            plt.plot([xp, xp1], [yp, yp1], 'r')
+            plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=3)
 
         xc,yc = centerlines.geoms[-1].coords.xy
         plt.plot(xc,yc,'g')
@@ -747,12 +747,12 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
                 #print('loop', i)
 
                 xc,yc = centerlines1.geoms[i].coords.xy
-                plt.plot(xc,yc,color[l])
+                plt.plot(xc,yc,color[l], linewidth=3)
 
                 points = measure_points1[i]
                 xp, yp = points[0].coords.xy
                 xp1, yp1 = points[1].coords.xy
-                plt.plot([xp, xp1], [yp, yp1], 'r')
+                plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=3)
 
             xc,yc = centerlines1.geoms[-1].coords.xy # To print the last point
             plt.plot(xc,yc, color[l])
