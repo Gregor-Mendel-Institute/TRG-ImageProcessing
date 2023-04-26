@@ -703,15 +703,18 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
     #print('imgheight, imgwidth', imgheight, imgwidth)
     plot_dpi = 100
 
+
     if imgwidth < 30000:
         plt.figure(figsize = (imgwidth/plot_dpi, 2*(imgheight/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
+        linewidth = (imgheight/100)*2   # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
     else: # adjust image size if it`s exceeding 30000 pixels to 30000
         resized_height = imgheight*(30000/imgwidth)
         plt.figure(figsize = (30000/plot_dpi, 2*(resized_height/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
+        linewidth = (resized_height/100)*2  # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
 
 
     # Plot the lines to the image
@@ -724,14 +727,14 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
             points = measure_points[i]
 
             xc,yc = centerlines.geoms[i].coords.xy
-            plt.plot(xc,yc,'g', linewidth=3)
+            plt.plot(xc,yc,'g', linewidth=linewidth)
 
             xp, yp = points[0].coords.xy
             xp1, yp1 = points[1].coords.xy
-            plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=3)
+            plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
 
         xc,yc = centerlines.geoms[-1].coords.xy
-        plt.plot(xc,yc,'g')
+        plt.plot(xc,yc,'g', linewidth=linewidth)
         #plt.show()
 
 
@@ -747,15 +750,15 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
                 #print('loop', i)
 
                 xc,yc = centerlines1.geoms[i].coords.xy
-                plt.plot(xc,yc,color[l], linewidth=3)
+                plt.plot(xc,yc,color[l], linewidth=linewidth)
 
                 points = measure_points1[i]
                 xp, yp = points[0].coords.xy
                 xp1, yp1 = points[1].coords.xy
-                plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=3)
+                plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
 
             xc,yc = centerlines1.geoms[-1].coords.xy # To print the last point
-            plt.plot(xc,yc, color[l])
+            plt.plot(xc,yc, color[l], linewidth=linewidth)
         #plt.show()
 
     plt.savefig(os.path.join(export_path, f), bbox_inches = 'tight', pad_inches = 0)

@@ -17,7 +17,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib
 
 ~/.conda/envs/TRGTF2.12P3.11GPUtesting/bin/python3 postprocessingCracksRings.py \
   --dpi=13039 \
-  --run_ID=TRACE_multispec_Short \
+  --run_ID=TRACE_multispec_Short_new_line \
   --input=/groups/swarts/lab/TRACE_2023_posterData/shortExamples \
   --weightRing=/groups/swarts/lab/ImageProcessingPipeline/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/treeringcrackscomb2_onlyring20210121T1457/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 \
   --output_folder=/groups/swarts/lab/TRACE_2023_posterData/CNN_output \
