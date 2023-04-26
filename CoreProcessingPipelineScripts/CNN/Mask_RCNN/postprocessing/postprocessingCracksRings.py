@@ -708,13 +708,13 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
         plt.figure(figsize = (imgwidth/plot_dpi, 2*(imgheight/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
-        linewidth = (imgheight/1000)*2   # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
+        linewidth = (imgheight/1000)*5   # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
     else: # adjust image size if it`s exceeding 30000 pixels to 30000
         resized_height = imgheight*(30000/imgwidth)
         plt.figure(figsize = (30000/plot_dpi, 2*(resized_height/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
-        linewidth = (resized_height/1000)*2  # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
+        linewidth = (resized_height/1000)*5  # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
 
 
     # Plot the lines to the image
