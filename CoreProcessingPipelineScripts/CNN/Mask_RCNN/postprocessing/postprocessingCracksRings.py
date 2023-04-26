@@ -811,7 +811,7 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
         #print("coords",type(coords))
         out_json[image_name]['predictions'][json_names[v]]=coords
 
-    output = os.path.join(path_out, os.path.splitext(image_name)[0], '.json')
+    output = os.path.join(path_out, os.path.splitext(image_name)[0] + '.json')
     with open(output,'w') as outfile:
         json.dump(out_json, outfile, indent=4)
 #######################################################################
@@ -1090,12 +1090,12 @@ def main():
                         write_run_info("clean_up_mask cracks done")
                         print("clean_up_mask cracks done")
 
-                    write_to_json(image_name=f,cutting_point=cutting_point, run_ID=run_ID,
+                    write_to_json(image_name=f, cutting_point=cutting_point, run_ID=run_ID,
                                     path_out=path_out, centerlines_rings=centerlines_rings,
                                     clean_contours_rings=clean_contours_rings,
                                     clean_contours_cracks=clean_contours_cracks)
 
-                    image_name = f.replace('.tif', '')
+                    image_name = os.path.splitext(f)[0]
                     DPI = float(args.dpi)
                     write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
 
