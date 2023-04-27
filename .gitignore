@@ -3,13 +3,13 @@ data
 datasets
 RUNID
 model_eval
+Quercus_retraining
 laptop_debug.sh
 cluster_debug.sh
 laptop_docker_test.sh
 laptop_singularity_test.sh
 trg-imageprocessing_master.sif
 image-processing_master.sif
-
 
 Dockerfile_with_Cracks
 Docker_commands

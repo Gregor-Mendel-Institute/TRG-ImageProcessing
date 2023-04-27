@@ -72,7 +72,7 @@ parser.add_argument('--logs', required=False,
                     help='Logs and checkpoints directory (default="./logs")')
 
 parser.add_argument('--start_new', required=False,
-                    default="False",
+                    default="True",
                     help='If True retraining wil start from the beginning else continue from provided weight')
 
 
@@ -808,7 +808,7 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
         #print("coords",type(coords))
         out_json[image_name]['predictions'][json_names[v]]=coords
 
-    output = os.path.join(path_out, image_name.replace('.tif','.json'))
+    output = os.path.join(path_out, os.path.splitext(image_name)[0] + '.json')
     with open(output,'w') as outfile:
         json.dump(out_json, outfile, indent=4)
 #######################################################################
@@ -978,6 +978,7 @@ def main():
         json_list = []
         for f in os.listdir(path_out):
             if f.endswith('.json'):
+                json_name = os.path.splitext(f)[0]
                 json_name = f.replace('.json', '')
                 json_list.append(json_name)
 
@@ -997,13 +998,16 @@ def main():
         #print("got until here", input_list, input_path)
 
         for f in input_list:
-            if f.endswith('.tif') and f.replace('.tif', '') in json_list:
+            supported_extensions = ['.tif', '.tiff']
+            file_extension = os.path.splitext(f)[1]
+
+            if file_extension in supported_extensions and os.path.splitext(f)[0] in json_list:
                 # print image name first to keep the output consistent
                 print("Processing image: {}".format(f))
                 write_run_info("Processing image: {}".format(f))
                 print("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
                 write_run_info("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
-            elif f.endswith('.tif') and f.replace('.tif', '') not in json_list:
+            elif file_extension in supported_extensions and os.path.splitext(f)[0] not in json_list:
                 try:
                     image_start_time = time.time()
                     print("Processing image: {}".format(f))
@@ -1088,7 +1092,7 @@ def main():
                                     clean_contours_rings=clean_contours_rings,
                                     clean_contours_cracks=clean_contours_cracks)
 
-                    image_name = f.replace('.tif', '')
+                    image_name = os.path.splitext(f)[0]
                     DPI = float(args.dpi)
                     write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
 
