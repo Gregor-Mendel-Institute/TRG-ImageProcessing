@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --partition=g
 #SBATCH --gres=gpu:RTX:1
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 #SBATCH --qos=medium
 #SBATCH --time=00-20:00:00
 #SBATCH --output=TRACE_QuercusWeights.stdout
