@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --partition=g
 #SBATCH --gres=gpu:RTX:1
-#SBATCH --mem=200G
+#SBATCH --mem=128G
 #SBATCH --qos=medium
 #SBATCH --time=00-10:00:00
 #SBATCH --output=TRACE_multispec.stdout
