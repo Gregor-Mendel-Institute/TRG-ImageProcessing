@@ -17,9 +17,9 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib
 
 ~/.conda/envs/TRGTF2.12P3.11GPUtesting/bin/python3 postprocessingCracksRings.py \
   --dpi=13039 \
-  --run_ID=TRACE_QuercusWeight_0310 \
+  --run_ID=TRACE_QuercusWeight_LR0001 \
   --input=/groups/swarts/lab/TRACE_2023_posterData/TRACE_multispec_dendroelev_adjusted/Quercus_only \
-  --weightRing=/groups/swarts/user/miroslav.polacek/TRG_development0/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing/logs/retrainedrings20230428T1728/mask_rcnn_retrainedrings_0310.h5 \
+  --weightRing=/groups/swarts/user/miroslav.polacek/TRG_development0/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing/logs/retrainedrings20230501T0957/mask_rcnn_retrainedrings_0687.h5 \
   --output_folder=/groups/swarts/lab/TRACE_2023_posterData/CNN_output \
   --print_detections=yes \
 
