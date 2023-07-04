@@ -9,74 +9,6 @@ Export JSON and POS files.
 Print the image with mask over it.
 """
 
-#######################################################################
-# Arguments
-#######################################################################
-import argparse
-
-# Parse command line arguments
-parser = argparse.ArgumentParser(
-        description='Segmentation of whole core')
-
-## Compulsory arguments
-parser.add_argument('--dpi', required=False,
-                    help="DPI value for the image")
-
-parser.add_argument('--run_ID', required=False,
-                    help="Run ID")
-
-parser.add_argument('--input', required=False,
-                    metavar="/path/to/image/",
-                    help="Path to image file of folder")
-
-parser.add_argument('--weightRing', required=False,
-                    metavar="/path/to/weight/file",
-                    help="Path to ring weight file")
-
-parser.add_argument('--output_folder', required=False,
-                    metavar="/path/to/out/folder",
-                    help="Path to output folder")
-
-## Optional arguments
-parser.add_argument('--weightCrack', required=False,
-                    metavar="/path/to/weight/file",
-                    help="Path to crack weight file")
-
-parser.add_argument('--cropUpandDown', required=False,
-                    help="Fraction of image hight to crop away on both sides")
-
-parser.add_argument('--sliding_window_overlap', required=False,
-                    help="Proportion of sliding frame that should overlap")
-
-parser.add_argument('--print_detections', required=False,
-                    help="yes, if printing is desired")
-
-parser.add_argument('--min_mask_overlap', required=False,
-                    help="Minimum of detected masks to consider good detection")
-
-parser.add_argument('--n_detection_rows', required=False,
-                    help="Minimum of detected masks to consider good detection")
-
-parser.add_argument('--logfile', required=False,
-                    metavar="logfile",
-                    help="logfile name to put in output dir. Prepends other info (used to be 'CNN_')")
-
-## Additional retrainig arguments
-parser.add_argument('--dataset', required=False,
-                    metavar="/path/to/treering/dataset/",
-                    help='Directory of the Treering dataset')
-
-parser.add_argument('--logs', required=False,
-                    default="./logs",
-                    metavar="/path/to/logs/",
-                    help='Logs and checkpoints directory (default="./logs")')
-
-parser.add_argument('--start_new', required=False,
-                    default="True",
-                    help='If True retraining wil start from the beginning else continue from provided weight')
-
-
-args = parser.parse_args()
 
 #######################################################################
 # Imports and prepare model
@@ -87,6 +19,7 @@ import math
 import cv2
 import json
 import time
+import argparse
 import skimage
 import skimage.io
 import pickle
@@ -112,46 +45,76 @@ from training.retraining_container import retraining
 from training.prepareAnnotations import prepareAnnotations
 
 
-MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
-# Prepare ring model
-configRing = TreeRing_onlyRing.TreeRingConfig()
-class InferenceConfig(configRing.__class__):
-    # Run detection on one image at a time
-    GPU_COUNT = 1
-    IMAGES_PER_GPU = 1
 
-configRing = InferenceConfig()
-configRing.display()
-# Create model in inference mode
-modelRing = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configRing)
-# Load weights
-weights_path_Ring = args.weightRing
-print("Loading ring weights ")
-modelRing.load_weights(weights_path_Ring, by_name=True)
+#######################################################################
+# Arguments
+#######################################################################
+def get_args():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description='Segmentation of whole core')
 
-# Load cracks model only if cracks weights are provided
-if args.weightCrack is not None:
-    # Prepare crack model
-    configCrack = TreeRing_onlyCracks.TreeRingConfig()
-    class InferenceConfig(configCrack.__class__):
-        # Run detection on one image at a time
-        GPU_COUNT = 1
-        IMAGES_PER_GPU = 1
+    ## Compulsory arguments
+    parser.add_argument('--dpi', required=False,
+                        help="DPI value for the image")
 
-    configCrack = InferenceConfig()
-    configCrack.display()
-    # Create model in inference mode
-    modelCrack = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configCrack)
-    # Load weights
-    weights_path_Crack = args.weightCrack
+    parser.add_argument('--run_ID', required=False,
+                        help="Run ID")
 
-    print("Loading crack weights ")
-    modelCrack.load_weights(weights_path_Crack, by_name=True)
-else:
-    modelCrack = None
-# Define class names
-class_names = ['BG', 'ring']
+    parser.add_argument('--input', required=False,
+                        metavar="/path/to/image/",
+                        help="Path to image file of folder")
+
+    parser.add_argument('--weightRing', required=False,
+                        metavar="/path/to/weight/file",
+                        help="Path to ring weight file")
+
+    parser.add_argument('--output_folder', required=False,
+                        metavar="/path/to/out/folder",
+                        help="Path to output folder")
+
+    ## Optional arguments
+    parser.add_argument('--weightCrack', required=False,
+                        metavar="/path/to/weight/file",
+                        help="Path to crack weight file")
+
+    parser.add_argument('--cropUpandDown', required=False,
+                        help="Fraction of image hight to crop away on both sides")
+
+    parser.add_argument('--sliding_window_overlap', required=False,
+                        help="Proportion of sliding frame that should overlap")
+
+    parser.add_argument('--print_detections', required=False,
+                        help="yes, if printing is desired")
+
+    parser.add_argument('--min_mask_overlap', required=False,
+                        help="Minimum of detected masks to consider good detection")
+
+    parser.add_argument('--n_detection_rows', required=False,
+                        help="Minimum of detected masks to consider good detection")
+
+    parser.add_argument('--logfile', required=False,
+                        metavar="logfile",
+                        help="logfile name to put in output dir. Prepends other info (used to be 'CNN_')")
+
+    ## Additional retrainig arguments
+    parser.add_argument('--dataset', required=False,
+                        metavar="/path/to/treering/dataset/",
+                        help='Directory of the Treering dataset')
+
+    parser.add_argument('--logs', required=False,
+                        default="./logs",
+                        metavar="/path/to/logs/",
+                        help='Logs and checkpoints directory (default="./logs")')
+
+    parser.add_argument('--start_new', required=False,
+                        default="True",
+                        help='If True retraining wil start from the beginning else continue from provided weight')
+
+    args = parser.parse_args()
+    return args
+
 
 #######################################################################
 # apply mask to an original image
@@ -183,22 +146,24 @@ def apply_mask(image, mask, alpha=0.5):
 # Should find the log file and add data to it
 def write_run_info(string):
     # Get name of the log file in the output dir
-    out_dir = os.path.join(args.output_folder, args.run_ID)
-    run_ID = args.run_ID
-    log_files = []
-    for f in os.listdir(out_dir):
-        if f.startswith(str(args.logfile) + run_ID):
-            path_f = os.path.join(out_dir, f)
-            log_files.append(path_f)
+    try: # in a bit of desperation
+        out_dir = os.path.join(args.output_folder, args.run_ID)
+        run_ID = args.run_ID
+        log_files = []
+        for f in os.listdir(out_dir):
+            if f.startswith(str(args.logfile) + run_ID):
+                path_f = os.path.join(out_dir, f)
+                log_files.append(path_f)
 
-    # Sort files by creation times
-    log_files.sort(key=os.path.getctime)
-    #print("sorted log files list", log_files)
+        # Sort files by creation times
+        log_files.sort(key=os.path.getctime)
+        #print("sorted log files list", log_files)
 
-    log_file_name = log_files[-1]
-    with open(log_file_name,"a") as f:
-        print(string, file=f)
-
+        log_file_name = log_files[-1]
+        with open(log_file_name,"a") as f:
+            print(string, file=f)
+    except:
+        pass
 ############################################################################################################
 # Sliding window detection with rotation of each part of image by 90 and 45 degrees and combining the output
 ############################################################################################################
@@ -920,7 +885,54 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI, path_o
 # Run detection on the forlder or images
 #######################################################################
 def main():
-    # Retraining
+    # get the arguments
+    args = get_args()
+
+    # PREPARE THE MODEL
+    MODEL_DIR = os.path.join(ROOT_DIR, "logs")
+
+    # Prepare ring model
+    configRing = TreeRing_onlyRing.TreeRingConfig()
+
+    class InferenceConfig(configRing.__class__):
+        # Run detection on one image at a time
+        GPU_COUNT = 1
+        IMAGES_PER_GPU = 1
+
+    configRing = InferenceConfig()
+    configRing.display()
+    # Create model in inference mode
+    modelRing = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configRing)
+    # Load weights
+    weights_path_Ring = args.weightRing
+    print("Loading ring weights ")
+    modelRing.load_weights(weights_path_Ring, by_name=True)
+
+    # Load cracks model only if cracks weights are provided
+    if args.weightCrack is not None:
+        # Prepare crack model
+        configCrack = TreeRing_onlyCracks.TreeRingConfig()
+
+        class InferenceConfig(configCrack.__class__):
+            # Run detection on one image at a time
+            GPU_COUNT = 1
+            IMAGES_PER_GPU = 1
+
+        configCrack = InferenceConfig()
+        configCrack.display()
+        # Create model in inference mode
+        modelCrack = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configCrack)
+        # Load weights
+        weights_path_Crack = args.weightCrack
+
+        print("Loading crack weights ")
+        modelCrack.load_weights(weights_path_Crack, by_name=True)
+    else:
+        modelCrack = None
+    # Define class names
+    class_names = ['BG', 'ring']
+
+    # RETRAINING
     if args.dataset is not None:
         print("Starting retraining mode")
         # Check compulsary argument and print which are missing
@@ -933,7 +945,7 @@ def main():
         # Start retraining
         retraining(weights=args.weightRing, dataset=args.dataset, logs=args.logs, start_new=args.start_new)
 
-    # Detection
+    # DETECTION
     else:
         print("Starting inference mode")
         # Check compulsary argument and print which are missing
