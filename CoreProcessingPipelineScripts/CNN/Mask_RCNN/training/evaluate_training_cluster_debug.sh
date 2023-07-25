@@ -5,7 +5,7 @@
 #SBATCH --partition=g
 #SBATCH --mem=112G
 #SBATCH --qos=medium
-#SBATCH --time=0-08:00:00
+#SBATCH --time=0-20:00:00
 #SBATCH --output=evaluate_training_debug.stdout
 
 ml load anaconda3/2019.03

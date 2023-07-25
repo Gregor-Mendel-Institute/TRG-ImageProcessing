@@ -43,7 +43,7 @@ config = TreeRing_onlyRing.TreeRingConfig()
 class InferenceConfig(config.__class__):
     # Run detection on one image at a time
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 4
+    IMAGES_PER_GPU = 1
 
 config = InferenceConfig()
 config.display()
