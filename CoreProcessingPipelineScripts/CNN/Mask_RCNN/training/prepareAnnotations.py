@@ -85,14 +85,16 @@ def annottoimages(image_folder, annotation_file):
     # save the annotation json
     dict_out = {}
     dir_list = os.listdir(image_folder)
-    im_list = [f for f in dir_list if f.endswith('.tif')]
+    supported_extensions = ['.tif', '.tiff']
+    im_list = [f for f in dir_list if os.path.splitext(f)[1] in supported_extensions]
+
 
     for image_name in im_list:
-        try:
-            annotations = annotation_file[image_name]
-            dict_out[image_name] = annotations
-        except:
-            print("There are no annotations for image", image_name)
+            try:
+                annotations = annotation_file[image_name]
+                dict_out[image_name] = annotations
+            except:
+                print("There are no annotations for image", image_name)
 
     # Save the correct subset of annotations as a json
     JSON_OUT_PATH = os.path.join(image_folder, "via_region_data_transformed.json")

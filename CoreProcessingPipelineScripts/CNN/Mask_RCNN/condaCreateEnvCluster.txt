@@ -19,3 +19,25 @@ conda install -c conda-forge cudatoolkit=11.7.0
 pip install nvidia-cudnn-cu11==8.6.0.163 tensorflow==2.12.*
 
 pip install --no-dependencies imgaug
+
+
+# another attempt to install with all correct dependancies
+
+ml load build-env/f2022 # required for anaconda
+ml load anaconda3/2023.03
+
+conda create -n TRGTF2.12P3.11GPUNEW python=3.11 opencv scikit-image shapely pandas matplotlib lxml
+
+conda activate TRGTF2.12P3.11GPUNEW
+
+# as instructed from tensor flow web page
+
+conda install -c conda-forge cudatoolkit=11.8.0
+
+python3 -m pip install nvidia-cudnn-cu11==8.6.0.163 tensorflow==2.12.*
+
+pip install --no-dependencies imgaug
+
+mkdir -p $CONDA_PREFIX/etc/conda/activate.d
+echo 'CUDNN_PATH=$(dirname $(python -c "import nvidia.cudnn;print(nvidia.cudnn.__file__)"))' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+echo 'export LD_LIBRARY_PATH=$CONDA_PREFIX/lib/:$CUDNN_PATH/lib:$LD_LIBRARY_PATH' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
