@@ -8,7 +8,7 @@
 #SBATCH --time=00-15:00:00
 #SBATCH --output=NewEnv_time_test.stdout
 
-ml load build-env/f2022 # required for anaconda3/2022.05
+ml load build-env/f2022 # required for anaconda3/2023.03
 ml load anaconda3/2023.03
 source activate ~/.conda/envs/TRGTF2.12P3.11GPUNEW
 
@@ -18,7 +18,7 @@ source activate ~/.conda/envs/TRGTF2.12P3.11GPUNEW
 
 ~/.conda/envs/TRGTF2.12P3.11GPUtesting/bin/python3 postprocessingCracksRings.py \
   --dpi=13039 \
-  --run_ID=Inf_time_test_tf2_EagerTrue_noPNG_withGPU \
+  --run_ID=Inf_time_test_tf2_NewEnv \
   --input=/groups/swarts/lab/DendroImages/CNN_test/AlexPOS/MEECNNPaperTreeringSupplementalInfo/Tiffs \
   --weightRing=/groups/swarts/lab/ImageProcessingPipeline/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/treeringcrackscomb2_onlyring20210121T1457/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 \
   --output_folder=../output \
