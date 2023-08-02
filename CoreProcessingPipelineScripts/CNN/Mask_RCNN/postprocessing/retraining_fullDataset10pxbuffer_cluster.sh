@@ -4,9 +4,9 @@
 #SBATCH --gres=gpu:RTX:1
 #SBATCH --partition=g
 #SBATCH --mem=112G
-#SBATCH --qos=long
-#SBATCH --time=4-00:00:00
-#SBATCH --output=retraining_10pxBuffer.stdout
+#SBATCH --qos=short
+#SBATCH --time=0-04:00:00
+#SBATCH --output=retraining_10pxBufferEagerFalse.stdout
 
 ml load build-env/f2022 # required for anaconda3/2022.05
 ml load anaconda3/2023.03
