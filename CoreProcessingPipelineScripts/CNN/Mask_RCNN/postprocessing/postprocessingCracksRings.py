@@ -44,9 +44,6 @@ from DetectionConfig import TreeRing_onlyCracks
 from training.retraining_container import retraining
 from training.prepareAnnotations import prepareAnnotations
 
-
-
-
 #######################################################################
 # Arguments
 #######################################################################
@@ -114,8 +111,6 @@ def get_args():
 
     args = parser.parse_args()
     return args
-
-
 #######################################################################
 # apply mask to an original image
 #######################################################################

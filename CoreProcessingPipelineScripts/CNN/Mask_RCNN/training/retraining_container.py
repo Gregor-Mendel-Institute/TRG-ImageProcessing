@@ -273,7 +273,7 @@ def train(model, dataset):
 
     # Image augmentation
     # http://imgaug.readthedocs.io/en/latest/source/augmenters.html
-    """
+
     augmentation = iaa.SomeOf((1, 5), [
             iaa.Fliplr(0.5),
             iaa.Flipud(0.5),
@@ -286,15 +286,15 @@ def train(model, dataset):
             iaa.Multiply((0.5, 1.2)), #changeing brightness
             iaa.Grayscale(alpha=(0.0, 0.9))
         ])
-    """
+
     # *** This training schedule is an example. Update to your needs ***
     # As it is only fine tuning I think training all layers should be fine
 
     print("Train all")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE/10,
-                epochs=20,
-                #augmentation=augmentation,
+                epochs=500,
+                augmentation=augmentation,
                 custom_callbacks="only_best",
                 layers='all') # 'heads' or 'all'
 
