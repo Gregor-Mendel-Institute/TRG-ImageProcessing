@@ -14,5 +14,5 @@ source activate ~/.conda/envs/TreeRingCNN
 time ~/.conda/envs/TreeRingCNN/bin/python3 \
 evaluate_weights.py \
 --dataset=/groups/swarts/user/miroslav.polacek/FullSpruceDatasetWithCVAT10pxBuffer  \
---train_log=../postprocessing/logs/retrainedrings20230802T1935 \
+--train_log=../postprocessing/logs/retrainedrings20230810T0733 \
 
