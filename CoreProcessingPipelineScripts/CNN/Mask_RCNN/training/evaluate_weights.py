@@ -532,7 +532,7 @@ def evaluate_training(model, training_log, dataset):
     dataset_val.prepare()
 
     # list weights names, .h5 to check
-    weight_list_raw = os.listdir(training_log)
+    weight_list_raw = sorted(os.listdir(training_log), reverse=True)
     weight_list = []
     for file_name in weight_list_raw:
         if file_name.endswith(".h5"):
