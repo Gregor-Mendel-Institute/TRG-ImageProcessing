@@ -277,7 +277,7 @@ def train(model, dataset):
     augmentation = iaa.SomeOf((1, 5), [
             iaa.Fliplr(0.5),
             iaa.Flipud(0.5),
-            iaa.Affine(rotate=90), # new to force more horizontal lines
+            iaa.Affine(rotate=90), # to force more horizontal lines
             iaa.Affine(rotate=(-90, 90), mode="edge"), # mode= "edge" ads straight lines in created empty space
             #for this do one of
             iaa.OneOf([iaa.CropAndPad(percent=(-0.3, 0.05), sample_independently=False, pad_mode="edge"),
@@ -292,8 +292,8 @@ def train(model, dataset):
 
     print("Train all")
     model.train(dataset_train, dataset_val,
-                learning_rate=config.LEARNING_RATE/10,
-                epochs=500,
+                learning_rate=config.LEARNING_RATE,
+                epochs=1000,
                 augmentation=augmentation,
                 custom_callbacks="only_best",
                 layers='all') # 'heads' or 'all'

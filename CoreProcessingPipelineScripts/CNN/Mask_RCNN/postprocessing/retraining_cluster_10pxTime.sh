@@ -4,9 +4,9 @@
 #SBATCH --gres=gpu:RTX:1
 #SBATCH --partition=g
 #SBATCH --mem=112G
-#SBATCH --qos=long
-#SBATCH --time=4-00:00:00
-#SBATCH --output=retraining_10pxReal.stdout
+#SBATCH --qos=short
+#SBATCH --time=0-05:00:00
+#SBATCH --output=retraining_10pxLR001_E1000.stdout
 
 ml load anaconda3/2019.03
 source activate ~/.conda/envs/TreeRingCNN
