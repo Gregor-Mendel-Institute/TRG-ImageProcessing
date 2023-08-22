@@ -4,7 +4,7 @@
 #SBATCH --gres=gpu:RTX:1
 #SBATCH --partition=g
 #SBATCH --mem=112G
-#SBATCH --qos=short
+#SBATCH --qos=medium
 #SBATCH --time=0-10:00:00
 #SBATCH --output=retraining_10pxLR0001_E1000_part2.stdout
 
