@@ -292,7 +292,7 @@ def train(model, dataset):
 
     print("Train all")
     model.train(dataset_train, dataset_val,
-                learning_rate=config.LEARNING_RATE,
+                learning_rate=config.LEARNING_RATE/10,
                 epochs=1000,
                 augmentation=augmentation,
                 custom_callbacks="only_best",
