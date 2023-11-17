@@ -31,7 +31,7 @@ def polylinetopolygon(polyline_str, width, height, buffer=30):
 
     return list(x), list(y)
 
-def pocessCVATxml(dataset):
+def processCVATxml(dataset):
     buffer = 30
     newJ = {}
     annotated_images = []
@@ -114,7 +114,7 @@ def prepareAnnotations(dataset, overwrite_existing=False):
 
     folder_paths =[TRAIN_PATH, VAL_PATH]
     # process and unite all xml files and prepare json with all annotations
-    all_annotations, annotated_images = pocessCVATxml(dataset=dataset)
+    all_annotations, annotated_images = processCVATxml(dataset=dataset)
 
     # prepare annotations
     for folder in folder_paths:
