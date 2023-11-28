@@ -665,11 +665,13 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
         plt.figure(figsize = (imgwidth/plot_dpi, 2*(imgheight/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
+        linewidth = (imgheight/1000)*5   # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
     else: # adjust image size if it`s exceeding 30000 pixels to 30000
         resized_height = imgheight*(30000/imgwidth)
         plt.figure(figsize = (30000/plot_dpi, 2*(resized_height/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
+        linewidth = (resized_height/1000)*5  # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
 
 
     # Plot the lines to the image
@@ -682,14 +684,14 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
             points = measure_points[i]
 
             xc,yc = centerlines[i].coords.xy
-            plt.plot(xc,yc,'g')
+            plt.plot(xc,yc,'g', linewidth=linewidth)
 
             xp, yp = points[0].coords.xy
             xp1, yp1 = points[1].coords.xy
-            plt.plot([xp, xp1], [yp, yp1], 'r')
+            plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
 
         xc,yc = centerlines[-1].coords.xy
-        plt.plot(xc,yc,'g')
+        plt.plot(xc,yc,'g', linewidth=linewidth)
         #plt.show()
 
 
@@ -705,15 +707,15 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
                 #print('loop', i)
 
                 xc,yc = centerlines1[i].coords.xy
-                plt.plot(xc,yc,color[l])
+                plt.plot(xc,yc,color[l], linewidth=linewidth)
 
                 points = measure_points1[i]
                 xp, yp = points[0].coords.xy
                 xp1, yp1 = points[1].coords.xy
-                plt.plot([xp, xp1], [yp, yp1], 'r')
+                plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
 
             xc,yc = centerlines1[-1].coords.xy # To print the last point
-            plt.plot(xc,yc, color[l])
+            plt.plot(xc,yc, color[l], linewidth=linewidth)
         #plt.show()
 
     plt.savefig(os.path.join(export_path, f), bbox_inches = 'tight', pad_inches = 0)
@@ -778,7 +780,7 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI, path_o
     print("Writing .pos file")
     write_run_info("Writing .pos file")
     # Check if it is one or two parts in measure points
-    # If two adjust naming. Nothink for the normal one and add "x" at the end for the second part
+    # If two adjust naming. Nothing for the normal one and add "x" at the end for the second part
     #print('measure_point len', len(measure_points))
     #print('measure_point', measure_points)
     # Prepare date, time
@@ -943,7 +945,7 @@ def main():
     # DETECTION
     else:
         print("Starting inference mode")
-        # Check compulsary argument and print which are missing
+        # Check compulsory argument and print which are missing
         print('Checking compulsory arguments')
         if args.input==None:
             print("Compulsory argument --input is missing. Specify the path to image file of folder")
@@ -985,7 +987,7 @@ def main():
         json_list = []
         for f in os.listdir(path_out):
             if f.endswith('.json'):
-                json_name = os.path.splitext(f)[0]
+                #json_name = os.path.splitext(f)[0]
                 json_name = f.replace('.json', '')
                 json_list.append(json_name)
 
@@ -1000,7 +1002,7 @@ def main():
             input_list = os.listdir(input)
             input_path = input
         else:
-            print("Image argument is neither valid file nor directory")
+            print("Image argument is neither valid file nor directory") # input or image?
             write_run_info("Image argument is neither valid file nor directory")
         #print("got until here", input_list, input_path)
 
@@ -1094,7 +1096,7 @@ def main():
                         write_run_info("clean_up_mask cracks done")
                         print("clean_up_mask cracks done")
 
-                    write_to_json(image_name=f,cutting_point=cutting_point, run_ID=run_ID,
+                    write_to_json(image_name=f, cutting_point=cutting_point, run_ID=run_ID,
                                     path_out=path_out, centerlines_rings=centerlines_rings,
                                     clean_contours_rings=clean_contours_rings,
                                     clean_contours_cracks=clean_contours_cracks)
