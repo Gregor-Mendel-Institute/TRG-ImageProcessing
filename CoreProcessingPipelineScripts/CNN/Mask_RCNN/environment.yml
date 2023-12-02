@@ -1,5 +1,7 @@
 name: TreeRingCNN
 channels:
+  - pytorch
+  - nvidia
   - conda-forge
   - defaults
 dependencies:
@@ -11,7 +13,7 @@ dependencies:
   - blas=1.0=mkl
   - bzip2=1.0.8=h7b6447c_0
   - c-ares=1.15.0=h7b6447c_1001
-  - ca-certificates=2021.10.26=h06a4308_2
+  - ca-certificates=2023.01.10=h06a4308_0
   - cairo=1.14.12=h8948797_3
   - certifi=2021.5.30=py36h06a4308_0
   - cloudpickle=1.2.2=py_0
@@ -69,6 +71,8 @@ dependencies:
   - libvpx=1.7.0=h439df22_0
   - libxcb=1.13=h1bed415_1
   - libxml2=2.9.9=hea5a465_1
+  - libxslt=1.1.33=h7d1a2b0_0
+  - lxml=4.5.1=py36hefd8a0e_0
   - markdown=3.1.1=py36_0
   - matplotlib=3.2.1=0
   - matplotlib-base=3.2.1=py36hef1b27d_0
@@ -82,7 +86,7 @@ dependencies:
   - numpy-base=1.17.2=py36hde5b4d6_0
   - olefile=0.46=py36_0
   - opencv=3.4.2=py36h6fd60c2_1
-  - openssl=1.1.1m=h7f8727e_0
+  - openssl=1.1.1t=h7f8727e_0
   - pandas=0.25.3=py36he6710b0_0
   - parso=0.6.0=py_0
   - pcre=8.43=he6710b0_0

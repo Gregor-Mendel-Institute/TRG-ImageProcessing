@@ -9,7 +9,6 @@ Export JSON and POS files.
 Print the image with mask over it.
 """
 
-
 #######################################################################
 # Imports and prepare model
 #######################################################################
@@ -18,12 +17,8 @@ import sys
 import math
 import cv2
 import json
-import time
-import argparse
 import skimage
 import skimage.io
-import pickle
-from skimage import exposure, img_as_ubyte
 import numpy as np
 import matplotlib.pyplot as plt
 import shapely
@@ -33,84 +28,58 @@ import scipy
 from datetime import datetime
 from operator import itemgetter
 
+
 # Import Mask RCNN
 ROOT_DIR = os.path.abspath("../")
-#print('ROOT_DIR', ROOT_DIR)
+print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library
 from mrcnn.src_get_centerline import get_centerline
+"""
 import mrcnn.model as modellib
 from DetectionConfig import TreeRing_onlyRing
 from DetectionConfig import TreeRing_onlyCracks
-from training.retraining_container import retraining
-from training.prepareAnnotations import prepareAnnotations
 
-#######################################################################
-# Arguments
-#######################################################################
-def get_args():
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(
-        description='Segmentation of whole core')
+MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
-    ## Compulsory arguments
-    parser.add_argument('--dpi', required=False,
-                        help="DPI value for the image")
+# Prepare ring model
+configRing = TreeRing_onlyRing.TreeRingConfig()
+class InferenceConfig(configRing.__class__):
+    # Run detection on one image at a time
+    GPU_COUNT = 1
+    IMAGES_PER_GPU = 1
 
-    parser.add_argument('--run_ID', required=False,
-                        help="Run ID")
+configRing = InferenceConfig()
+configRing.display()
+# Create model in inference mode
+modelRing = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configRing)
+# Load weights
+weights_path_Ring = args.weightRing
+print("Loading ring weights ")
+modelRing.load_weights(weights_path_Ring, by_name=True)
 
-    parser.add_argument('--input', required=False,
-                        metavar="/path/to/image/",
-                        help="Path to image file of folder")
+# Load cracks model only if cracks weights are provided
+if args.weightCrack is not None:
+    # Prepare crack model
+    configCrack = TreeRing_onlyCracks.TreeRingConfig()
+    class InferenceConfig(configCrack.__class__):
+        # Run detection on one image at a time
+        GPU_COUNT = 1
+        IMAGES_PER_GPU = 1
 
-    parser.add_argument('--weightRing', required=False,
-                        metavar="/path/to/weight/file",
-                        help="Path to ring weight file")
+    configCrack = InferenceConfig()
+    configCrack.display()
+    # Create model in inference mode
+    modelCrack = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configCrack)
+    # Load weights
+    weights_path_Crack = args.weightCrack
 
-    parser.add_argument('--output_folder', required=False,
-                        metavar="/path/to/out/folder",
-                        help="Path to output folder")
-
-    ## Optional arguments
-    parser.add_argument('--weightCrack', required=False,
-                        metavar="/path/to/weight/file",
-                        help="Path to crack weight file")
-
-    parser.add_argument('--cropUpandDown', required=False,
-                        help="Fraction of image hight to crop away on both sides")
-
-    parser.add_argument('--sliding_window_overlap', required=False,
-                        help="Proportion of sliding frame that should overlap")
-
-    parser.add_argument('--print_detections', required=False,
-                        help="yes, if printing is desired")
-
-    parser.add_argument('--min_mask_overlap', required=False,
-                        help="Minimum of detected masks to consider good detection")
-
-    parser.add_argument('--n_detection_rows', required=False,
-                        help="Minimum of detected masks to consider good detection")
-
-    parser.add_argument('--logfile', required=False,
-                        metavar="logfile",
-                        help="logfile name to put in output dir. Prepends other info (used to be 'CNN_')")
-
-    ## Additional retrainig arguments
-    parser.add_argument('--dataset', required=False,
-                        metavar="/path/to/treering/dataset/",
-                        help='Directory of the Treering dataset')
-
-    parser.add_argument('--logs', required=False,
-                        default="./logs",
-                        metavar="/path/to/logs/",
-                        help='Logs and checkpoints directory (default="./logs")')
-
-    parser.add_argument('--start_new', required=False,
-                        default="True",
-                        help='If True retraining wil start from the beginning else continue from provided weight')
-
-    args = parser.parse_args()
-    return args
+    print("Loading crack weights ")
+    modelCrack.load_weights(weights_path_Crack, by_name=True)
+else:
+    modelCrack = None
+# Define class names
+class_names = ['BG', 'ring']
+"""
 #######################################################################
 # apply mask to an original image
 #######################################################################
@@ -141,7 +110,8 @@ def apply_mask(image, mask, alpha=0.5):
 # Should find the log file and add data to it
 def write_run_info(string):
     # Get name of the log file in the output dir
-    try: # in a bit of desperation
+    try: # just for debug and needs to be solved in more elegant way
+        """
         out_dir = os.path.join(args.output_folder, args.run_ID)
         run_ID = args.run_ID
         log_files = []
@@ -155,10 +125,12 @@ def write_run_info(string):
         #print("sorted log files list", log_files)
 
         log_file_name = log_files[-1]
+        """
         with open(log_file_name,"a") as f:
             print(string, file=f)
     except:
         pass
+
 ############################################################################################################
 # Sliding window detection with rotation of each part of image by 90 and 45 degrees and combining the output
 ############################################################################################################
@@ -665,13 +637,11 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
         plt.figure(figsize = (imgwidth/plot_dpi, 2*(imgheight/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
-        linewidth = (imgheight/1000)*5   # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
     else: # adjust image size if it`s exceeding 30000 pixels to 30000
         resized_height = imgheight*(30000/imgwidth)
         plt.figure(figsize = (30000/plot_dpi, 2*(resized_height/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
-        linewidth = (resized_height/1000)*5  # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
 
 
     # Plot the lines to the image
@@ -684,14 +654,14 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
             points = measure_points[i]
 
             xc,yc = centerlines[i].coords.xy
-            plt.plot(xc,yc,'g', linewidth=linewidth)
+            plt.plot(xc,yc,'g')
 
             xp, yp = points[0].coords.xy
             xp1, yp1 = points[1].coords.xy
-            plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
+            plt.plot([xp, xp1], [yp, yp1], 'r')
 
         xc,yc = centerlines[-1].coords.xy
-        plt.plot(xc,yc,'g', linewidth=linewidth)
+        plt.plot(xc,yc,'g')
         #plt.show()
 
 
@@ -707,15 +677,15 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
                 #print('loop', i)
 
                 xc,yc = centerlines1[i].coords.xy
-                plt.plot(xc,yc,color[l], linewidth=linewidth)
+                plt.plot(xc,yc,color[l])
 
                 points = measure_points1[i]
                 xp, yp = points[0].coords.xy
                 xp1, yp1 = points[1].coords.xy
-                plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
+                plt.plot([xp, xp1], [yp, yp1], 'r')
 
             xc,yc = centerlines1[-1].coords.xy # To print the last point
-            plt.plot(xc,yc, color[l], linewidth=linewidth)
+            plt.plot(xc,yc, color[l])
         #plt.show()
 
     plt.savefig(os.path.join(export_path, f), bbox_inches = 'tight', pad_inches = 0)
@@ -770,7 +740,7 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
         #print("coords",type(coords))
         out_json[image_name]['predictions'][json_names[v]]=coords
 
-    output = os.path.join(path_out, os.path.splitext(image_name)[0] + '.json')
+    output = os.path.join(path_out, image_name.replace('.tif','.json'))
     with open(output,'w') as outfile:
         json.dump(out_json, outfile, indent=4)
 #######################################################################
@@ -780,7 +750,7 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI, path_o
     print("Writing .pos file")
     write_run_info("Writing .pos file")
     # Check if it is one or two parts in measure points
-    # If two adjust naming. Nothing for the normal one and add "x" at the end for the second part
+    # If two adjust naming. Nothink for the normal one and add "x" at the end for the second part
     #print('measure_point len', len(measure_points))
     #print('measure_point', measure_points)
     # Prepare date, time
@@ -876,257 +846,3 @@ def write_to_pos(centerlines, measure_points, file_name, image_name, DPI, path_o
                 print('#C licensedTo=;', file=f) #before '#C licensedTo=Alexis Arizpe, alexis.arizpe@gmi.oeaw.ac.at;'
                 for i in str_measure_points1:
                     print(i, file=f)
-
-
-#######################################################################
-# Run detection on the forlder or images
-#######################################################################
-def main():
-    # get the arguments
-    args = get_args()
-
-    # PREPARE THE MODEL
-    MODEL_DIR = os.path.join(ROOT_DIR, "logs")
-
-    # Prepare ring model
-    configRing = TreeRing_onlyRing.TreeRingConfig()
-
-    class InferenceConfig(configRing.__class__):
-        # Run detection on one image at a time
-        GPU_COUNT = 1
-        IMAGES_PER_GPU = 1
-
-    configRing = InferenceConfig()
-    configRing.display()
-    # Create model in inference mode
-    modelRing = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configRing)
-    # Load weights
-    weights_path_Ring = args.weightRing
-    print("Loading ring weights ")
-    modelRing.load_weights(weights_path_Ring, by_name=True)
-
-    # Load cracks model only if cracks weights are provided
-    if args.weightCrack is not None:
-        # Prepare crack model
-        configCrack = TreeRing_onlyCracks.TreeRingConfig()
-
-        class InferenceConfig(configCrack.__class__):
-            # Run detection on one image at a time
-            GPU_COUNT = 1
-            IMAGES_PER_GPU = 1
-
-        configCrack = InferenceConfig()
-        configCrack.display()
-        # Create model in inference mode
-        modelCrack = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configCrack)
-        # Load weights
-        weights_path_Crack = args.weightCrack
-
-        print("Loading crack weights ")
-        modelCrack.load_weights(weights_path_Crack, by_name=True)
-    else:
-        modelCrack = None
-    # Define class names
-    class_names = ['BG', 'ring']
-
-    # RETRAINING
-    if args.dataset is not None:
-        print("Starting retraining mode")
-        # Check compulsary argument and print which are missing
-        if args.weightRing==None:
-            print("Compulsory argument --weightRing is missing. Specify the path to ring weight file")
-            exit()
-        # Check and prepare annotations
-        prepareAnnotations(dataset=args.dataset, overwrite_existing=False)
-
-        # Start retraining
-        retraining(weights=args.weightRing, dataset=args.dataset, logs=args.logs, start_new=args.start_new)
-
-    # DETECTION
-    else:
-        print("Starting inference mode")
-        # Check compulsory argument and print which are missing
-        print('Checking compulsory arguments')
-        if args.input==None:
-            print("Compulsory argument --input is missing. Specify the path to image file of folder")
-            exit()
-        if args.weightRing==None:
-            print("Compulsory argument --weightRing is missing. Specify the path to ring weight file")
-            exit()
-        if args.output_folder==None:
-            print("Compulsory argument --output_folder is missing. Specify the path to output folder")
-            exit()
-        if args.dpi==None:
-            print("Compulsory argument --dpi is missing. Specify the DPI value for the image")
-            exit()
-        if args.run_ID==None:
-            print("Compulsory argument --run_ID is missing. Specify the Run ID")
-            exit()
-
-        path_out = os.path.join(args.output_folder, args.run_ID)
-        # Check if output dir for run_ID exists and if not create it
-        if not os.path.isdir(path_out):
-            os.mkdir(path_out)
-
-        now = datetime.now()
-        dt_string_name = now.strftime("D%Y%m%d_%H%M%S") #"%Y-%m-%d_%H:%M:%S"
-        dt_string = now.strftime("%Y-%m-%d_%H:%M:%S")
-        run_ID = args.run_ID
-        log_file_name = str(args.logfile) + run_ID + '_' + dt_string_name + '.log' #"RunID" + dt_string +
-        log_file_path =os.path.join(path_out, log_file_name)
-
-        # Initiate log file
-        with open(log_file_path,"x") as fi:
-            print("Run started:" + dt_string, file=fi)
-            print("Ring weights used:" + weights_path_Ring, file=fi)
-
-            if args.weightCrack is not None:
-                print("Crack weights used:" + weights_path_Crack, file=fi)
-
-        # Create a list of already exported jsons to prevent re-running the same image
-        json_list = []
-        for f in os.listdir(path_out):
-            if f.endswith('.json'):
-                #json_name = os.path.splitext(f)[0]
-                json_name = f.replace('.json', '')
-                json_list.append(json_name)
-
-        input = args.input
-        # Check pathin if its folder or file and get file list of either
-        if os.path.isfile(input):
-            # Get file name and dir to file
-            input_list = [os.path.basename(input)]
-            input_path = os.path.split(input)[0]
-        elif os.path.isdir(input):
-            # Get a list of files in the dir
-            input_list = os.listdir(input)
-            input_path = input
-        else:
-            print("Image argument is neither valid file nor directory") # input or image?
-            write_run_info("Image argument is neither valid file nor directory")
-        #print("got until here", input_list, input_path)
-
-        for f in input_list:
-            supported_extensions = ['.tif', '.tiff']
-            file_extension = os.path.splitext(f)[1]
-
-            if file_extension in supported_extensions and os.path.splitext(f)[0] in json_list:
-                # print image name first to keep the output consistent
-                print("Processing image: {}".format(f))
-                write_run_info("Processing image: {}".format(f))
-                print("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
-                write_run_info("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
-            elif file_extension in supported_extensions and os.path.splitext(f)[0] not in json_list:
-                try:
-                    image_start_time = time.time()
-                    print("Processing image: {}".format(f))
-                    write_run_info("Processing image: {}".format(f))
-                    image_path = os.path.join(input_path, f)
-                    im_origin = skimage.io.imread(image_path)
-
-                    # check number of channels and if 4 assume rgba and convert to rgb
-                    # conversion if image is not 8bit convert to 8 bit
-                    if im_origin.dtype == 'uint8' and im_origin.shape[2] == 3:
-                        print("Image was 8bit and RGB")
-                        write_run_info("Image was 8bit and RGB")
-                    elif im_origin.shape[2] == 4:
-                        print("Image has 4 channels, assuming RGBA, trying to convert")
-                        write_run_info("Image has 4 channels, assuming RGBA, trying to convert")
-                        im_origin = img_as_ubyte(skimage.color.rgba2rgb(im_origin))
-                    elif im_origin.dtype != 'uint8':
-                        print("Image converted to 8bit")
-                        write_run_info("Image converted to 8bit")
-                        im_origin = img_as_ubyte(exposure.rescale_intensity(im_origin))  # with rescaling should be better
-
-                    # Define default values if they were not provided as arguments
-                    if args.cropUpandDown is not None:
-                        cropUpandDown = float(args.cropUpandDown)
-                    else:
-                        cropUpandDown = 0.17
-
-                    if args.sliding_window_overlap is not None:
-                        sliding_window_overlap = float(args.sliding_window_overlap)
-                    else:
-                        sliding_window_overlap = 0.75
-
-                    if args.n_detection_rows is None or args.n_detection_rows==1:
-                        detection_rows = 1
-                    else:
-                        detection_rows=int(args.n_detection_rows)
-
-                    detected_mask = sliding_window_detection_multirow(image = im_origin,
-                                                            detection_rows=detection_rows,
-                                                            modelRing=modelRing,
-                                                            modelCrack=modelCrack,
-                                                            overlap = sliding_window_overlap,
-                                                            cropUpandDown = cropUpandDown)
-
-                    write_run_info("sliding_window_detection_multirow done")
-                    print("sliding_window_detection_multirow done")
-                    detected_mask_rings = detected_mask[:,:,0]
-                    #print("detected_mask_rings", detected_mask_rings.shape)
-
-                    # Define minimum mask overlap if not provided
-                    if args.min_mask_overlap is not None:
-                        min_mask_overlap = int(args.min_mask_overlap)
-                    else:
-                        min_mask_overlap = 3
-
-                    clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
-                    write_run_info("clean_up_mask done")
-                    print("clean_up_mask done")
-                    #print(clean_contours_rings.shape)
-                    centerlines_rings = find_centerlines(clean_contours_rings, cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
-                    if centerlines_rings is None:
-                        write_run_info("IMAGE WAS NOT FINISHED")
-                        print("IMAGE WAS NOT FINISHED")
-                        continue
-
-                    write_run_info("find_centerlines done")
-                    print("find_centerlines done")
-                    centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
-                    write_run_info("measure_contours done")
-                    print("measure_contours done")
-                    # If cracks are detected
-                    clean_contours_cracks = None
-                    if args.weightCrack is not None:
-                        detected_mask_cracks = detected_mask[:,:,1]
-                        print("detected_mask_cracks", detected_mask_cracks.shape)
-                        clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
-                        write_run_info("clean_up_mask cracks done")
-                        print("clean_up_mask cracks done")
-
-                    write_to_json(image_name=f, cutting_point=cutting_point, run_ID=run_ID,
-                                    path_out=path_out, centerlines_rings=centerlines_rings,
-                                    clean_contours_rings=clean_contours_rings,
-                                    clean_contours_cracks=clean_contours_cracks)
-
-                    image_name = os.path.splitext(f)[0]
-                    DPI = float(args.dpi)
-                    write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
-
-                    if args.print_detections == "yes":
-                        # Ploting lines is moslty for debugging
-                        masked_image = im_origin.astype(np.uint32).copy()
-                        masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
-
-                        if args.weightCrack is not None:
-                            masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
-
-                        plot_lines(masked_image, centerlines, measure_points,
-                                    image_name, path_out)
-                    write_run_info("IMAGE FINISHED")
-                    print("IMAGE FINISHED")
-                    image_finished_time = time.time()
-                    image_run_time = image_finished_time - image_start_time
-                    write_run_info(f"Image run time: {image_run_time} s")
-
-                except Exception as e:
-                    write_run_info(e)
-                    write_run_info("IMAGE WAS NOT FINISHED")
-                    print(e)
-                    print("IMAGE WAS NOT FINISHED")
-
-
-if __name__ == '__main__':
-    main()

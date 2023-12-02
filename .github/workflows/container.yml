@@ -6,6 +6,7 @@ on:
         - master
       tags:
         - '*'
+
 env:
   REGISTRY_USER: treeringgenomics
   IMAGE_REGISTRY: quay.io

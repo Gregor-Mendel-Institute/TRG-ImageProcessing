@@ -31,15 +31,17 @@ def polylinetopolygon(polyline_str, width, height, buffer=30):
 
     return list(x), list(y)
 
-def pocessCVATxml(dataset):
-    buffer = 30
+def pocessCVATxml(dataset, buffer = 30):
+    #buffer = 30
     newJ = {}
     annotated_images = []
     shpAttrBase = {'name': 'polygon'}
     CVAT_ANNOTPATH = os.path.join(dataset, "CVAT_annotations")
-    CVAT_annot_file_list = os.listdir(CVAT_ANNOTPATH)
+    #CVAT_annot_file_list = os.listdir(CVAT_ANNOTPATH)
+    CVAT_annot_file_list = [f for f in os.listdir(CVAT_ANNOTPATH) if not f.startswith('.')] #ignore hidden files
     for xml_name in CVAT_annot_file_list:
         # open load xml file
+        print("Loading annotation file", xml_name)
         with open(os.path.join(CVAT_ANNOTPATH, xml_name)) as file:
             root = etree.parse(file).getroot()
         # Initiate new dictionary to add images and annotations to it
@@ -69,7 +71,7 @@ def pocessCVATxml(dataset):
                     if key == "label":
                         #print(value)
                         if value != "RingBndy":
-                            print("Warning: Label is not RingBndy. Continue assuming all polylines are rings ")
+                            print("Warning: Label is not RingBndy. Continue assuming all polylines are rings")
                     if key == "points":
                         all_points_x, all_points_y = polylinetopolygon(polyline_str=value, width=width, height=height, buffer=buffer)
                         shpAtt['all_points_x'] = all_points_x
@@ -85,7 +87,8 @@ def annottoimages(image_folder, annotation_file):
     # save the annotation json
     dict_out = {}
     dir_list = os.listdir(image_folder)
-    im_list = [f for f in dir_list if f.endswith('.tif')]
+    supported_extensions = ['.tif', '.tiff']
+    im_list = [f for f in dir_list if os.path.splitext(f)[1] in supported_extensions]
 
     for image_name in im_list:
         try:
@@ -113,7 +116,7 @@ def prepareAnnotations(dataset, overwrite_existing=False):
 
     folder_paths =[TRAIN_PATH, VAL_PATH]
     # process and unite all xml files and prepare json with all annotations
-    all_annotations, annotated_images = pocessCVATxml(dataset=dataset)
+    all_annotations, annotated_images = pocessCVATxml(dataset=dataset, buffer = 30)
 
     # prepare annotations
     for folder in folder_paths:
