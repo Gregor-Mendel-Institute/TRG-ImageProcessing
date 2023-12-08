@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 ### Loading a preparing the model should be identical with the postprocessing file and does not need to be here
 # Root directory of the project
 # Import Mask RCNN
-ROOT_DIR = os.path.abspath("../")
+ROOT_DIR = os.path.abspath("../Mask_RCNN/")
 # ROOT_DIR = os.path.abspath("CoreProcessingPipelineScripts/CNN/Mask_RCNN/")
 print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library

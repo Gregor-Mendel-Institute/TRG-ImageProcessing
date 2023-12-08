@@ -7,13 +7,13 @@ Train on the treering dataset.
 Usage: run from the command line as such:
 
     # Train a new model starting from pre-trained COCO weights
-    python3 TreeRing_onlyRing.py train --dataset=dataset/folder --weights=coco
+    python3 Train_Cracks.py train --dataset=dataset/folder --weights=coco
 
     # Resume training a model that you had trained earlier
-    python3 TreeRing_onlyRing.py train --dataset=dataset/folder --weights=last
+    python3 Train_Cracks.py train --dataset=dataset/folder --weights=last
 
     # Train a new model starting from ImageNet weights
-    python3 TreeRing_onlyRing.py train --dataset=dataset/folder --weights=imagenet
+    python3 Train_Cracks.py train --dataset=dataset/folder --weights=imagenet
 
 """
 
@@ -26,8 +26,8 @@ import skimage.draw
 from imgaug import augmenters as iaa
 
 # Root directory of the project
-ROOT_DIR = os.path.abspath("../../")
-#print(ROOT_DIR)
+ROOT_DIR = os.path.abspath("../Mask_RCNN/")
+print(ROOT_DIR)
 # Import Mask RCNN
 sys.path.append(ROOT_DIR)  # To find local version of the library
 from mrcnn.config import Config
@@ -45,12 +45,12 @@ DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 ############################################################
 
 
-class TreeRingConfig(Config):
+class TreeringConfig(Config):
     """Configuration for training on the toy  dataset.
     Derives from the base Config class and overrides some values.
     """
     # Give the configuration a recognizable name
-    NAME = "TreeRingCracksComb2_OnlyRing"
+    NAME = "TrainCracks"
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU. V100 should have 32gb memory, seems can manage 6 images 1024x1024
@@ -60,7 +60,7 @@ class TreeRingConfig(Config):
     NUM_CLASSES = 1 + 1  # Background + ring + crack
 
     # Number of training steps per epoch rule of thumb taining images/images per GPU
-    STEPS_PER_EPOCH = 650
+    STEPS_PER_EPOCH = 103
 
     # Number of validation steps per epoch
     VALIDATION_STEPS = 1
@@ -118,9 +118,9 @@ class TreeRingConfig(Config):
     # Try to tweek like in shapes to allow ROI sampling to pick 33% positive ROIs.
     TRAIN_ROIS_PER_IMAGE = 200
 
-    # Skip detections with < 90% confidence 0.9 was for balloons
+    # Skip detections with < 90% confidence 0.9 was for baloons
     # for nucleus 0
-    DETECTION_MIN_CONFIDENCE = 0.5
+    DETECTION_MIN_CONFIDENCE = 0.50
 
     # Learning rate and momentum
     # The Mask RCNN paper uses lr=0.02, but on TensorFlow it causes
@@ -157,7 +157,7 @@ class TreeringDataset(utils.Dataset):
         subset: Subset to load: train or val
         """
         # Add classes.
-        self.add_class("rings", 1, "ring")
+        self.add_class("rings", 1, "crack")
         #self.add_class("rings", 2, "crack")
 
         # Train or validation dataset?
@@ -194,15 +194,15 @@ class TreeringDataset(utils.Dataset):
             # shape_attributes (see json format above)
             # The if condition is needed to support VIA versions 1.x and 2.x.
             if type(a['regions']) is dict:
-                polygons = [r['shape_attributes'] for r in a['regions'].values() if r['region_attributes']['type'] == 'RingBndy']
+                polygons = [r['shape_attributes'] for r in a['regions'].values() if r['region_attributes']['type'] == 'CrackPoly']
                 class_ids_name = [r['region_attributes'] for r in a['regions'].values()]
             else:
-                polygons = [r['shape_attributes'] for r in a['regions'] if r['region_attributes']['type'] == 'RingBndy']
+                polygons = [r['shape_attributes'] for r in a['regions'] if r['region_attributes']['type'] == 'CrackPoly']
                 class_ids_name = [r['region_attributes'] for r in a['regions']]
             # Change class IDs to integers
             class_ids = []
             for i in range(len(class_ids_name)):
-                if class_ids_name[i]['type'] == 'RingBndy':
+                if class_ids_name[i]['type'] == 'CrackPoly':
                     class_ids.append(1)
                 #elif class_ids_name[i]['type'] == 'CrackPoly':
                     #class_ids.append(2)
@@ -211,26 +211,28 @@ class TreeringDataset(utils.Dataset):
             # load_mask() needs the image size to convert polygons to masks.
             # Unfortunately, VIA doesn't include it in JSON, so we must read
             # the image. This is only managable since the dataset is tiny.
+            if not polygons:
+                continue
+            else:
+                image_path = os.path.join(dataset_dir, a['filename'])
 
-            image_path = os.path.join(dataset_dir, a['filename'])
-
-            width = a['size'].split('x')[0]
-            height = a['size'].split('x')[1]
-            #print(image_path) #this was only for inspecting tiff loading problems
-            #image = skimage.io.imread(image_path)
-            #height, width = image.shape[:2]
-            #print("MY", my_height, my_width)
-            #print("skimage", height, width)
+                width = a['size'].split('x')[0]
+                height = a['size'].split('x')[1]
+                #print(image_path) #this was only for inspecting tiff loading problems
+                #image = skimage.io.imread(image_path)
+                #height, width = image.shape[:2]
+                #print("MY", my_height, my_width)
+                #print("skimage", height, width)
 
 
 
-            self.add_image(
-                "rings",
-                image_id=a['filename'],  # use file name as a unique image id
-                path=image_path,
-                width=int(width), height=int(height),
-                polygons=polygons,
-                class_ids=class_ids)
+                self.add_image(
+                    "rings",
+                    image_id=a['filename'],  # use file name as a unique image id
+                    path=image_path,
+                    width=int(width), height=int(height),
+                    polygons=polygons,
+                    class_ids=class_ids)
 
     def load_mask(self, image_id):
         """Generate instance masks for an image.
@@ -273,7 +275,7 @@ class TreeringDataset(utils.Dataset):
 def train(model):
     """Train the model."""
     # Training dataset.
-    dataset_train = TreeringDataset()
+    dataset_train = TreerigDataset()
     dataset_train.load_treering(args.dataset, "train")
     dataset_train.prepare()
 
@@ -326,7 +328,7 @@ def train(model):
     print("Train all lower learning rate")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE/10,
-                epochs=400,
+                epochs=600,
                 augmentation=augmentation,
                 layers='all') # 'heads' or 'all'
 
@@ -375,9 +377,9 @@ if __name__ == '__main__':
 
     # Configurations
     if args.command == "train":
-        config = TreeRingConfig()
+        config = TreeringConfig()
     else:
-        class InferenceConfig(TreeRingConfig):
+        class InferenceConfig(TreeringConfig):
             # Set batch size to 1 since we'll be running inference on
             # one image at a time. Batch size = GPU_COUNT * IMAGES_PER_GPU
             GPU_COUNT = 1
@@ -430,9 +432,6 @@ if __name__ == '__main__':
     # Train or evaluate
     if args.command == "train":
         train(model)
-    elif args.command == "splash":
-        detect_and_color_splash(model, image_path=args.image,
-                                video_path=args.video)
     else:
         print("'{}' is not recognized. "
               "Use 'train' or 'splash'".format(args.command))

@@ -15,7 +15,7 @@ import matplotlib
 #from matplotlib.patches import Polygon
 
 # Root directory of the project
-ROOT_DIR = os.path.abspath("../")
+ROOT_DIR = os.path.abspath("../Mask_RCNN/")
 # ROOT_DIR = os.path.abspath("./CoreProcessingPipelineScripts/CNN/Mask_RCNN")
 
 # Import Mask RCNN

@@ -17,7 +17,7 @@ ROOT_DIR = os.path.abspath("../")
 # Import Mask RCNN
 sys.path.append(ROOT_DIR)  # To find local version of the library
 
-from mrcnn.exceptions import CenterlineError
+from functions.exceptions import CenterlineError
 
 logger = logging.getLogger(__name__)
 

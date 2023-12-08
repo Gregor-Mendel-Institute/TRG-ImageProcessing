@@ -1,6 +1,6 @@
 FROM mambaorg/micromamba:0.20.0
 
-COPY . /home/mambauser/
+COPY Mask_RCNN /home/mambauser/
 
 WORKDIR /home/mambauser
 
