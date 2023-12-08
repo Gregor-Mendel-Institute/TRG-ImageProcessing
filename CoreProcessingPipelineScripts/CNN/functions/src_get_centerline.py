@@ -21,7 +21,6 @@ from functions.exceptions import CenterlineError
 
 logger = logging.getLogger(__name__)
 
-
 def get_centerline(
     geom,
     segmentize_maxlen=0.5,
