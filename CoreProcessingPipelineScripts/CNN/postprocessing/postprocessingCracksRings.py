@@ -228,7 +228,7 @@ def main():
                 logger.info("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
             elif file_extension in supported_extensions and os.path.splitext(f)[0] not in json_list:
                 try:
-                    image_start_time = time.time()
+                    image_start_time = time.perf_counter()
                     print("Processing image: {}".format(f))
                     logger.info("Processing image: {}".format(f))
                     image_path = os.path.join(input_path, f)
@@ -331,7 +331,7 @@ def main():
                                     image_name, path_out)
                     logger.info("IMAGE FINISHED")
                     print("IMAGE FINISHED")
-                    image_finished_time = time.time()
+                    image_finished_time = time.perf_counter()
                     image_run_time = image_finished_time - image_start_time
                     logger.info(f"Image run time: {image_run_time} s")
 
