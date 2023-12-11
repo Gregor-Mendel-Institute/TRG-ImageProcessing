@@ -74,7 +74,7 @@ def get_args():
                         help="Path to output folder")
 
     ## Optional arguments
-    parser.add_argument('--weightCrack', required=False,
+    parser.add_argument('--cracks', required=False,
                         metavar="/path/to/weight/file",
                         help="Path to crack weight file")
 
@@ -134,7 +134,7 @@ def main():
     log_file_name = str(args.logfile) + run_ID + '_' + dt_string_name + '.log'  # "RunID" + dt_string +
     log_file_path = os.path.join(path_out, log_file_name)
 
-    logging.basicConfig(level=logging.DEBUG, filename=log_file_path,
+    logging.basicConfig(level=logging.INFO, filename=log_file_path,
                         format='%(asctime)s-%(name)s-%(levelname)s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger(__name__)
@@ -142,37 +142,11 @@ def main():
     # PREPARE THE MODEL
     modelRing = YOLO(args.weightRing)
 
-    # Load weights
-    weights_path_Ring = args.weightRing
-
-    # Load cracks model only if cracks weights are provided
-    if args.weightCrack is not None:
-        # Prepare crack model
-        configCrack = TreeRing_onlyCracks.TreeRingConfig()
-
-        class InferenceConfig(configCrack.__class__):
-            # Run detection on one image at a time
-            GPU_COUNT = 1
-            IMAGES_PER_GPU = 1
-
-        configCrack = InferenceConfig()
-        configCrack.display()
-        # Create model in inference mode
-        modelCrack = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=configCrack)
-        # Load weights
-        weights_path_Crack = args.weightCrack
-
-        print("Loading crack weights ")
-        modelCrack.load_weights(weights_path_Crack, by_name=True)
-    else:
-        modelCrack = None
-    # Define class names
-    class_names = ['BG', 'ring']
-
     # RETRAINING
 
     if args.dataset is not None:
         print("Starting retraining mode")
+        logger.info("Starting retraining mode")
         """
         # Check compulsary argument and print which are missing
         if args.weightRing==None:
@@ -187,22 +161,28 @@ def main():
     # DETECTION
     else:
         print("Starting inference mode")
+        logger.info("Starting inference mode")
         # Check compulsory argument and print which are missing
         print('Checking compulsory arguments')
         if args.input==None:
             print("Compulsory argument --input is missing. Specify the path to image file of folder")
+            logger.info("Compulsory argument --input is missing. Specify the path to image file of folder")
             exit()
         if args.weightRing==None:
             print("Compulsory argument --weightRing is missing. Specify the path to ring weight file")
+            logger.info("Compulsory argument --weightRing is missing. Specify the path to ring weight file")
             exit()
         if args.output_folder==None:
             print("Compulsory argument --output_folder is missing. Specify the path to output folder")
+            logger.info("Compulsory argument --output_folder is missing. Specify the path to output folder")
             exit()
         if args.dpi==None:
             print("Compulsory argument --dpi is missing. Specify the DPI value for the image")
+            logger.info("Compulsory argument --dpi is missing. Specify the DPI value for the image")
             exit()
         if args.run_ID==None:
             print("Compulsory argument --run_ID is missing. Specify the Run ID")
+            logger.info("Compulsory argument --run_ID is missing. Specify the Run ID")
             exit()
 
         """"
@@ -211,9 +191,6 @@ def main():
         with open(log_file_path,"x") as fi:
             print("Run started:" + dt_string, file=fi)
             print("Ring weights used:" + weights_path_Ring, file=fi)
-
-            if args.weightCrack is not None:
-                print("Crack weights used:" + weights_path_Crack, file=fi)
         """
 
         # Create a list of already exported jsons to prevent re-running the same image
@@ -292,8 +269,8 @@ def main():
 
                     detected_mask = sliding_window_detection_multirow(image = im_origin,
                                                             detection_rows=detection_rows,
-                                                            modelRing=modelRing,
-                                                            modelCrack=modelCrack,
+                                                            model=modelRing,
+                                                            cracks=args.cracks,
                                                             overlap = sliding_window_overlap,
                                                             cropUpandDown = cropUpandDown)
 
@@ -325,7 +302,7 @@ def main():
                     print("measure_contours done")
                     # If cracks are detected
                     clean_contours_cracks = None
-                    if args.weightCrack is not None:
+                    if args.cracks:
                         detected_mask_cracks = detected_mask[:,:,1]
                         print("detected_mask_cracks", detected_mask_cracks.shape)
                         clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
@@ -347,7 +324,7 @@ def main():
                         print("masked_image.dtype", masked_image.dtype)
                         masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
 
-                        if args.weightCrack is not None:
+                        if args.cracks:
                             masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
 
                         plot_lines(masked_image, centerlines, measure_points,
@@ -359,7 +336,7 @@ def main():
                     logger.info(f"Image run time: {image_run_time} s")
 
                 except Exception as e:
-                    logger.info(e)
+                    logger.exception(e)
                     logger.info("IMAGE WAS NOT FINISHED")
                     print(e)
                     print("IMAGE WAS NOT FINISHED")
