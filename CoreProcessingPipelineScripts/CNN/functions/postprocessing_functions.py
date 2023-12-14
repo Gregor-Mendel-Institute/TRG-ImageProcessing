@@ -131,7 +131,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
     looping_list = [i for i in looping_range if i < int(row_height-(row_height*overlap)) + imgwidth_origin]
     logger.info(f'looping_list: {looping_list}')
 
-    if cracks:
+    if cracks is True:
         classes = [0, 1]
     else:
         classes = [0]
@@ -199,6 +199,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
 def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     # Detects countours of the masks, removes small contours
     print("clean_up_mask started")
+    logger.info("clean_up_mask started")
     # Make the mask binary
     binary_mask = np.where(mask >= min_mask_overlap, 255, 0) # this part can be cleaned to remove some missdetections setting condition for higher value
     #print("binary_mask shape", binary_mask.shape)
@@ -206,17 +207,16 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     #type(binary_mask)
     uint8binary = binary_mask.astype(np.uint8).copy()
 
-    # Older version of openCV has slightly different syntax I adjusted for it here
-    if int(cv2.__version__.split(".")[0]) < 4:
-        _, contours, _ = cv2.findContours(uint8binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
-    else:
-        contours, _ = cv2.findContours(uint8binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
+    # Extract contour coordinates from binary mask
+    contours, _ = cv2.findContours(uint8binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
     #print('contour_shape:', len(contours))
+    logger.info(f'Raw_contours: {len(contours)}')
 
     # Here i extract dimensions and angle of individual contours bigger than threshold
     imgheight, imgwidth = mask.shape[:2]
     if is_ring==True:
-        min_size_threshold = imgheight/5 # Will take only contours that are bigger than 1/5 of the image
+        min_size_threshold = 10 #imgheight/12 # Will take only contours that are bigger than 1/5 of the image
+        logger.info(f'min_size_threshold for ring: {min_size_threshold}')
     else:
         min_size_threshold = 1
     contours_filtered = []
@@ -241,6 +241,7 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
             print("contour shape", contours[i].shape)
 
     print('Filtered_contours:', len(contours_filtered))
+    logger.info(f'Filtered_contours: {len(contours_filtered)}')
 
     #print(contours_filtered[0])
 
@@ -306,6 +307,8 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
         #print("miny and maxy", miny, maxy)
         #print("line_y_diff", line_y_diff)
         if line_y_diff < y_length_threshold: # This threshold is in px. Originaly 100
+            logger.info(f'Contour {i} was skipped because with line_y_diff {line_y_diff} was less then '
+                        f'threshold y_length_threshold {y_length_threshold}')
             continue
         else:
             centerlines.append(cline)

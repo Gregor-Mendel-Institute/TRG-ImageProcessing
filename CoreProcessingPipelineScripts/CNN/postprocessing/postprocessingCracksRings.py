@@ -75,6 +75,7 @@ def get_args():
 
     ## Optional arguments
     parser.add_argument('--cracks', required=False,
+                        default=False,
                         metavar="/path/to/weight/file",
                         help="Path to crack weight file")
 
@@ -267,10 +268,15 @@ def main():
                     else:
                         detection_rows=int(args.n_detection_rows)
 
+                    if args.cracks=='True':
+                        cracks = True
+                    else:
+                        cracks = False
+
                     detected_mask = sliding_window_detection_multirow(image = im_origin,
                                                             detection_rows=detection_rows,
                                                             model=modelRing,
-                                                            cracks=args.cracks,
+                                                            cracks=cracks,
                                                             overlap = sliding_window_overlap,
                                                             cropUpandDown = cropUpandDown)
 
@@ -302,7 +308,7 @@ def main():
                     print("measure_contours done")
                     # If cracks are detected
                     clean_contours_cracks = None
-                    if args.cracks:
+                    if cracks is True:
                         detected_mask_cracks = detected_mask[:,:,1]
                         print("detected_mask_cracks", detected_mask_cracks.shape)
                         clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
@@ -313,6 +319,7 @@ def main():
                                     path_out=path_out, centerlines_rings=centerlines_rings,
                                     clean_contours_rings=clean_contours_rings,
                                     clean_contours_cracks=clean_contours_cracks)
+                    logger.info("write_to_json done")
 
                     image_name = os.path.splitext(f)[0]
                     DPI = float(args.dpi)
@@ -324,11 +331,12 @@ def main():
                         print("masked_image.dtype", masked_image.dtype)
                         masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
 
-                        if args.cracks:
+                        if cracks is True:
                             masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
 
                         plot_lines(masked_image, centerlines, measure_points,
                                     image_name, path_out)
+                        logger.info("plot_lines done")
                     logger.info("IMAGE FINISHED")
                     print("IMAGE FINISHED")
                     image_finished_time = time.perf_counter()
