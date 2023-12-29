@@ -18,6 +18,7 @@ import math
 import cv2
 import json
 import skimage
+import copy
 import skimage.io
 import numpy as np
 import matplotlib.pyplot as plt
@@ -88,9 +89,9 @@ def convert_to_binary_mask(result, class_number):
 ############################################################################################################
 # Sliding window detection with rotation of each part of image by 90 and 45 degrees and combining the output
 ############################################################################################################
-def sliding_window_detection_multirow(image, detection_rows=1, model=None, cracks=False, overlap=0.75, row_overlap=0.1, cropUpandDown=0.17):
+def sliding_window_detection_multirow(image, detection_rows=1, model=None, cracks=False, overlap=0.75, row_overlap=0.1, cropUpandDown=0.17, px_to_crop = 10):
     # The mask for ring is in position the_mask_clean_origin_size[:,:,0] while cracks in the_mask_clean_origin_size[:,:,1]
-
+    # px_to_crop - how many pixels on the edges of detected mask to replace with zeros to clean the edges
     print("sliding_window_detection_multirow started")
     logger.info("sliding_window_detection_multirow started")
     logger.info(f"Sliding window overlap = {overlap} and cropUpandDown = {cropUpandDown}")
@@ -174,8 +175,13 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
 
                 ## Put all togather
                 combined_mask_section = r_mask + r1_mask_back + r2_mask_back_cropped
-                #logger.info("combined_mask_section.shape", combined_mask_section.shape)
-                combined_masks_per_class[rl:rl+row_height, i:i+row_height, class_number] = combined_masks_per_class[rl:rl+row_height, i:i+row_height, class_number] + combined_mask_section
+                logger.info(f"combined_mask_section.shape{combined_mask_section.shape}")
+                # Crop the edges of detected square to get cleaner mask
+                section_cleaned_edges = np.zeros(shape=combined_mask_section.shape, dtype='uint8')
+                section_cleaned_edges[px_to_crop:-px_to_crop, px_to_crop:-px_to_crop] = combined_mask_section[px_to_crop:-px_to_crop, px_to_crop:-px_to_crop]
+
+                logger.info(f"section_cleaned_edges.shape{section_cleaned_edges.shape}")
+                combined_masks_per_class[rl:rl+row_height, i:i+row_height, class_number] = combined_masks_per_class[rl:rl+row_height, i:i+row_height, class_number] + section_cleaned_edges
 
     # First remove the padding
     pad_front = zero_padding_front.shape[1]
@@ -215,7 +221,7 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     # Here i extract dimensions and angle of individual contours bigger than threshold
     imgheight, imgwidth = mask.shape[:2]
     if is_ring==True:
-        min_size_threshold = 10 #imgheight/12 # Will take only contours that are bigger than 1/5 of the image
+        min_size_threshold = imgheight/5 #imgheight/12 # Will take only contours that are bigger than 1/5 of the image
         logger.info(f'min_size_threshold for ring: {min_size_threshold}')
     else:
         min_size_threshold = 1
@@ -224,7 +230,7 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     for i in range(0, len(contours)):
         x_only = []
         for p in range(len(contours[i])):
-            [[x,y]] = contours[i][p]
+            [[x,_]] = contours[i][p]
             x_only.append(x)
         x_min = np.min(x_only)
         #remove those that are too short
@@ -234,7 +240,6 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
         #print(imgheight)
         dim1, dim2 = rect[1]
         dim_max = max([dim1, dim2])
-        dim_sum = dim1 + dim2 # Should capture size and curvature better then just a length
         if dim_max > min_size_threshold:
             contours_filtered.append(contours[i])
             x_mins.append(x_min)
@@ -462,7 +467,7 @@ def measure_contours(Multi_centerlines, image):
         x_maxs = []
         x_mins = []
         for i in range(len(Multi_centerlines1.geoms)):
-            minx, _, maxx,_ = Multi_centerlines1.geoms[i].bounds
+            minx, _, maxx, _ = Multi_centerlines1.geoms[i].bounds
             x_maxs.append(maxx)
             x_mins.append(minx)
 
@@ -472,7 +477,7 @@ def measure_contours(Multi_centerlines, image):
 
         #print('contourszip', contourszip)
         #print('x_maxs', x_maxs)
-        centerlines1 = [x for _,x in sorted(contourszip, key=itemgetter(0))]
+        centerlines1 = [x for _, x in sorted(contourszip, key=itemgetter(0))]
         Multi_centerlines1 = shapely.geometry.MultiLineString(centerlines1)
         #print('ordered centerlines2:', Multi_centerlines2.geom_type)
         for i in range(len(Multi_centerlines1.geoms)-1):
@@ -542,6 +547,40 @@ def measure_contours(Multi_centerlines, image):
 
         return Multi_centerlines, measure_points, cutting_point
 
+#######################################################################
+# Plot contours
+#######################################################################
+def plot_contours(image, contours,file_name, path_out):
+    # ploty image with extracted contours to facilitate debuging
+    image_copy = copy.deepcopy(image)
+    for contour in contours:
+        cv2.drawContours(image_copy, contour, -1, (0, 255, 0), 1)
+
+    logger.info("Plotting output as png")
+    print("Plotting output as png")
+    export_path = os.path.join(path_out, 'pngs')
+    if not os.path.exists(export_path):
+        os.makedirs(export_path)
+
+    f = file_name + '.png'
+    # Save images at original size unles they are bigger then px in  length 30000. Should improve diagnostics on the images
+    imgheight, imgwidth = image_copy.shape[:2]
+    # since I use cv2 to load image I need to convert it to RGB before plotting with matplotlib
+    print("image.dtype", image.dtype)
+    image_copy = cv2.cvtColor(image_copy, cv2.COLOR_BGR2RGB)
+    # print('imgheight, imgwidth', imgheight, imgwidth)
+    plot_dpi = 100
+
+    if imgwidth < 30000:
+        plt.figure(figsize=(imgwidth / plot_dpi, 2 * (imgheight / plot_dpi)), dpi=plot_dpi)
+        # fig, (ax1, ax2) = plt.subplots(2)
+        plt.imshow(image_copy)
+    else:  # adjust image size if it`s exceeding 30000 pixels to 30000
+        resized_height = imgheight * (30000 / imgwidth)
+        plt.figure(figsize=(30000 / plot_dpi, 2 * (resized_height / plot_dpi)), dpi=plot_dpi)
+        # fig, (ax1, ax2) = plt.subplots(2)
+        plt.imshow(image_copy)
+    plt.savefig(os.path.join(export_path, f), bbox_inches='tight', pad_inches=0)
 #######################################################################
 # Plot predicted lines and points of measurements to visually assess
 #######################################################################

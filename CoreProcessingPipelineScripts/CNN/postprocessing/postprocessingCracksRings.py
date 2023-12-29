@@ -28,7 +28,7 @@ sys.path.append(ROOT_DIR)  # To find local version of the library
 
 from functions.postprocessing_functions import apply_mask, convert_to_binary_mask\
     , sliding_window_detection_multirow, clean_up_mask, find_centerlines, measure_contours, plot_lines, write_to_json\
-    , write_to_pos
+    , write_to_pos, plot_contours
 
 ##### SOLVE RETRAINING AFTER I GET INFERENCE WORKING
 #from training.retraining_container import retraining
@@ -294,6 +294,7 @@ def main():
                     clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
                     logger.info("clean_up_mask done")
                     print("clean_up_mask done")
+                    #plot_contours(image=im_origin, contours=clean_contours_rings, file_name='test', path_out=path_out) # for debug print contours on the image
                     #print(clean_contours_rings.shape)
                     centerlines_rings = find_centerlines(clean_contours_rings, cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
                     if centerlines_rings is None:
