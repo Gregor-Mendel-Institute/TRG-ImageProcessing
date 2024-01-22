@@ -69,21 +69,28 @@ def apply_mask(image, mask, alpha=0.5):
 def convert_to_binary_mask(result, class_number):
     # result is yolov8 result for one image
     # it will output a binary mask of all the detected masks of desired class_number
+    logging.info("convert_to_binary_mask started")
     im_shape = result.orig_shape
     print('im_shape', im_shape)
     cls_list = result.boxes.cls.int().tolist()
     print("cld_list", cls_list)
-    if len(cls_list)==0:
+    if len(cls_list)==0 or class_number not in cls_list:
         binary_mask = np.zeros(im_shape)
+
     else:
-        cld_list_bool =[i == class_number for i in cls_list]
+        cld_list_bool = [i == class_number for i in cls_list]
         result_sub = result[cld_list_bool]
         mask_coords = result_sub.masks.xy
-        all_mask_coords = [i.astype(np.int32) for i in mask_coords]
+        array_length_list = [len(i) for i in mask_coords] # to check for empty arrays
+        logging.info(f"array_length_list: {array_length_list}")
+        all_mask_coords = [i.astype(np.int32) for i in mask_coords if len(i)>0] # empty array caused segmentation fault in cv2.fillPoly
         # convert coords to binary mask of an image
         mask = np.zeros(im_shape)
+        logging.info("cv2.fillPoly starts")
         binary_mask = cv2.fillPoly(mask, pts=all_mask_coords, color=1)
+        logging.info("cv2.fillPoly finished")
 
+    logging.info("convert_to_binary_mask finished")
     return binary_mask
 
 ############################################################################################################
@@ -156,7 +163,9 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
                                                        preserve_range=True, resize=True).astype(np.uint8)
 
             ## Run the detection on all 3 at the same time
+            logger.info('Detection starts')
             results = model([cropped_part, cropped_part_90, cropped_part_45])
+            logger.info('Detection finished')
 
             for class_number in classes:
                 ## create flattened binary masks for every detected image and given class

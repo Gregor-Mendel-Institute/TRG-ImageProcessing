@@ -209,8 +209,9 @@ def main():
             input_list = [os.path.basename(input)]
             input_path = os.path.split(input)[0]
         elif os.path.isdir(input):
-            # Get a list of files in the dir
-            input_list = os.listdir(input)
+            # Get a list of files in the dir and filter hidden files
+            #input_list = os.listdir(input)
+            input_list = [f for f in os.listdir(input) if not f.startswith('.')]
             input_path = input
         else:
             print("Image argument is neither valid file nor directory") # input or image?
