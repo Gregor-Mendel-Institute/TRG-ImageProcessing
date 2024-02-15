@@ -122,17 +122,20 @@ def main():
     # get the arguments
     args = get_args()
 
+    if args.output_folder == None or not os.path.exists(args.output_folder):
+        print("Compulsory argument --output_folder is missing or is not correct. Specify the path to output folder.")
+        exit()
     # set up logging
     path_out = os.path.join(args.output_folder, args.run_ID)
+    logging.info(f"Output path set to: {path_out}")
     # Check if output dir for run_ID exists and if not create it
     if not os.path.isdir(path_out):
         os.mkdir(path_out)
 
     now = datetime.now()
     dt_string_name = now.strftime("D%Y%m%d_%H%M%S")  # "%Y-%m-%d_%H:%M:%S"
-    dt_string = now.strftime("%Y-%m-%d_%H:%M:%S")
     run_ID = args.run_ID
-    log_file_name = str(args.logfile) + run_ID + '_' + dt_string_name + '.log'  # "RunID" + dt_string +
+    log_file_name = str(args.logfile) + run_ID + '_' + dt_string_name + '.log'
     log_file_path = os.path.join(path_out, log_file_name)
 
     logging.basicConfig(level=logging.INFO, filename=log_file_path,
@@ -141,18 +144,22 @@ def main():
     logger = logging.getLogger(__name__)
 
     # PREPARE THE MODEL
+    # Check compulsory argument
+    if args.weightRing == None or not os.path.isfile(args.weightRing):
+        print("Compulsory argument --weightRing is missing or is not correct. Specify the path to ring weight file.")
+        logger.info("Compulsory argument --weightRing is missing or is not correct. Specify the path to ring weight file.")
+        exit()
+    logger.info(f"Loading weights: {args.weightRing}")
     modelRing = YOLO(args.weightRing)
 
     # RETRAINING
-
     if args.dataset is not None:
+        if not os.path.exists(args.dataset):
+            print("Path to --dataset does not exist.")
+
         print("Starting retraining mode")
         logger.info("Starting retraining mode")
         """
-        # Check compulsary argument and print which are missing
-        if args.weightRing==None:
-            print("Compulsory argument --weightRing is missing. Specify the path to ring weight file")
-            exit()
         # Check and prepare annotations
         prepareAnnotations(dataset=args.dataset, overwrite_existing=False)
 
@@ -165,17 +172,9 @@ def main():
         logger.info("Starting inference mode")
         # Check compulsory argument and print which are missing
         print('Checking compulsory arguments')
-        if args.input==None:
+        if args.input==None or not os.path.exists(args.input):
             print("Compulsory argument --input is missing. Specify the path to image file of folder")
-            logger.info("Compulsory argument --input is missing. Specify the path to image file of folder")
-            exit()
-        if args.weightRing==None:
-            print("Compulsory argument --weightRing is missing. Specify the path to ring weight file")
-            logger.info("Compulsory argument --weightRing is missing. Specify the path to ring weight file")
-            exit()
-        if args.output_folder==None:
-            print("Compulsory argument --output_folder is missing. Specify the path to output folder")
-            logger.info("Compulsory argument --output_folder is missing. Specify the path to output folder")
+            logger.info("Compulsory argument --input is missing or is not correct. Specify the path to image file of folder.")
             exit()
         if args.dpi==None:
             print("Compulsory argument --dpi is missing. Specify the DPI value for the image")
@@ -185,14 +184,6 @@ def main():
             print("Compulsory argument --run_ID is missing. Specify the Run ID")
             logger.info("Compulsory argument --run_ID is missing. Specify the Run ID")
             exit()
-
-        """"
-        ##### Incorporate this info in log file
-        # Initiate log file
-        with open(log_file_path,"x") as fi:
-            print("Run started:" + dt_string, file=fi)
-            print("Ring weights used:" + weights_path_Ring, file=fi)
-        """
 
         # Create a list of already exported jsons to prevent re-running the same image
         json_list = []
@@ -214,8 +205,8 @@ def main():
             input_list = [f for f in os.listdir(input) if not f.startswith('.')]
             input_path = input
         else:
-            print("Image argument is neither valid file nor directory") # input or image?
-            logger.info("Image argument is neither valid file nor directory")
+            print("Input argument is neither valid file nor directory") # input or image?
+            logger.info("Input argument is neither valid file nor directory")
         #print("got until here", input_list, input_path)
 
         for f in input_list:
@@ -236,23 +227,6 @@ def main():
                     image_path = os.path.join(input_path, f)
                     im_origin = cv2.imread(image_path)
 
-                    """
-                    REEVALUATE THIS SECTION FOR CV2 DONE WITH SKIMAGE WHICH YOLOV8 DOES NOT LIKE
-                    MIGHT NOT BE NECESSARY AT ALL BUT TEST PROPERLY
-                    # check number of channels and if 4 assume rgba and convert to rgb
-                    # conversion if image is not 8bit convert to 8 bit
-                    if im_origin.dtype == 'uint8' and im_origin.shape[2] == 3:
-                        print("Image was 8bit and RGB")
-                        write_run_info("Image was 8bit and RGB")
-                    elif im_origin.shape[2] == 4:
-                        print("Image has 4 channels, assuming RGBA, trying to convert")
-                        write_run_info("Image has 4 channels, assuming RGBA, trying to convert")
-                        im_origin = img_as_ubyte(skimage.color.rgba2rgb(im_origin))
-                    elif im_origin.dtype != 'uint8':
-                        print("Image converted to 8bit")
-                        write_run_info("Image converted to 8bit")
-                        im_origin = img_as_ubyte(exposure.rescale_intensity(im_origin))  # with rescaling should be better
-                    """
                     # Define default values if they were not provided as arguments
                     if args.cropUpandDown is not None:
                         cropUpandDown = float(args.cropUpandDown)
@@ -274,12 +248,12 @@ def main():
                     else:
                         cracks = False
 
-                    detected_mask = sliding_window_detection_multirow(image = im_origin,
+                    detected_mask = sliding_window_detection_multirow(image=im_origin,
                                                             detection_rows=detection_rows,
                                                             model=modelRing,
                                                             cracks=cracks,
-                                                            overlap = sliding_window_overlap,
-                                                            cropUpandDown = cropUpandDown)
+                                                            overlap=sliding_window_overlap,
+                                                            cropUpandDown=cropUpandDown)
 
                     logger.info("sliding_window_detection_multirow done")
                     print("sliding_window_detection_multirow done")
