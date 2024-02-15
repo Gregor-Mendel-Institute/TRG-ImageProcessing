@@ -30,9 +30,11 @@ from functions.postprocessing_functions import apply_mask, convert_to_binary_mas
     , sliding_window_detection_multirow, clean_up_mask, find_centerlines, measure_contours, plot_lines, write_to_json\
     , write_to_pos, plot_contours
 
+from functions.prepare_CVAT_annot import prepare_all_annotations
+
 ##### SOLVE RETRAINING AFTER I GET INFERENCE WORKING
 #from training.retraining_container import retraining
-#from training.prepareAnnotations import prepareAnnotations
+
 
 
 """
@@ -159,10 +161,10 @@ def main():
 
         print("Starting retraining mode")
         logger.info("Starting retraining mode")
-        """
         # Check and prepare annotations
-        prepareAnnotations(dataset=args.dataset, overwrite_existing=False)
+        prepare_all_annotations(dataset_path=args.dataset, buffer=10, overwrite_existing=True)
 
+        """
         # Start retraining
         retraining(weights=args.weightRing, dataset=args.dataset, logs=args.logs, start_new=args.start_new)
         """

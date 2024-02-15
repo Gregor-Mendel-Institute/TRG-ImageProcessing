@@ -1,5 +1,7 @@
 
-python postprocessingCracksRings.py \
+time python ../postprocessing/postprocessingCracksRings.py \
 --dataset=../training/sample_dataset  \
---weightRing=/Users/miroslav.polacek/Github/TRG_development/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/onlyring/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 \
+--run_ID=Training_test \
+--weightRing=../weights/best.pt \
+--output_folder=../output
 
