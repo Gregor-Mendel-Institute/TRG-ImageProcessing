@@ -1,6 +1,7 @@
 from itertools import combinations
 import logging
 import networkx as nx
+import math
 from networkx.exception import NetworkXNoPath
 import numpy as np
 import os
@@ -8,7 +9,7 @@ import sys
 import operator
 import scipy
 from scipy.spatial import Voronoi
-from scipy.ndimage import filters
+from scipy.ndimage import gaussian_filter1d
 from shapely.geometry import LineString, MultiLineString, Point, MultiPoint
 
 # Root directory of the project
@@ -26,6 +27,7 @@ def get_centerline(
     segmentize_maxlen=0.5,
     max_points=3000,
     simplification=0.05,
+    segmentize_maxlen_post=10,
     smooth_sigma=5
 ):
     """
@@ -40,6 +42,8 @@ def get_centerline(
         (default: 3000)
     simplification : Simplification threshold.
         (default: 0.05)
+    segmentize_maxlen_post : Maximum segment length for polygon borders after simplification.
+        (default: 10)
     smooth_sigma : Smoothness of the output centerlines.
         (default: 5)
 
@@ -60,28 +64,29 @@ def get_centerline(
         #x0, y0 = geom.exterior.coords.xy
         #plt.plot(x0, y0, '.g', markersize=2)
 
-        outline = _segmentize(geom.exterior, segmentize_maxlen)
+        outline = geom.exterior.segmentize(segmentize_maxlen) # add points to be sure there are no empty zones
         logger.debug("outline: %s", outline)
 
         # simplify segmentized geometry if necessary and get points
-        outline_points = outline.coords
+        #outline_points = outline.coords
+        outline_s = outline
 
         #x1, y1 = outline_points.xy
         #plt.plot(x1, y1, marker='o', markersize=2)
         #plt.show()
 
         simplification_updated = simplification
-        while len(outline_points) > max_points:
+        while len(outline_s.coords) > max_points:
             #print('outline_points_while_A:', len(outline_points))
             # if geometry is too large, apply simplification until geometry
             # is simplified enough (indicated by the "max_points" value)
             simplification_updated += simplification
-            outline_points = outline.simplify(simplification_updated).coords
+            outline_s = outline.simplify(simplification_updated)
             #print('outline_points_while_B:',  len(outline_points))
         logger.debug("simplification used: %s", simplification_updated)
-        logger.debug("simplified points: %s", MultiPoint(outline_points))
+        logger.debug("simplified points: %s", MultiPoint(outline_s.coords))
 
-        outline_points = _segment_post(outline_points, max_len = 15).coords
+        outline_points = outline_s.segmentize(segmentize_maxlen_post).coords
         _point_check(outline_points)
         # calculate Voronoi diagram and convert to graph but only use points
         # from within the original polygon
@@ -149,9 +154,9 @@ def get_centerline(
 
 # helper functions #
 ####################
-
+"""
 def _segmentize(geom, max_len):
-    """Interpolate points on segments if they exceed maximum length."""
+    # Interpolate points on segments if they exceed maximum length.
     points = []
     for previous, current in zip(geom.coords, geom.coords[1:]):
         line_segment = LineString([previous, current])
@@ -163,9 +168,10 @@ def _segmentize(geom, max_len):
         # finally, add end point
         points.append(current)
     return LineString(points)
-
+"""
+"""
 def _segment_post(outline_points, max_len):
-    """Interpolate points on the longest segments after the simplification"""
+    # Interpolate points on the longest segments after the simplification
     points = []
     distances = []
     for previous, current in zip(outline_points, outline_points[1:]):
@@ -183,6 +189,7 @@ def _segment_post(outline_points, max_len):
     #print('max_distance:', np.max(distances))
     #print('distances',sorted(distances, reverse = True))
     return LineString(points)
+"""
 
 def _point_check(outline_points):
     """Interpolate points on the longest segments"""
@@ -202,8 +209,8 @@ def _smooth_linestring(linestring, smooth_sigma):
     """Use a gauss filter to smooth out the LineString coordinates."""
     return LineString(
         zip(
-            np.array(filters.gaussian_filter1d(linestring.xy[0], smooth_sigma)),
-            np.array(filters.gaussian_filter1d(linestring.xy[1], smooth_sigma))
+            np.array(gaussian_filter1d(linestring.xy[0], smooth_sigma)),
+            np.array(gaussian_filter1d(linestring.xy[1], smooth_sigma))
         )
     )
 
@@ -246,7 +253,7 @@ def _get_absolute_angle(edge1, edge2):
     v1 = edge1[0] - edge1[1]
     v2 = edge2[0] - edge2[1]
     return abs(
-        np.degrees(np.math.atan2(np.linalg.det([v1, v2]), np.dot(v1, v2)))
+        np.degrees(math.atan2(np.linalg.det([v1, v2]), np.dot(v1, v2)))
     )
 
 

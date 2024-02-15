@@ -29,6 +29,7 @@ import scipy
 from datetime import datetime
 from operator import itemgetter
 import logging
+import pickle
 
 # Import Mask RCNN
 ROOT_DIR = os.path.abspath("../")
@@ -306,8 +307,12 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
         #plt.plot(x0, y0)
         #exterior_coords = polygon.exterior.coords
         #print('polygon_points:', len(exterior_coords))
+        #with open(f'shapely_polygon{i}.pkl', 'wb') as file:
+        #    pickle.dump(polygon, file)
         try:
-            cline = get_centerline(polygon, segmentize_maxlen=10, max_points=300, simplification=0.05)
+            #cline = get_centerline(polygon)
+            cline = get_centerline(polygon, segmentize_maxlen=0.5, max_points=600, simplification=0.1,
+                                   segmentize_maxlen_post=11, smooth_sigma=5)
         except Exception as e:
             logger.info('Centerline of the ring {} failed with exception {}'.format(i, e))
             print('Centerline of the ring {} failed with exception {}'.format(i, e))
