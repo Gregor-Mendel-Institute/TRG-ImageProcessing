@@ -31,9 +31,7 @@ from functions.postprocessing_functions import apply_mask, convert_to_binary_mas
     , write_to_pos, plot_contours
 
 from functions.prepare_CVAT_annot import prepare_all_annotations
-
-##### SOLVE RETRAINING AFTER I GET INFERENCE WORKING
-#from training.retraining_container import retraining
+from training.retraining_container import retraining
 
 
 
@@ -110,8 +108,8 @@ def get_args():
                         metavar="/path/to/logs/",
                         help='Logs and checkpoints directory (default="./logs")')
 
-    parser.add_argument('--start_new', required=False,
-                        default="True",
+    parser.add_argument('--resume_training', required=False,
+                        default="False",
                         help='If True retraining wil start from the beginning else continue from provided weight')
 
     args = parser.parse_args()
@@ -129,13 +127,12 @@ def main():
         exit()
     # set up logging
     path_out = os.path.join(args.output_folder, args.run_ID)
-    logging.info(f"Output path set to: {path_out}")
     # Check if output dir for run_ID exists and if not create it
     if not os.path.isdir(path_out):
         os.mkdir(path_out)
 
     now = datetime.now()
-    dt_string_name = now.strftime("D%Y%m%d_%H%M%S")  # "%Y-%m-%d_%H:%M:%S"
+    dt_string_name = now.strftime('D%Y%m%d_%H%M%S')  # "%Y-%m-%d_%H:%M:%S"
     run_ID = args.run_ID
     log_file_name = str(args.logfile) + run_ID + '_' + dt_string_name + '.log'
     log_file_path = os.path.join(path_out, log_file_name)
@@ -145,6 +142,7 @@ def main():
                         datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger(__name__)
 
+    logging.info(f"Output path set to: {path_out}")
     # PREPARE THE MODEL
     # Check compulsory argument
     if args.weightRing == None or not os.path.isfile(args.weightRing):
@@ -164,10 +162,8 @@ def main():
         # Check and prepare annotations
         prepare_all_annotations(dataset_path=args.dataset, buffer=10, overwrite_existing=True)
 
-        """
         # Start retraining
-        retraining(weights=args.weightRing, dataset=args.dataset, logs=args.logs, start_new=args.start_new)
-        """
+        retraining(model=modelRing, dataset=args.dataset, out_path=path_out, start_new=args.start_new) #pass the dataset and saving location
     # DETECTION
     else:
         print("Starting inference mode")
