@@ -1,36 +1,28 @@
-"""
-Mask R-CNN
-Train on the treering dataset.
 
-------------------------------------------------------------
+import os.path
+from ultralytics import YOLO
 
-Usage: run from the command line as such:
-
-    # Train a new model starting from pre-trained COCO weights
-    python3 Train_Rings.py train --dataset=dataset/folder --weights=coco
-
-    # Resume training a model that you had trained earlier
-    python3 Train_Rings.py train --dataset=dataset/folder --weights=last
-
-    # Train a new model starting from ImageNet weights
-    python3 Train_Rings.py train --dataset=dataset/folder --weights=imagenet
-
-"""
-
-#if __name__ == '__main__':
-
-
-def retraining(model, dataset, out_path, start_new=True):
+def retraining(model, dataset, out_path):
     """
-    # Validate arguments
-    assert dataset, "Argument --dataset is required for training"
 
-    print("Initial weights: ", weights)
-    print("Dataset: ", dataset)
-    print("Logs: ", logs)
     """
-    # implement starting continuing from where it left
-    ## eg. if start_new=False:
+    # find data.yaml file. It should be just under the main dataset path.
+    # It has to be prepared by the user for now but may be later i will create it automatically if it will be missing.
+    data_yaml = os.path.join(dataset, "data.yaml")
+    if not os.path.isfile(data_yaml):
+        print("No such file or directory", data_yaml)
+        print("Create data.yaml file according to provided example and place it in dataset folder")
+        exit()
 
-    # Train
-    results = model.train(data='../training/Dataset_sample.yaml', epochs=2, imgsz=640, project=out_path)
+    # augmentations are in args.yaml
+    # implement resuming training from where it left
+    ## first find the last weight
+    last_weigth_path = os.path.join(out_path, "train", "weights", "last.pt")
+    if os.path.isfile(last_weigth_path):
+        #load the last model from path out location
+        model = YOLO(last_weigth_path)
+        results = model.train(data=data_yaml, epochs=2, imgsz=640, project=out_path, resume=True)
+
+    else:
+        # Train from
+        results = model.train(data=data_yaml, epochs=2, imgsz=640, project=out_path)

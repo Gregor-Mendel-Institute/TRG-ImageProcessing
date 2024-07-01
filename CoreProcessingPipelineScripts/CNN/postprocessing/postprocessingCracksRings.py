@@ -21,7 +21,7 @@ from datetime import datetime
 from ultralytics import YOLO
 import logging
 
-# Import Mask RCNN
+# Import custom functions
 ROOT_DIR = os.path.abspath("../")
 print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library
@@ -108,10 +108,6 @@ def get_args():
                         metavar="/path/to/logs/",
                         help='Logs and checkpoints directory (default="./logs")')
 
-    parser.add_argument('--resume_training', required=False,
-                        default="False",
-                        help='If True retraining wil start from the beginning else continue from provided weight')
-
     args = parser.parse_args()
     return args
 
@@ -163,7 +159,7 @@ def main():
         prepare_all_annotations(dataset_path=args.dataset, buffer=10, overwrite_existing=True)
 
         # Start retraining
-        retraining(model=modelRing, dataset=args.dataset, out_path=path_out, start_new=args.start_new) #pass the dataset and saving location
+        retraining(model=modelRing, dataset=args.dataset, out_path=path_out) #pass the dataset and saving location
     # DETECTION
     else:
         print("Starting inference mode")
@@ -208,7 +204,7 @@ def main():
         #print("got until here", input_list, input_path)
 
         for f in input_list:
-            supported_extensions = ['.tif', '.tiff']
+            supported_extensions = ['.tif', '.tiff', '.png']
             file_extension = os.path.splitext(f)[1]
 
             if file_extension in supported_extensions and os.path.splitext(f)[0] in json_list:

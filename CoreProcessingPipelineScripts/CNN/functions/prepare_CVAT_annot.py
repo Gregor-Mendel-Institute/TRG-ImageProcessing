@@ -97,7 +97,7 @@ def prepare_annotations(dataset_path, annot_list, buffer=10, overwrite_existing=
                             line += str(all_points_y_norm[point_index]) + " "
                         f.write(line)
 
-            # here the preparation of polygones for cracks
+            # here the preparation of polygons for cracks
             for poly_tag in i.iter('polygon'):
                 print(poly_tag)
                 for key, value in poly_tag.items():
