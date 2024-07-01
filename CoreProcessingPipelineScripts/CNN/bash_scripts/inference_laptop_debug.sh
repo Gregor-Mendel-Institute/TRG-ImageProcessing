@@ -2,7 +2,7 @@
 time python ../postprocessing/postprocessingCracksRings.py \
   --dpi=13039 \
   --run_ID=Squares \
-  --input=/Volumes/T7\ Shield/CNN_yolov8_retraining_data/OurImages_raw/chopped/ \
+  --input=/Volumes/T7\ Shield/CNN_yolov8_retraining_data/OurImages_raw/chopped/00019005b_mo4577_pS1.96536799834280303030_0.tif \
   --weightRing=../weights/best10pxlowerlrf.pt \
   --output_folder=../output \
   --cracks=True \

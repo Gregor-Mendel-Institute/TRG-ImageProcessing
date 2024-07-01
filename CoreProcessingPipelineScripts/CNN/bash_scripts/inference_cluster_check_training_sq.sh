@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:RTX:1
 #SBATCH --mem=32G
 #SBATCH --qos=short
-#SBATCH --time=00-08:00:00
+#SBATCH --time=00-04:00:00
 #SBATCH --output=Detect_new_training_squares.stdout
 
 ml load build-env/f2022 # required for anaconda3

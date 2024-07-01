@@ -363,7 +363,6 @@ def measure_contours(Multi_centerlines, image):
     imgheight, imgwidth = image.shape[:2]
     print('imgheight, imgwidth', imgheight, imgwidth)
     logger.info("Image has height {} and width {}".format(imgheight, imgwidth))
-
     logger.info("{} ring boundries were detected".format(len(Multi_centerlines.geoms)))
 
     # Split samples that are crosing center into two then turn the second part around
@@ -388,7 +387,7 @@ def measure_contours(Multi_centerlines, image):
         #print('intersection:', intersection.geom_type)
         if intersection.geom_type=='LineString':
             if intersection.is_empty: # prevents crushing if segment is empty
-                print("empty intersection")
+                logger.info("empty intersection")
                 continue
 
             x, y = intersection.coords.xy

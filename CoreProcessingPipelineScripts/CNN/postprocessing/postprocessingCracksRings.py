@@ -17,6 +17,7 @@ import sys
 import cv2
 import time
 import argparse
+import shapely
 from datetime import datetime
 from ultralytics import YOLO
 import logging
@@ -273,9 +274,19 @@ def main():
 
                     logger.info("find_centerlines done")
                     print("find_centerlines done")
-                    centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
+                    # if statement to prevent crushing in case centerlines_rings contains only one centerline
+                    if centerlines_rings.geom_type=='LineString':
+                        logger.info("centerlines_rings contains only one centerline for this image")
+                        print("centerlines_rings contains only one centerline for this image")
+                        centerlines = centerlines_rings # for visualisation of the result
+                        logger.info("IMAGE WAS NOT FINISHED")
+                        print("IMAGE WAS NOT FINISHED")
+                        continue
+                    elif centerlines_rings.geom_type=='MultiLineString':
+                        centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
                     logger.info("measure_contours done")
                     print("measure_contours done")
+
                     # If cracks are detected
                     clean_contours_cracks = None
                     if cracks is True:
