@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
 #SBATCH --nodes=1
-#SBATCH --partition=g
-#SBATCH --gres=gpu:RTX:1
+#SBATCH --gres=gpu:1
 #SBATCH --mem=32G
 #SBATCH --qos=short
 #SBATCH --time=00-04:00:00

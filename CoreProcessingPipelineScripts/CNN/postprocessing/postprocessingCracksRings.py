@@ -18,6 +18,7 @@ import cv2
 import time
 import argparse
 import shapely
+import torch
 from datetime import datetime
 from ultralytics import YOLO
 import logging
@@ -148,6 +149,18 @@ def main():
         exit()
     logger.info(f"Loading weights: {args.weightRing}")
     modelRing = YOLO(args.weightRing)
+
+    # check available devices to run model
+    if torch.cuda.device_count() > 0:
+        logger.info(f"{torch.cuda.device_count()} cuda devices are available")
+        device_names = []
+        for device_n in range(torch.cuda.device_count()):
+            device_names.append(torch.cuda.get_device_name(device_n))
+    else:
+        device_names = 'CPU'
+
+    logger.info(f"Model is running on: {device_names}")
+    print(f"Model is running on: {device_names}")
 
     # RETRAINING
     if args.dataset is not None:
