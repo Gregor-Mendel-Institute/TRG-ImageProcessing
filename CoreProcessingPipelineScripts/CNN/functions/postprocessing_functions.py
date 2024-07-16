@@ -114,10 +114,26 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
 
     imgheight_for_pad, imgwidth_for_pad = new_image.shape[:2]
 
-    # add zero padding at the begining and the end according to overlap so every part of the picture is detected same number of times
-    zero_padding_front = np.zeros(shape=(imgheight_for_pad, int(imgheight_for_pad*overlap),3), dtype='uint8')
-    zero_padding_back = np.zeros(shape=(imgheight_for_pad, imgheight_for_pad,3), dtype='uint8')
-    #print('padding', zero_padding.shape)
+    # add zero padding at the begining and the end according to overlap
+    ## if overlap >= 0.5, every part of the picture is detected same number of time
+    if overlap >= 0.5 and overlap < 1:
+        front_pad_width = int(imgheight_for_pad*overlap)
+        back_pad_width = imgheight_for_pad
+    ## if overlap < 0.5, do not need front pad as it will ot overlap equaly anyways
+    elif overlap < 0.5:
+        front_pad_width = 0
+        back_pad_width = int(imgheight_for_pad - (imgheight_for_pad*overlap))
+    ## if overlap == 0 no need to pad at all
+    elif overlap == 0:
+        front_pad_width = 0
+        back_pad_width = 0
+    else:
+        logging.info(f"sliding_window_overlap value of {overlap} is not valid, it should be between 0 and smaller than 1")
+        raise SystemExit(f"sliding_window_overlap value of {overlap} is not valid, it should be between 0 and smaller than 1")
+
+
+    zero_padding_front = np.zeros(shape=(imgheight_for_pad, front_pad_width, 3), dtype='uint8')
+    zero_padding_back = np.zeros(shape=(imgheight_for_pad, back_pad_width, 3), dtype='uint8')
     im_padded = np.concatenate((zero_padding_front, new_image, zero_padding_back), axis=1)
     logger.info(f"im_padded.dtype: {im_padded.dtype}") # should be uint8
 
@@ -136,8 +152,8 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
         row_height = imgheight
 
     ## columns
-    looping_range = range(0,imgwidth, int(row_height-(row_height*overlap)))
-    looping_list = [i for i in looping_range if i < int(row_height-(row_height*overlap)) + imgwidth_origin]
+    looping_range = range(0, imgwidth, int(row_height-(row_height*overlap)))
+    looping_list = [i for i in looping_range if i < imgwidth-row_height] # before the condition was int(row_height-(row_height*overlap)) + imgwidth_origin
     logger.info(f'looping_list: {looping_list}')
 
     if cracks is True:
@@ -154,7 +170,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
             # crop the image
             cropped_part = im_padded[rl:rl+row_height, i:i+row_height]
             print('cropped_part, i, i+imheight', cropped_part.shape, i, i+imgheight)
-            logger.info(f'cropped_part, i, i+imheight: {cropped_part.shape}, {i}, {imgheight}')
+            logger.info(f'cropped_part, i, i+imheight: {cropped_part.shape}, {i}, {i+imgheight}')
             #logger.info('cropped_part.dtype', cropped_part.dtype) # should be uint8
 
             # Run detection on the cropped part of the image
@@ -184,6 +200,9 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
                 r2_mask_back_cropped = r2_mask_back[to_crop:(to_crop+int(row_height)), to_crop:(to_crop+int(row_height))]
 
                 ## Put all togather
+                logger.info(f"r_mask: {r_mask.shape}")
+                logger.info(f"r1_mask_back: {r1_mask_back.shape}")
+                logger.info(f"r2_mask_back_cropped: {r2_mask_back_cropped.shape}")
                 combined_mask_section = r_mask + r1_mask_back + r2_mask_back_cropped
                 logger.info(f"combined_mask_section.shape{combined_mask_section.shape}")
                 # Crop the edges of detected square to get cleaner mask
