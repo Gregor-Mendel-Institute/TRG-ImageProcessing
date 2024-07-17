@@ -646,8 +646,12 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
         linewidth = (resized_height/1000)*3  # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
 
     if centerlines:
+        if centerlines.geom_type == 'LineString':
+            xc, yc = centerlines.coords.xy
+            plt.plot(xc, yc, 'g', linewidth=linewidth)
+
         # Plot the lines to the image
-        if not isinstance(centerlines, list) and len(centerlines.geoms)>2:
+        elif not isinstance(centerlines, list) and len(centerlines.geoms)>2:
 
             #plt.figure(figsize = (30,15))
             #plt.imshow(image)
