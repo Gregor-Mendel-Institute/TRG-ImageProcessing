@@ -17,8 +17,8 @@ import sys
 import cv2
 import time
 import argparse
-import shapely
 import torch
+import copy
 from datetime import datetime
 from ultralytics import YOLO
 import logging
@@ -34,8 +34,6 @@ from functions.postprocessing_functions import apply_mask, convert_to_binary_mas
 
 from functions.prepare_CVAT_annot import prepare_all_annotations
 from training.retraining_container import retraining
-
-
 
 """
 stream_h = logging.StreamHandler()
@@ -234,6 +232,7 @@ def main():
                     logger.info("Processing image: {}".format(f))
                     image_path = os.path.join(input_path, f)
                     im_origin = cv2.imread(image_path)
+                    image_name = os.path.splitext(f)[0] # later for saving files
 
                     # Define default values if they were not provided as arguments
                     if args.cropUpandDown is not None:
@@ -256,6 +255,12 @@ def main():
                     else:
                         cracks = False
 
+                    if args.min_mask_overlap is not None:
+                        min_mask_overlap = int(args.min_mask_overlap)
+                    else:
+                        min_mask_overlap = 3
+
+                    # RUN DETECTION
                     detected_mask = sliding_window_detection_multirow(image=im_origin,
                                                             detection_rows=detection_rows,
                                                             model=modelRing,
@@ -265,62 +270,65 @@ def main():
 
                     logger.info("sliding_window_detection_multirow done")
                     print("sliding_window_detection_multirow done")
-                    detected_mask_rings = detected_mask[:,:,0]
-                    #print("detected_mask_rings", detected_mask_rings.shape)
 
-                    # Define minimum mask overlap if not provided
-                    if args.min_mask_overlap is not None:
-                        min_mask_overlap = int(args.min_mask_overlap)
-                    else:
-                        min_mask_overlap = 3
-
+                    # CLEAN UP MASKS
+                    ## RINGS
+                    detected_mask_rings = detected_mask[:, :, 0]
+                    # print("detected_mask_rings", detected_mask_rings.shape)
                     clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
                     logger.info("clean_up_mask done")
                     print("clean_up_mask done")
                     #plot_contours(image=im_origin, contours=clean_contours_rings, file_name='test', path_out=path_out) # for debug print contours on the image
                     #print(clean_contours_rings.shape)
-                    centerlines_rings = find_centerlines(clean_contours_rings, cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
-                    if centerlines_rings is None:
-                        logger.info("IMAGE WAS NOT FINISHED")
-                        print("IMAGE WAS NOT FINISHED")
-                        continue
-
-                    logger.info("find_centerlines done")
-                    print("find_centerlines done")
-                    # if statement to prevent crushing in case centerlines_rings contains only one centerline
-                    if centerlines_rings.geom_type=='LineString':
-                        logger.info("centerlines_rings contains only one centerline for this image")
-                        print("centerlines_rings contains only one centerline for this image")
-                        centerlines = centerlines_rings # for visualisation of the result
-                        logger.info("IMAGE WAS NOT FINISHED")
-                        print("IMAGE WAS NOT FINISHED")
-                        continue
-                    elif centerlines_rings.geom_type=='MultiLineString':
-                        centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
-                    logger.info("measure_contours done")
-                    print("measure_contours done")
-
-                    # If cracks are detected
+                    ## CRACKS
                     clean_contours_cracks = None
                     if cracks is True:
-                        detected_mask_cracks = detected_mask[:,:,1]
+                        detected_mask_cracks = detected_mask[:, :, 1]
                         print("detected_mask_cracks", detected_mask_cracks.shape)
                         clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
                         logger.info("clean_up_mask cracks done")
                         print("clean_up_mask cracks done")
 
-                    write_to_json(image_name=f, cutting_point=cutting_point, run_ID=run_ID,
-                                    path_out=path_out, centerlines_rings=centerlines_rings,
-                                    clean_contours_rings=clean_contours_rings,
-                                    clean_contours_cracks=clean_contours_cracks)
-                    logger.info("write_to_json done")
+                    # FIND CENTERLINES
+                    centerlines_rings = find_centerlines(clean_contours_rings, cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
+                    logger.info("find_centerlines done")
+                    print("find_centerlines done")
+                    if centerlines_rings is None:
+                        logger.info("No centerlines were detected")
+                        print("No centerlines were detected")
+                        centerlines = None
+                        measure_points = None
+                        finished = False
 
-                    image_name = os.path.splitext(f)[0]
-                    DPI = float(args.dpi)
-                    write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
+                    else:
+                        # MEASURE RING DISTANCES
+                        # if statement to prevent crushing in case centerlines_rings contains only one centerline
+                        if centerlines_rings.geom_type=='LineString':
+                            logger.info("centerlines_rings contains only one centerline for this image")
+                            print("centerlines_rings contains only one centerline for this image")
+                            centerlines = centerlines_rings # for visualisation of the result
+                            measure_points = None
+                            finished = False
 
+                        elif centerlines_rings.geom_type=='MultiLineString':
+                            centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
+                            logger.info("measure_contours done")
+                            print("measure_contours done")
+
+                            # WRITE RING MEASUREMENTS
+                            write_to_json(image_name=f, cutting_point=cutting_point, run_ID=run_ID,
+                                          path_out=path_out, centerlines_rings=centerlines_rings,
+                                          clean_contours_rings=clean_contours_rings,
+                                          clean_contours_cracks=clean_contours_cracks)
+                            logger.info("write_to_json done")
+
+                            DPI = float(args.dpi)
+                            write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
+                            finished = True
+
+                    # PRINT DETECTED IMAGES
                     if args.print_detections == "yes":
-                        # Ploting lines is moslty for debugging
+                        # Plotting lines is mostly for debugging
                         masked_image = im_origin.copy()
                         print("masked_image.dtype", masked_image.dtype)
                         masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
@@ -331,8 +339,14 @@ def main():
                         plot_lines(masked_image, centerlines, measure_points,
                                     image_name, path_out)
                         logger.info("plot_lines done")
-                    logger.info("IMAGE FINISHED")
-                    print("IMAGE FINISHED")
+
+                    if finished:
+                        logger.info("IMAGE FINISHED")
+                        print("IMAGE FINISHED")
+                    else:
+                        logger.info("IMAGE WAS NOT FINISHED")
+                        print("IMAGE WAS NOT FINISHED")
+
                     image_finished_time = time.perf_counter()
                     image_run_time = image_finished_time - image_start_time
                     logger.info(f"Image run time: {image_run_time} s")

@@ -582,7 +582,7 @@ def measure_contours(Multi_centerlines, image):
 #######################################################################
 # Plot contours
 #######################################################################
-def plot_contours(image, contours,file_name, path_out):
+def plot_contours(image, contours, file_name, path_out):
     # ploty image with extracted contours to facilitate debuging
     image_copy = copy.deepcopy(image)
     for contour in contours:
@@ -645,50 +645,51 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
         plt.imshow(image)
         linewidth = (resized_height/1000)*3  # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
 
+    if centerlines:
+        # Plot the lines to the image
+        if not isinstance(centerlines, list) and len(centerlines.geoms)>2:
 
-    # Plot the lines to the image
-    if not isinstance(centerlines, list) and len(centerlines.geoms)>2:
-
-        #plt.figure(figsize = (30,15))
-        #plt.imshow(image)
-        for i in range(len(centerlines.geoms)-1):
-            #print('loop', i)
-            points = measure_points[i]
-
-            xc,yc = centerlines.geoms[i].coords.xy
-            plt.plot(xc,yc,'g', linewidth=linewidth)
-
-            xp, yp = points[0].coords.xy
-            xp1, yp1 = points[1].coords.xy
-            plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
-
-        xc,yc = centerlines.geoms[-1].coords.xy
-        plt.plot(xc,yc,'g', linewidth=linewidth)
-        #plt.show()
-
-
-    elif isinstance(centerlines, list) and len(centerlines)==2:
-        for l in range(2):
-            color = ['g', 'b']
-            centerlines1 = centerlines[l]
-            #print('measure_points:', len(measure_points))
-            measure_points1 = measure_points[l]
-            if len(measure_points1)==0: # Precaution in case the first part of measure points is empty
-                continue
-            for i in range(len(centerlines1.geoms)-1):
+            #plt.figure(figsize = (30,15))
+            #plt.imshow(image)
+            for i in range(len(centerlines.geoms)-1):
                 #print('loop', i)
 
-                xc,yc = centerlines1.geoms[i].coords.xy
-                plt.plot(xc,yc,color[l], linewidth=linewidth)
+                xc, yc = centerlines.geoms[i].coords.xy
+                plt.plot(xc,yc,'g', linewidth=linewidth)
 
-                points = measure_points1[i]
-                xp, yp = points[0].coords.xy
-                xp1, yp1 = points[1].coords.xy
-                plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
+                if measure_points:
+                    points = measure_points[i]
+                    xp, yp = points[0].coords.xy
+                    xp1, yp1 = points[1].coords.xy
+                    plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
 
-            xc,yc = centerlines1.geoms[-1].coords.xy # To print the last point
-            plt.plot(xc,yc, color[l], linewidth=linewidth)
-        #plt.show()
+            xc, yc = centerlines.geoms[-1].coords.xy
+            plt.plot(xc,yc,'g', linewidth=linewidth)
+            #plt.show()
+
+
+        elif isinstance(centerlines, list) and len(centerlines)==2:
+            for l in range(2):
+                color = ['g', 'b']
+                centerlines1 = centerlines[l]
+                #print('measure_points:', len(measure_points))
+                measure_points1 = measure_points[l]
+                if len(measure_points1)==0: # Precaution in case the first part of measure points is empty
+                    continue
+                for i in range(len(centerlines1.geoms)-1):
+                    #print('loop', i)
+
+                    xc,yc = centerlines1.geoms[i].coords.xy
+                    plt.plot(xc,yc,color[l], linewidth=linewidth)
+
+                    points = measure_points1[i]
+                    xp, yp = points[0].coords.xy
+                    xp1, yp1 = points[1].coords.xy
+                    plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
+
+                xc,yc = centerlines1.geoms[-1].coords.xy # To print the last point
+                plt.plot(xc,yc, color[l], linewidth=linewidth)
+            #plt.show()
 
     plt.savefig(os.path.join(export_path, f), bbox_inches = 'tight', pad_inches = 0)
 
@@ -719,7 +720,7 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
     for v in range(len(input_vars)):
         coords = {}
         # 'If else' becasue ring_line is shapely object and clean contours are from opencv and have different structure
-        print(json_names[v]) #### just for debug, remove
+        #print(json_names[v]) #### just for debug, remove
         if json_names[v] == 'ring_line':
             for i in range(len(input_vars[v].geoms)):
                 x_list, y_list = input_vars[v].geoms[i].coords.xy
