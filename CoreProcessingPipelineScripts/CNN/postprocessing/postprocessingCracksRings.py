@@ -290,6 +290,7 @@ def main():
                         print("clean_up_mask cracks done")
 
                     # FIND CENTERLINES
+                    print("debug check")
                     centerlines_rings = find_centerlines(clean_contours_rings, cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
                     logger.info("find_centerlines done")
                     print("find_centerlines done")

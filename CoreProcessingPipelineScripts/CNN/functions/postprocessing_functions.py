@@ -302,6 +302,7 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
     contours_tuples = []
     x_mins = []
     for i in range(len(clean_contours)):
+        print("find_centerline reorganise iter:", i)
         xy_tuples = []
         x_only = []
         for p in range(len(clean_contours[i])):
@@ -318,11 +319,11 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
 
     centerlines = []
     for i in range(len(contours_tuples)):
-        #print('ring_contour:', i)
+        print('ring_contour:', i)
         contour = contours_tuples[i]
-        #print('contour:', contour)
+        print('contour:', contour)
         polygon = shapely.geometry.Polygon(contour)
-        #x0, y0 = polygon.exterior.coords.xy
+        x0, y0 = polygon.exterior.coords.xy
         #plt.plot(x0, y0)
         #exterior_coords = polygon.exterior.coords
         #print('polygon_points:', len(exterior_coords))

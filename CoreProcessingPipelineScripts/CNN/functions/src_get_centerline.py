@@ -4,21 +4,13 @@ import networkx as nx
 import math
 from networkx.exception import NetworkXNoPath
 import numpy as np
-import os
-import sys
+#import os
+#import sys
 import operator
-import scipy
+#import scipy
 from scipy.spatial import Voronoi
 from scipy.ndimage import gaussian_filter1d
 from shapely.geometry import LineString, MultiLineString, Point, MultiPoint
-
-# Root directory of the project
-ROOT_DIR = os.path.abspath("../")
-
-# Import Mask RCNN
-sys.path.append(ROOT_DIR)  # To find local version of the library
-
-from functions.exceptions import CenterlineError
 
 logger = logging.getLogger(__name__)
 
@@ -76,13 +68,19 @@ def get_centerline(
         #plt.show()
 
         simplification_updated = simplification
+        print("prewhile centerline")
         while len(outline_s.coords) > max_points:
-            #print('outline_points_while_A:', len(outline_points))
+            print('outline_points_while_A:', len(outline_s.coords))
             # if geometry is too large, apply simplification until geometry
             # is simplified enough (indicated by the "max_points" value)
             simplification_updated += simplification
+            past_length = len(outline_s.coords)
             outline_s = outline.simplify(simplification_updated)
+            if len(outline_s.coords) == past_length:
+                logger.info("get_centerline got into infinite loop and was broken")
+                break
             #print('outline_points_while_B:',  len(outline_points))
+        print("postwhile centerline")
         logger.debug("simplification used: %s", simplification_updated)
         logger.debug("simplified points: %s", MultiPoint(outline_s.coords))
 
@@ -190,6 +188,8 @@ def _segment_post(outline_points, max_len):
     #print('distances',sorted(distances, reverse = True))
     return LineString(points)
 """
+class CenterlineError(Exception):
+    """Gets raised if centerline cannot be extracted from input Polygon."""
 
 def _point_check(outline_points):
     """Interpolate points on the longest segments"""
