@@ -1,8 +1,8 @@
 
 time python ../postprocessing/postprocessingCracksRings.py \
---dataset=../training/sample_dataset  \
+--dataset=/Volumes/T7\ Shield/TRG_RingCrack_3rd_trainingdataset  \
 --run_ID=Training_test \
 --weightRing=../weights/best10pxlowerlrf.pt \
---resume_training=True \
 --output_folder=../output
 
+#--dataset=../training/sample_dataset  \

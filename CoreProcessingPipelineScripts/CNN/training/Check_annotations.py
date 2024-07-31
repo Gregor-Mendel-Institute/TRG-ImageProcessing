@@ -1,18 +1,8 @@
 import os
 import sys
-#import itertools
-#import math
-#import logging
-#import json
-#import re
-#import random
-#from collections import OrderedDict
+
 import numpy as np
 import matplotlib
-#import matplotlib.pyplot as plt
-#import matplotlib.patches as patches
-#import matplotlib.lines as lines
-#from matplotlib.patches import Polygon
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath("../Mask_RCNN/")
@@ -20,11 +10,6 @@ ROOT_DIR = os.path.abspath("../Mask_RCNN/")
 
 # Import Mask RCNN
 sys.path.append(ROOT_DIR)  # To find local version of the library
-from mrcnn import utils
-from mrcnn import visualize_print
-from mrcnn.visualize import display_images
-import mrcnn.model as modellib
-from mrcnn.model import log
 
 from training.retraining_container import TreeringConfig, TreeringDataset
 

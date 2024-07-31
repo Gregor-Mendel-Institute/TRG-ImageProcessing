@@ -18,7 +18,6 @@ import cv2
 import time
 import argparse
 import torch
-import copy
 from datetime import datetime
 from ultralytics import YOLO
 import logging
@@ -28,7 +27,7 @@ ROOT_DIR = os.path.abspath("../")
 print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library
 
-from functions.postprocessing_functions import apply_mask, convert_to_binary_mask\
+from functions.processing_functions import apply_mask, convert_to_binary_mask\
     , sliding_window_detection_multirow, clean_up_mask, find_centerlines, measure_contours, plot_lines, write_to_json\
     , write_to_pos, plot_contours
 
@@ -118,7 +117,7 @@ def main():
     # get the arguments
     args = get_args()
 
-    if args.output_folder == None or not os.path.exists(args.output_folder):
+    if args.output_folder is None or not os.path.exists(args.output_folder):
         print("Compulsory argument --output_folder is missing or is not correct. Specify the path to output folder.")
         exit()
     # set up logging
@@ -141,7 +140,7 @@ def main():
     logging.info(f"Output path set to: {path_out}")
     # PREPARE THE MODEL
     # Check compulsory argument
-    if args.weightRing == None or not os.path.isfile(args.weightRing):
+    if args.weightRing is None or not os.path.isfile(args.weightRing):
         print("Compulsory argument --weightRing is missing or is not correct. Specify the path to ring weight file.")
         logger.info("Compulsory argument --weightRing is missing or is not correct. Specify the path to ring weight file.")
         exit()
@@ -151,9 +150,8 @@ def main():
     # check available devices to run model
     if torch.cuda.device_count() > 0:
         logger.info(f"{torch.cuda.device_count()} cuda devices are available")
-        device_names = []
-        for device_n in range(torch.cuda.device_count()):
-            device_names.append(torch.cuda.get_device_name(device_n))
+        device_names = [torch.cuda.get_device_name(device_n) for device_n in range(torch.cuda.device_count())]
+
     else:
         device_names = 'CPU'
 
@@ -178,61 +176,55 @@ def main():
         logger.info("Starting inference mode")
         # Check compulsory argument and print which are missing
         print('Checking compulsory arguments')
-        if args.input==None or not os.path.exists(args.input):
+        if args.input is None or not os.path.exists(args.input):
             print("Compulsory argument --input is missing. Specify the path to image file of folder")
             logger.info("Compulsory argument --input is missing or is not correct. Specify the path to image file of folder.")
             exit()
-        if args.dpi==None:
+        if args.dpi is None:
             print("Compulsory argument --dpi is missing. Specify the DPI value for the image")
             logger.info("Compulsory argument --dpi is missing. Specify the DPI value for the image")
             exit()
-        if args.run_ID==None:
+        if args.run_ID is None:
             print("Compulsory argument --run_ID is missing. Specify the Run ID")
             logger.info("Compulsory argument --run_ID is missing. Specify the Run ID")
             exit()
 
         # Create a list of already exported jsons to prevent re-running the same image
-        json_list = []
-        for f in os.listdir(path_out):
-            if f.endswith('.json'):
-                #json_name = os.path.splitext(f)[0]
-                json_name = f.replace('.json', '')
-                json_list.append(json_name)
+        json_l = tuple(f.replace('.json', '') for f in os.listdir(path_out) if f.endswith('.json'))
 
         input = args.input
         # Check pathin if its folder or file and get file list of either
         if os.path.isfile(input):
             # Get file name and dir to file
-            input_list = [os.path.basename(input)]
+            input_l = [os.path.basename(input)]
             input_path = os.path.split(input)[0]
         elif os.path.isdir(input):
             # Get a list of files in the dir and filter hidden files
-            #input_list = os.listdir(input)
-            input_list = [f for f in os.listdir(input) if not f.startswith('.')]
+            #input_list = [f for f in os.listdir(input) if not f.startswith('.')]
+            input_l = tuple(f for f in os.listdir(input) if not f.startswith('.'))
             input_path = input
         else:
             print("Input argument is neither valid file nor directory") # input or image?
             logger.info("Input argument is neither valid file nor directory")
-        #print("got until here", input_list, input_path)
 
-        for f in input_list:
-            supported_extensions = ['.tif', '.tiff', '.png']
+        for f in input_l:
+            supported_extensions = ('.tif', '.tiff', '.png')
             file_extension = os.path.splitext(f)[1]
 
-            if file_extension in supported_extensions and os.path.splitext(f)[0] in json_list:
+            if file_extension in supported_extensions and os.path.splitext(f)[0] in json_l:
                 # print image name first to keep the output consistent
                 print("Processing image: {}".format(f))
                 logger.info("Processing image: {}".format(f))
                 print("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
                 logger.info("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
-            elif file_extension in supported_extensions and os.path.splitext(f)[0] not in json_list:
+            elif file_extension in supported_extensions and os.path.splitext(f)[0] not in json_l:
                 try:
                     image_start_time = time.perf_counter()
                     print("Processing image: {}".format(f))
                     logger.info("Processing image: {}".format(f))
                     image_path = os.path.join(input_path, f)
                     im_origin = cv2.imread(image_path)
-                    image_name = os.path.splitext(f)[0] # later for saving files
+                    image_name = os.path.splitext(f)[0]  # later for saving files
 
                     # Define default values if they were not provided as arguments
                     if args.cropUpandDown is not None:
@@ -248,9 +240,9 @@ def main():
                     if args.n_detection_rows is None or args.n_detection_rows==1:
                         detection_rows = 1
                     else:
-                        detection_rows=int(args.n_detection_rows)
+                        detection_rows = int(args.n_detection_rows)
 
-                    if args.cracks=='True':
+                    if args.cracks == 'True':
                         cracks = True
                     else:
                         cracks = False
@@ -275,11 +267,11 @@ def main():
                     ## RINGS
                     detected_mask_rings = detected_mask[:, :, 0]
                     # print("detected_mask_rings", detected_mask_rings.shape)
-                    clean_contours_rings = clean_up_mask(detected_mask_rings, min_mask_overlap=min_mask_overlap, is_ring=True)
+                    clean_contours_rings = clean_up_mask(detected_mask_rings,
+                                                         min_mask_overlap=min_mask_overlap, is_ring=True)
                     logger.info("clean_up_mask done")
                     print("clean_up_mask done")
-                    #plot_contours(image=im_origin, contours=clean_contours_rings, file_name='test', path_out=path_out) # for debug print contours on the image
-                    #print(clean_contours_rings.shape)
+
                     ## CRACKS
                     clean_contours_cracks = None
                     if cracks is True:
@@ -291,7 +283,8 @@ def main():
 
                     # FIND CENTERLINES
                     print("debug check")
-                    centerlines_rings = find_centerlines(clean_contours_rings, cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
+                    centerlines_rings = find_centerlines(clean_contours_rings,
+                                                         cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
                     logger.info("find_centerlines done")
                     print("find_centerlines done")
                     if centerlines_rings is None:
@@ -304,14 +297,14 @@ def main():
                     else:
                         # MEASURE RING DISTANCES
                         # if statement to prevent crushing in case centerlines_rings contains only one centerline
-                        if centerlines_rings.geom_type=='LineString':
+                        if centerlines_rings.geom_type == 'LineString':
                             logger.info("centerlines_rings contains only one centerline for this image")
                             print("centerlines_rings contains only one centerline for this image")
-                            centerlines = centerlines_rings # for visualisation of the result
+                            centerlines = centerlines_rings  # for visualisation of the result
                             measure_points = None
                             finished = False
 
-                        elif centerlines_rings.geom_type=='MultiLineString':
+                        elif centerlines_rings.geom_type == 'MultiLineString':
                             centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
                             logger.info("measure_contours done")
                             print("measure_contours done")
@@ -357,7 +350,6 @@ def main():
                     logger.info("IMAGE WAS NOT FINISHED")
                     print(e)
                     print("IMAGE WAS NOT FINISHED")
-
 
 if __name__ == '__main__':
     main()

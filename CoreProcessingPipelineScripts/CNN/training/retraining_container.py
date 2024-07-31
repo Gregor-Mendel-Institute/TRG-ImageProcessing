@@ -21,8 +21,8 @@ def retraining(model, dataset, out_path):
     if os.path.isfile(last_weigth_path):
         #load the last model from path out location
         model = YOLO(last_weigth_path)
-        results = model.train(data=data_yaml, epochs=2, imgsz=640, project=out_path, resume=True)
+        model.train(data=data_yaml, epochs=2, imgsz=640, project=out_path, resume=True)
 
     else:
         # Train from
-        results = model.train(data=data_yaml, epochs=2, imgsz=640, project=out_path)
+        model.train(data=data_yaml, epochs=2, imgsz=640, project=out_path)

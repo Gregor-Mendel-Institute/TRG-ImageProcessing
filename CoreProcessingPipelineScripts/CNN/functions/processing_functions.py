@@ -29,7 +29,7 @@ import scipy
 from datetime import datetime
 from operator import itemgetter
 import logging
-import pickle
+#import pickle
 
 # Import Mask RCNN
 ROOT_DIR = os.path.abspath("../")
@@ -45,19 +45,19 @@ logger = logging.getLogger(__name__)
 def apply_mask(image, mask, alpha=0.5):
     """Apply the given mask to the image. In BGR
     """
-    color = (0.0, 0.0, 0.7) # B
+    color = (0.0, 0.0, 0.7)  # B
     for c in range(3):
         image[:, :, c] = np.where(mask == 1,
                                   image[:, :, c] * (1 - alpha) + alpha * color[c] * 255,
                                   image[:, :, c])
 
-    color = (0.0, 0.7, 0.0) # G
+    color = (0.0, 0.7, 0.0)  # G
     for c in range(3):
         image[:, :, c] = np.where(mask == 2,
                                   image[:, :, c] * (1 - alpha) + alpha * color[c] * 255,
                                   image[:, :, c])
 
-    color = (0.7, 0.0, 0.0) # R
+    color = (0.7, 0.0, 0.0)  # R
     for c in range(3):
         image[:, :, c] = np.where(mask > 2,
                                   image[:, :, c] * (1 - alpha) + alpha * color[c] * 255,
@@ -75,16 +75,16 @@ def convert_to_binary_mask(result, class_number):
     print('im_shape', im_shape)
     cls_list = result.boxes.cls.int().tolist()
     print("cld_list", cls_list)
-    if len(cls_list)==0 or class_number not in cls_list:
+    if len(cls_list) == 0 or class_number not in cls_list:
         binary_mask = np.zeros(im_shape)
 
     else:
         cld_list_bool = [i == class_number for i in cls_list]
         result_sub = result[cld_list_bool]
         mask_coords = result_sub.masks.xy
-        array_length_list = [len(i) for i in mask_coords] # to check for empty arrays
+        array_length_list = [len(i) for i in mask_coords]  # to check for empty arrays
         logging.info(f"array_length_list: {array_length_list}")
-        all_mask_coords = [i.astype(np.int32) for i in mask_coords if len(i)>0] # empty array caused segmentation fault in cv2.fillPoly
+        all_mask_coords = [i.astype(np.int32) for i in mask_coords if len(i) > 0]  # empty array caused segmentation fault in cv2.fillPoly
         # convert coords to binary mask of an image
         mask = np.zeros(im_shape)
         logging.info("cv2.fillPoly starts")
@@ -131,11 +131,10 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
         logging.info(f"sliding_window_overlap value of {overlap} is not valid, it should be between 0 and smaller than 1")
         raise SystemExit(f"sliding_window_overlap value of {overlap} is not valid, it should be between 0 and smaller than 1")
 
-
     zero_padding_front = np.zeros(shape=(imgheight_for_pad, front_pad_width, 3), dtype='uint8')
     zero_padding_back = np.zeros(shape=(imgheight_for_pad, back_pad_width, 3), dtype='uint8')
     im_padded = np.concatenate((zero_padding_front, new_image, zero_padding_back), axis=1)
-    logger.info(f"im_padded.dtype: {im_padded.dtype}") # should be uint8
+    logger.info(f"im_padded.dtype: {im_padded.dtype}")  # should be uint8
 
     imgheight, imgwidth = im_padded.shape[:2]
     logger.info(f'im_padded.shape: {im_padded.shape}')
@@ -148,24 +147,24 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
         row_height = int(((row_overlap_height*(detection_rows-1))+imgheight)/detection_rows)
         row_looping_range = range(0, imgheight-(row_height-1), int(row_height-row_overlap_height))
     else:
-        row_looping_range = [0]
+        row_looping_range = (0,)  # comma makes it tuple and iterable without it its just an integer
         row_height = imgheight
 
     ## columns
     looping_range = range(0, imgwidth, int(row_height-(row_height*overlap)))
-    looping_list = [i for i in looping_range if i < imgwidth-row_height] # before the condition was int(row_height-(row_height*overlap)) + imgwidth_origin
-    logger.info(f'looping_list: {looping_list}')
+    looping_tuple = tuple(i for i in looping_range if i < imgwidth-row_height)  # before the condition was int(row_height-(row_height*overlap)) + imgwidth_origin
+    logger.info(f'looping_tuple: {looping_tuple}')
 
-    if cracks is True:
-        classes = [0, 1]
+    if cracks:
+        classes = (0, 1)
     else:
-        classes = [0]
+        classes = (0,)
 
     combined_masks_per_class = np.zeros(shape=(imgheight, imgwidth, len(classes)), dtype=int) # combine all the partial masks in the final size of full tiff
     logger.info(f'combined_masks_per_class.shape: {combined_masks_per_class.shape}')
     for rl in row_looping_range:
         logger.info(f"rl: {rl}")
-        for i in looping_list: # defines the slide value
+        for i in looping_tuple:  # defines the slide value
             logger.info(f"i: {i}")
             # crop the image
             cropped_part = im_padded[rl:rl+row_height, i:i+row_height]
@@ -186,9 +185,9 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
 
             for class_number in classes:
                 ## create flattened binary masks for every detected image and given class
-                r_mask = convert_to_binary_mask(results[0], class_number) # 0 degree mask
-                r1_mask = convert_to_binary_mask(results[1], class_number) # 90 degree mask
-                r2_mask = convert_to_binary_mask(results[2], class_number) # 45 degree mask
+                r_mask = convert_to_binary_mask(results[0], class_number)  # 0 degree mask
+                r1_mask = convert_to_binary_mask(results[1], class_number)  # 90 degree mask
+                r2_mask = convert_to_binary_mask(results[2], class_number)  # 45 degree mask
 
                 ## Rotate maskr1 masks back
                 r1_mask_back = np.rot90(r1_mask, k=-1)
@@ -216,14 +215,14 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
     pad_front = zero_padding_front.shape[1]
     logger.info(f'pad_front: {pad_front}')
     pad_back = zero_padding_back.shape[1]
-    the_mask_clean = combined_masks_per_class[:,pad_front:-pad_back,:]
+    the_mask_clean = combined_masks_per_class[:, pad_front:-pad_back, :]
     logger.info(f'the_mask_clean.shape: {the_mask_clean.shape}')
 
     # Concatanete the top and buttom to fit the original image
     missing_part = int((imgheight_origin - the_mask_clean.shape[0])/2)
     to_concatenate = np.zeros(shape=(missing_part, imgwidth_origin, the_mask_clean.shape[2]), dtype='uint8')
     #print("to_concatenate", to_concatenate.shape)
-    the_mask_clean_origin_size = np.concatenate((to_concatenate, the_mask_clean, to_concatenate),axis=0)
+    the_mask_clean_origin_size = np.concatenate((to_concatenate, the_mask_clean, to_concatenate), axis=0)
     logger.info(f'the_mask_clean_origin_size: {the_mask_clean_origin_size.shape}')
 
     return the_mask_clean_origin_size
@@ -243,36 +242,34 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     uint8binary = binary_mask.astype(np.uint8).copy()
 
     # Extract contour coordinates from binary mask
-    contours, _ = cv2.findContours(uint8binary,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
+    contours, _ = cv2.findContours(uint8binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     #print('contour_shape:', len(contours))
     logger.info(f'Raw_contours: {len(contours)}')
 
     # Here i extract dimensions and angle of individual contours bigger than threshold
     imgheight, imgwidth = mask.shape[:2]
-    if is_ring==True:
+    if is_ring:
         min_size_threshold = imgheight/5 #imgheight/12 # Will take only contours that are bigger than 1/5 of the image
         logger.info(f'min_size_threshold for ring: {min_size_threshold}')
     else:
         min_size_threshold = 1
     contours_filtered = []
     x_mins = []
-    for i in range(0, len(contours)):
-        x_only = []
-        for p in range(len(contours[i])):
-            [[x,_]] = contours[i][p]
-            x_only.append(x)
+    for contour in contours:
+        x_only = [x for [[x, _]] in contour]
+
         x_min = np.min(x_only)
         #remove those that are too short
-        rect = cv2.minAreaRect(contours[i])
+        rect = cv2.minAreaRect(contour)
         #print(rect)
-        imgheight, imgwidth = mask.shape[:2]
+        #imgheight, imgwidth = mask.shape[:2]
         #print(imgheight)
         dim1, dim2 = rect[1]
         dim_max = max([dim1, dim2])
         if dim_max > min_size_threshold:
-            contours_filtered.append(contours[i])
+            contours_filtered.append(contour)
             x_mins.append(x_min)
-            print("contour shape", contours[i].shape)
+            #print("contour shape", contours[i].shape)
 
     print('Filtered_contours:', len(contours_filtered))
     logger.info(f'Filtered_contours: {len(contours_filtered)}')
@@ -280,12 +277,12 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     #print(contours_filtered[0])
 
     # Extract longest contour to use for center estimate
-    if is_ring==True:
-        unique_vector = range(len(x_mins)) # added to prevent sorting problems if x_mins values are the same
+    if is_ring:
+        unique_vector = range(len(x_mins))  # added to prevent sorting problems if x_mins values are the same
         contourszip = zip(x_mins, unique_vector, contours_filtered)
-        contours_out = [x for _,_, x in sorted(contourszip, reverse=False)]
+        contours_out = tuple(x for _, _, x in sorted(contourszip, reverse=False))
     else:
-        contours_out = contours_filtered
+        contours_out = tuple(contours_filtered)
 
     # Returns filtered and ordered contours
     return contours_out
@@ -299,40 +296,37 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
     # y_length_threshold removes lines that are too short on y axes thus most probably horizontal misdetections
     print("find_centerlines started")
     # First need to reorganise the data
-    contours_tuples = []
+    contours_list = []
     x_mins = []
-    for i in range(len(clean_contours)):
-        print("find_centerline reorganise iter:", i)
+    for contour in clean_contours:
         xy_tuples = []
         x_only = []
-        for p in range(len(clean_contours[i])):
-            [[x,y]] = clean_contours[i][p]
-            xy_tuples.append((x,y))
+        for [[x, y]] in contour:
+            xy_tuples.append((x, y))
             x_only.append(x)
+
         x_min = np.min(x_only)
         x_mins.append(x_min)
-        contours_tuples.append(xy_tuples)
+        contours_list.append(xy_tuples)
 
     # Order contours by x_min
-    contourszip = zip(x_mins, contours_tuples)
-    contours_tuples = [x for _,x in sorted(contourszip, key=itemgetter(0))]
+    contourszip = zip(x_mins, contours_list)
+    contours_tuples = tuple(t for _, t in sorted(contourszip, key=itemgetter(0)))
 
     centerlines = []
-    for i in range(len(contours_tuples)):
+    for i, contour in enumerate(contours_tuples):
         print('ring_contour:', i)
-        contour = contours_tuples[i]
-        print('contour:', contour)
+        #print('contour:', contour)
         polygon = shapely.geometry.Polygon(contour)
-        x0, y0 = polygon.exterior.coords.xy
+        #x0, y0 = polygon.exterior.coords.xy
         #plt.plot(x0, y0)
         #exterior_coords = polygon.exterior.coords
         #print('polygon_points:', len(exterior_coords))
         #with open(f'shapely_polygon{i}.pkl', 'wb') as file:
         #    pickle.dump(polygon, file)
         try:
-            #cline = get_centerline(polygon)
-            cline = get_centerline(polygon, segmentize_maxlen=0.5, max_points=600, simplification=0.1,
-                                   segmentize_maxlen_post=11, smooth_sigma=5)
+            cline = get_centerline(polygon, segmentize_maxlen=0.5, max_points=600, simplification=0.15,
+                                   segmentize_maxlen_post=11, smooth_sigma=5)  # max_points=600, simplification=0.1
         except Exception as e:
             logger.info('Centerline of the ring {} failed with exception {}'.format(i, e))
             print('Centerline of the ring {} failed with exception {}'.format(i, e))
@@ -393,7 +387,7 @@ def measure_contours(Multi_centerlines, image):
     number_of_segments = int(imgwidth/sliding)
     #print('number_of_segments', number_of_segments)
     #plt.imshow(image)
-    for i in range(0, number_of_segments):
+    for i in range(number_of_segments):
         #print('loop_number', i)
         # get the frame
         frame_poly = shapely.geometry.box(i*sliding, 0, (i*sliding)+frame_width, imgheight)
@@ -405,8 +399,8 @@ def measure_contours(Multi_centerlines, image):
         # get lines inside of the frame
         intersection = Multi_centerlines.intersection(frame_poly)
         #print('intersection:', intersection.geom_type)
-        if intersection.geom_type=='LineString':
-            if intersection.is_empty: # prevents crushing if segment is empty
+        if intersection.geom_type == 'LineString':
+            if intersection.is_empty:  # prevents crushing if segment is empty
                 logger.info("empty intersection")
                 continue
 
@@ -431,22 +425,22 @@ def measure_contours(Multi_centerlines, image):
                     PlusMinus = []
                 PlusMinus_index.append([PlusMinus, cut_point])
 
-        elif intersection.geom_type=='MultiLineString':
+        elif intersection.geom_type == 'MultiLineString':
             slopes = []
             for l in range(len(intersection.geoms)):
                 x, y = intersection.geoms[l].coords.xy
                 x_dif = abs(x[-1] - x[0])
-                #print('loop number and xy coords:',i, l, x, y)
-                if x_dif < frame_width*.20: # This can be adjusted now it should skip this frame is line is less then 20% of the frame width
-                    #print(i, 'th is too short')
+                # print('loop number and xy coords:',i, l, x, y)
+                if x_dif < frame_width*.20:  # This can be adjusted now it should skip this frame is line is less then 20% of the frame width
+                    # print(i, 'th is too short')
                     continue
                 else:
-                    #print(i, "th frame is complex")
+                    # print(i, "th frame is complex")
                     slope, _, _, _, _ = scipy.stats.linregress(x, y)
-                    #logger.info("slope:{}".format(slope))
+                    #l ogger.info("slope:{}".format(slope))
 
-                    #print('linestring_x',x_int)
-                    #plt.plot(x_int, y_int)
+                    # print('linestring_x',x_int)
+                    # plt.plot(x_int, y_int)
                 slopes.append(slope)
 
             #print('slopes before mean', slopes)
@@ -461,15 +455,15 @@ def measure_contours(Multi_centerlines, image):
                     PlusMinus = 0
                 else:
                     PlusMinus = []
-                PlusMinus_index.append([PlusMinus,cut_point])
+                PlusMinus_index.append([PlusMinus, cut_point])
         else:
             continue
 
     # Find the middle by the change in a slope of the lines in PlusMinus_index
     cutting_point_detected = 0
-    test_seq1 = [0,0,1,1]
-    test_seq2 = [1,1,0,0]
-    PlusMinus = [x for x,_ in  PlusMinus_index]
+    test_seq1 = [0, 0, 1, 1]
+    test_seq2 = [1, 1, 0, 0]
+    PlusMinus = [x for x, _ in PlusMinus_index]
     for i in range(len(PlusMinus_index)):
         pm_seq = PlusMinus[i:i+len(test_seq1)]
         if pm_seq != test_seq1 and pm_seq != test_seq2:
@@ -481,11 +475,11 @@ def measure_contours(Multi_centerlines, image):
         cutting_point = PlusMinus_index[i+1][1] + ((PlusMinus_index[i+2][1] - PlusMinus_index[i+1][1])/2)
         cutting_point_detected = 1
         #if cutting_point is immediately at the beggining of the sample ignore it
-        if cutting_point < imgheight*2: # if cutting point is within 2*image height it will be ignored
+        if cutting_point < imgheight*2:  # if cutting point is within 2*image height it will be ignored
             cutting_point_detected = 0
 
     # Split sequence where it is crossing the middle
-    if cutting_point_detected==1:
+    if cutting_point_detected == 1:
 
         print('final_cutting_point:', cutting_point)
         logger.info('Core sample crosses the center and is cut at: ' + str(cutting_point))
@@ -494,13 +488,13 @@ def measure_contours(Multi_centerlines, image):
         cut_frame2_poly = shapely.geometry.box(cutting_point, 0, imgwidth, imgheight)
         Multi_centerlines2= Multi_centerlines.intersection(cut_frame2_poly)
         #logger.info("Multi_centerlines2 type {}".format(Multi_centerlines2.geom_type))
-        measure_points1 = []
-        measure_points2 = [] # I initiate it alredy here so i can use it in the test later
+        measure_points1, measure_points2 = [], []  # I initiate it already here so i can use it in the test later
+
         # Reorder Multi_centerlines1
-        x_maxs = []
-        x_mins = []
-        for i in range(len(Multi_centerlines1.geoms)):
-            minx, _, maxx, _ = Multi_centerlines1.geoms[i].bounds
+        x_mins, x_maxs = [], []
+
+        for geom in Multi_centerlines1.geoms:
+            minx, _, maxx, _ = geom.bounds
             x_maxs.append(maxx)
             x_mins.append(minx)
 
@@ -513,7 +507,8 @@ def measure_contours(Multi_centerlines, image):
         centerlines1 = [x for _, x in sorted(contourszip, key=itemgetter(0))]
         Multi_centerlines1 = shapely.geometry.MultiLineString(centerlines1)
         #print('ordered centerlines2:', Multi_centerlines2.geom_type)
-        for i in range(len(Multi_centerlines1.geoms)-1):
+        Multi_center1_loop_len = len(Multi_centerlines1.geoms)-1
+        for i in range(Multi_center1_loop_len):
             points = shapely.ops.nearest_points(Multi_centerlines1.geoms[i], Multi_centerlines1.geoms[i+1])
             measure_points1.append(points)
 
@@ -522,10 +517,9 @@ def measure_contours(Multi_centerlines, image):
             logger.info("Multi_centerlines2, the part after cutting point, is only one line")
         else:
             # Order contours by x_maxs
-            x_maxs = []
-            x_mins = []
-            for i in range(len(Multi_centerlines2.geoms)):
-                minx, _, maxx,_ = Multi_centerlines2.geoms[i].bounds
+            x_mins, x_maxs = [], []
+            for geom in Multi_centerlines2.geoms:
+                minx, _, maxx, _ = geom.bounds
                 x_maxs.append(maxx)
                 x_mins.append(minx)
 
@@ -534,19 +528,20 @@ def measure_contours(Multi_centerlines, image):
 
             #print('contourszip', contourszip)
             #print('x_maxs', x_maxs)
-            centerlines2 = [x for _,x in sorted(contourszip, key=itemgetter(0))]
+            centerlines2 = [x for _, x in sorted(contourszip, key=itemgetter(0))]
             Multi_centerlines2 = shapely.geometry.MultiLineString(centerlines2)
             #print('ordered centerlines2:', Multi_centerlines2.geom_type)
             # Find nearest_points for each pair of lines
-            for i in range(len(Multi_centerlines2.geoms)-1):
+            Multi_center2_loop_len = len(Multi_centerlines2.geoms) - 1
+            for i in range(Multi_center2_loop_len):
                 points = shapely.ops.nearest_points(Multi_centerlines2.geoms[i], Multi_centerlines2.geoms[i+1])
                 measure_points2.append(points)
 
         if not measure_points2:
-            measure_points=measure_points1
+            measure_points = measure_points1
             Multi_centerlines = Multi_centerlines1
         else:
-            measure_points=[measure_points1, measure_points2]
+            measure_points = [measure_points1, measure_points2]
             Multi_centerlines = [Multi_centerlines1, Multi_centerlines2]
 
         return Multi_centerlines, measure_points, cutting_point
@@ -556,11 +551,11 @@ def measure_contours(Multi_centerlines, image):
         print('middle point was not detected')
         logger.info('Middle point was not detected')
         cutting_point = {}
+
         # Reorder the lines
-        x_maxs = []
-        x_mins = []
-        for i in range(len(Multi_centerlines.geoms)):
-            minx, _, maxx,_ = Multi_centerlines.geoms[i].bounds
+        x_mins, x_maxs = [], []
+        for geom in Multi_centerlines.geoms:
+            minx, _, maxx, _ = geom.bounds
             x_maxs.append(maxx)
             x_mins.append(minx)
 
@@ -569,12 +564,13 @@ def measure_contours(Multi_centerlines, image):
 
         #print('contourszip', contourszip)
         #print('x_maxs', x_maxs)
-        centerlines = [x for _,x in sorted(contourszip, key=itemgetter(0))]
+        centerlines = [x for _, x in sorted(contourszip, key=itemgetter(0))]
         Multi_centerlines = shapely.geometry.MultiLineString(centerlines)
         #print('ordered centerlines:', Multi_centerlines2.geom_type)
         # Find nearest_points for each pair of lines
         measure_points = []
-        for i in range(len(Multi_centerlines.geoms)-1):
+        Multi_center_loop_len = len(Multi_centerlines.geoms)-1
+        for i in range(Multi_center_loop_len):
             points = shapely.ops.nearest_points(Multi_centerlines.geoms[i], Multi_centerlines.geoms[i+1])
             measure_points.append(points)
 
@@ -583,13 +579,24 @@ def measure_contours(Multi_centerlines, image):
 #######################################################################
 # Plot contours
 #######################################################################
-def plot_contours(image, contours, file_name, path_out):
-    # ploty image with extracted contours to facilitate debuging
+def plot_contours(image, contours, file_name, path_out, labels=None):
+    # plot image with extracted contours to facilitate debuging
     image_copy = copy.deepcopy(image)
-    for contour in contours:
-        cv2.drawContours(image_copy, contour, -1, (0, 255, 0), 1)
+    contours = tuple(contours)
+    if labels:
+        # for now I assume 2 categories 0 for ring and 1 for crack
+        contours_r = tuple(contour for i, contour in enumerate(contours) if labels[i] == '0')
+        for contour in contours_r:
+            cv2.drawContours(image_copy, [contour], -1, (0, 255, 0), 1)
 
-    logger.info("Plotting output as png")
+        contours_c = tuple(contour for i, contour in enumerate(contours) if labels[i] == '1')
+        for contour in contours_c:
+            cv2.drawContours(image_copy, [contour], -1, (255, 0, 0), 1)
+    else:
+        for contour in contours:
+            cv2.drawContours(image_copy, [contour], -1, (0, 255, 0), 1)
+
+    #logger.info("Plotting output as png")
     print("Plotting output as png")
     export_path = os.path.join(path_out, 'pngs')
     if not os.path.exists(export_path):
@@ -614,6 +621,88 @@ def plot_contours(image, contours, file_name, path_out):
         # fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image_copy)
     plt.savefig(os.path.join(export_path, f), bbox_inches='tight', pad_inches=0)
+    plt.close()
+#######################################################################
+# Extract annotations from yolov8 format text files
+#######################################################################
+def load_annot(annot_path, im_size):
+    # annot_path is path to annotation txt file of yolov8 format
+    # im_size is output of .shape method
+    # output contours are in shape acceptable for cv2 contours
+    # load annotations
+    labels, contours = [], []
+    with open(annot_path, "r") as f:
+        for line in f:
+            if len(line) < 3:  # it has to be much more to be valid points but in my case its sometimes a space in a row
+                continue
+            label, annot_list = line.split()[0], line.split()[1:]
+            labels.append(label)
+            annot_list = list(map(float, annot_list))  # convert x,y from string to a value
+            #annot_list = [int(i*im_size) for i in annot_list]
+            annot_list_xy = []
+            i = 0
+            while (i < len(annot_list)):
+                # append in the coordinates as a [x,y] plus convert them to pixels
+                annot_list_xy.append([annot_list[i]*im_size[1], annot_list[i + 1]*im_size[0]])
+                i += 2
+            contours.append(np.array(annot_list_xy, dtype=np.int32))
+    return contours, labels
+##########################################################################################
+# Function to print annotations as a png files plus save txt with some summary information
+##########################################################################################
+def check_annot_folder(folder_path):
+    out_path = os.path.join(folder_path, "annot_check")
+    im_list = tuple(f for f in os.listdir(folder_path) if f.endswith('.tif') and not f.startswith('.'))
+    labels_all, no_annot_file, no_annot_im = [], [], []
+    ok_im_count, im_with_ring, im_with_crack, im_with_both = 0, 0, 0, 0
+
+    for im_name in im_list:
+        print(im_name)
+        im_path = os.path.join(folder_path, im_name)
+        im = cv2.imread(im_path)
+        im_size = im.shape  # they are by design squares
+        annot_path = im_path.replace(".tif", ".txt")
+        if not os.path.exists(annot_path):
+            no_annot_file.append(annot_path)
+            print(f"Annot file for image {im_name} does not exist")
+            continue
+        contours, labels = load_annot(annot_path, im_size)
+        if len(labels) == 0:
+            no_annot_im.append(im_name)
+            print(f"Image {im_name} has no annotations")
+            continue
+
+        labels_all.extend(labels)
+        ok_im_count += 1
+        if '0' in labels and '1' in labels:
+            im_with_both += 1
+        elif '0' in labels and '1' not in labels:
+            im_with_ring += 1
+        elif '0' not in labels and '1' in labels:
+            im_with_crack += 1
+
+        plot_contours(image=im, contours=contours, labels=labels, file_name=im_name, path_out=out_path)
+
+    annot_info_file = os.path.join(out_path, "annot_info.txt")
+    ring_n = len(list(filter(lambda x: x == '0', labels_all)))
+    crack_n = len(list(filter(lambda x: x == '1', labels_all)))
+
+    with open(annot_info_file, 'w') as f:
+        print(f'Folder: {folder_path}', file=f)
+        print(f'Ok images with annotations: {ok_im_count}', file=f)
+        print(f'Data contain {ring_n} rings and {crack_n} cracks.', file=f)
+        print(f'Images with only rings: {im_with_ring} only cracks: {im_with_crack} and both: {im_with_both}', file=f)
+        print(f'Images without annotations {no_annot_im}', file=f)
+        print(f'Images without annotation file {no_annot_file}', file=f)
+
+#######################################################################
+# Run annot check on val and train folders of dataset
+#######################################################################
+def check_annot_dataset(dataset_path):
+    folders = ("train", "val")
+    for folder in folders:
+        folder_path = os.path.join(dataset_path, folder)
+        check_annot_folder(folder_path)
 #######################################################################
 # Plot predicted lines and points of measurements to visually assess
 #######################################################################
@@ -629,19 +718,19 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
     # Save images at original size unles they are bigger then px in  length 30000. Should improve diagnostics on the images
     imgheight, imgwidth = image.shape[:2]
     # since I use cv2 to load image I need to convert it to RGB before plotting with matplotlib
-    print("image.dtype", image.dtype)
+    #print("image.dtype", image.dtype)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     #print('imgheight, imgwidth', imgheight, imgwidth)
     plot_dpi = 100
 
     if imgwidth < 30000:
-        plt.figure(figsize = (imgwidth/plot_dpi, 2*(imgheight/plot_dpi)), dpi=plot_dpi)
+        plt.figure(figsize=(imgwidth/plot_dpi, 2*(imgheight/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
         linewidth = (imgheight/1000)*3   # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
     else: # adjust image size if it`s exceeding 30000 pixels to 30000
         resized_height = imgheight*(30000/imgwidth)
-        plt.figure(figsize = (30000/plot_dpi, 2*(resized_height/plot_dpi)), dpi=plot_dpi)
+        plt.figure(figsize=(30000/plot_dpi, 2*(resized_height/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
         linewidth = (resized_height/1000)*3  # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
@@ -652,15 +741,16 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
             plt.plot(xc, yc, 'g', linewidth=linewidth)
 
         # Plot the lines to the image
-        elif not isinstance(centerlines, list) and len(centerlines.geoms)>2:
+        elif not isinstance(centerlines, list) and len(centerlines.geoms) > 2:
 
             #plt.figure(figsize = (30,15))
             #plt.imshow(image)
-            for i in range(len(centerlines.geoms)-1):
+            centr_loop_len = len(centerlines.geoms)-1
+            for i in range(centr_loop_len):
                 #print('loop', i)
 
                 xc, yc = centerlines.geoms[i].coords.xy
-                plt.plot(xc,yc,'g', linewidth=linewidth)
+                plt.plot(xc, yc, 'g', linewidth=linewidth)
 
                 if measure_points:
                     points = measure_points[i]
@@ -669,7 +759,7 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
                     plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
 
             xc, yc = centerlines.geoms[-1].coords.xy
-            plt.plot(xc,yc,'g', linewidth=linewidth)
+            plt.plot(xc, yc, 'g', linewidth=linewidth)
             #plt.show()
 
 
@@ -679,25 +769,26 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out):
                 centerlines1 = centerlines[l]
                 #print('measure_points:', len(measure_points))
                 measure_points1 = measure_points[l]
-                if len(measure_points1)==0: # Precaution in case the first part of measure points is empty
+                if len(measure_points1) == 0: # Precaution in case the first part of measure points is empty
                     continue
-                for i in range(len(centerlines1.geoms)-1):
+                centr1_loop_len = len(centerlines1.geoms) - 1
+                for i in range(centr1_loop_len):
                     #print('loop', i)
 
-                    xc,yc = centerlines1.geoms[i].coords.xy
-                    plt.plot(xc,yc,color[l], linewidth=linewidth)
+                    xc, yc = centerlines1.geoms[i].coords.xy
+                    plt.plot(xc, yc, color[l], linewidth=linewidth)
 
                     points = measure_points1[i]
                     xp, yp = points[0].coords.xy
                     xp1, yp1 = points[1].coords.xy
                     plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
 
-                xc,yc = centerlines1.geoms[-1].coords.xy # To print the last point
-                plt.plot(xc,yc, color[l], linewidth=linewidth)
+                xc, yc = centerlines1.geoms[-1].coords.xy # To print the last point
+                plt.plot(xc, yc, color[l], linewidth=linewidth)
             #plt.show()
 
-    plt.savefig(os.path.join(export_path, f), bbox_inches = 'tight', pad_inches = 0)
-
+    plt.savefig(os.path.join(export_path, f), bbox_inches='tight', pad_inches=0)
+    plt.close()
 #######################################################################
 # Create a JSON file for shiny app
 #######################################################################
@@ -706,7 +797,6 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
     print("Writing .json file")
     logger.info("Writing .json file")
     # Define the structure of json
-    out_json = {}
     out_json = {image_name: {'run_ID':run_ID, 'predictions':{}, 'directionality': {},
                             'center': {}, 'est_rings_to_pith': {}, 'ring_widths': {}}}
     out_json[image_name]['predictions'] = {'ring_line': {}, 'ring_polygon': {},
@@ -736,7 +826,7 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
                 x_list = []
                 y_list = []
                 for p in range(len(input_vars[v][i])):
-                    [[x,y]] = input_vars[v][i][p]
+                    [[x, y]] = input_vars[v][i][p]
                     x_list.append(int(x))
                     y_list.append(int(y))
                 #print("type(x_list)", type(x_list))
@@ -750,7 +840,7 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
         out_json[image_name]['predictions'][json_names[v]]=coords
 
     output = os.path.join(path_out, os.path.splitext(image_name)[0] + '.json')
-    with open(output,'w') as outfile:
+    with open(output, 'w') as outfile:
         json.dump(out_json, outfile, indent=4)
 
 #######################################################################

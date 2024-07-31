@@ -16,14 +16,19 @@ def collect_annotations(CVAT_folder):
     # extracts individual image annotations dictionaries from all xml files and put them in one list
     all_image_xml_list = []
     CVAT_annot_file_list = [f for f in os.listdir(CVAT_folder) if not f.startswith('.')]  # ignore hidden files
+    # make sure they are xml files
     for xml_name in CVAT_annot_file_list:
-        # load xml file
-        print("Loading annotation file", xml_name)
-        with open(os.path.join(CVAT_folder, xml_name)) as file:
-            root = etree.parse(file).getroot()
+        if xml_name.endswith('.xml'):
+            # load xml file
+            print("Loading annotation file", xml_name)
+            with open(os.path.join(CVAT_folder, xml_name)) as file:
+                root = etree.parse(file).getroot()
 
-        for i in root.iter('image'):
-            all_image_xml_list.append(i)
+            for i in root.iter('image'):
+                all_image_xml_list.append(i)
+        else:
+            print(f"{xml_name} not proccesed because it`s not valid annotation file")
+
     return all_image_xml_list
 
 def polylinetopolygon(polyline_str, width, height, buffer=30):

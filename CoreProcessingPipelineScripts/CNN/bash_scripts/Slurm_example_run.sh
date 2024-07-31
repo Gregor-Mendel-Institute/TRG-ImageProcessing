@@ -14,4 +14,4 @@ singularity run --nv image-processing_master.sif \
   --input=../training/sample_dataset/train/1350_00041008a_0_pSX1.965402638101432_pSY1.9654116736824034.tif \
   --output_folder=../output \
 
-###Run like sbatch /groups/swarts/lab/ImageProcessingPipeline/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing/measureCoresCracksRingsByPlot.sh 12
+###Run like sbatch /groups/swarts/lab/ImageProcessingPipeline/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/processing/measureCoresCracksRingsByPlot.sh 12

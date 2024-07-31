@@ -25,4 +25,4 @@ singularity run --nv /scratch-cbe/shared/containers/trg-imageprocessing_master.s
 done
 
 
-###Run like sbatch /groups/swarts/lab/ImageProcessingPipeline/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing/measureCoresCracksRingsByPlot.sh 12
+###Run like sbatch /groups/swarts/lab/ImageProcessingPipeline/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/processing/measureCoresCracksRingsByPlot.sh 12

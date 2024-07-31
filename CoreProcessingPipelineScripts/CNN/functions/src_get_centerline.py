@@ -4,10 +4,7 @@ import networkx as nx
 import math
 from networkx.exception import NetworkXNoPath
 import numpy as np
-#import os
-#import sys
 import operator
-#import scipy
 from scipy.spatial import Voronoi
 from scipy.ndimage import gaussian_filter1d
 from shapely.geometry import LineString, MultiLineString, Point, MultiPoint
@@ -53,34 +50,26 @@ def get_centerline(
 
     if geom.geom_type == "Polygon":
         # segmentized Polygon outline
-        #x0, y0 = geom.exterior.coords.xy
-        #plt.plot(x0, y0, '.g', markersize=2)
 
         outline = geom.exterior.segmentize(segmentize_maxlen) # add points to be sure there are no empty zones
         logger.debug("outline: %s", outline)
 
         # simplify segmentized geometry if necessary and get points
-        #outline_points = outline.coords
         outline_s = outline
 
-        #x1, y1 = outline_points.xy
-        #plt.plot(x1, y1, marker='o', markersize=2)
-        #plt.show()
-
         simplification_updated = simplification
-        print("prewhile centerline")
         while len(outline_s.coords) > max_points:
-            print('outline_points_while_A:', len(outline_s.coords))
+            #print('outline_points_while_A:', len(outline_s.coords))
             # if geometry is too large, apply simplification until geometry
             # is simplified enough (indicated by the "max_points" value)
             simplification_updated += simplification
             past_length = len(outline_s.coords)
-            outline_s = outline.simplify(simplification_updated)
+            outline_s = outline.simplify(simplification_updated, preserve_topology=True)
             if len(outline_s.coords) == past_length:
+                # preserve_topology can make it stuck if it would result in colapse of polygone
                 logger.info("get_centerline got into infinite loop and was broken")
                 break
-            #print('outline_points_while_B:',  len(outline_points))
-        print("postwhile centerline")
+            #print('outline_points_while_B:',  len(outline_s.coords))
         logger.debug("simplification used: %s", simplification_updated)
         logger.debug("simplified points: %s", MultiPoint(outline_s.coords))
 
@@ -152,58 +141,26 @@ def get_centerline(
 
 # helper functions #
 ####################
-"""
-def _segmentize(geom, max_len):
-    # Interpolate points on segments if they exceed maximum length.
-    points = []
-    for previous, current in zip(geom.coords, geom.coords[1:]):
-        line_segment = LineString([previous, current])
-        # add points on line segment if necessary
-        points.extend([
-            line_segment.interpolate(max_len * i).coords[0]
-            for i in range(int(line_segment.length / max_len))
-        ])
-        # finally, add end point
-        points.append(current)
-    return LineString(points)
-"""
-"""
-def _segment_post(outline_points, max_len):
-    # Interpolate points on the longest segments after the simplification
-    points = []
-    distances = []
-    for previous, current in zip(outline_points, outline_points[1:]):
-        line_segment = LineString([previous, current])
-        distances.append(line_segment.length)
-        # add points on line segment if necessary
-
-        points.extend([
-            line_segment.interpolate(max_len * i).coords[0]
-            for i in range(int(line_segment.length / max_len))
-        ])
-
-        # finally, add end point
-        points.append(current)
-    #print('max_distance:', np.max(distances))
-    #print('distances',sorted(distances, reverse = True))
-    return LineString(points)
-"""
 class CenterlineError(Exception):
     """Gets raised if centerline cannot be extracted from input Polygon."""
 
 def _point_check(outline_points):
     """Interpolate points on the longest segments"""
-
+    """
+    # original version
     distances = []
     for previous, current in zip(outline_points, outline_points[1:]):
         line_segment = LineString([previous, current])
         distances.append(line_segment.length)
-
     #print('max_distance:', np.max(distances))
     #print('final_points:', len(distances))
     #print('distances',sorted(distances, reverse = True))
     return distances
-
+    """
+    # attempt to simplify
+    return [
+        LineString([previous, current]).length for previous, current in zip(outline_points, outline_points[1:])
+    ]
 
 def _smooth_linestring(linestring, smooth_sigma):
     """Use a gauss filter to smooth out the LineString coordinates."""
@@ -213,7 +170,6 @@ def _smooth_linestring(linestring, smooth_sigma):
             np.array(gaussian_filter1d(linestring.xy[1], smooth_sigma))
         )
     )
-
 
 def _get_longest_paths(nodes, graph, maxnum=5):
     """Return longest paths of all possible paths between a list of nodes."""
@@ -229,14 +185,12 @@ def _get_longest_paths(nodes, graph, maxnum=5):
         x for (y, x) in sorted(_gen_paths_distances(), reverse=True)
     ][:maxnum]
 
-
 def _get_least_curved_path(paths, vertices):
     """Return path with smallest angles."""
     return min(
         zip([_get_path_angles_sum(path, vertices) for path in paths], paths),
         key=operator.itemgetter(0)
     )[1]
-
 
 def _get_path_angles_sum(path, vertices):
     """Return all angles between edges from path."""
@@ -247,7 +201,6 @@ def _get_path_angles_sum(path, vertices):
         for pre, cur, nex in zip(path[:-1], path[1:], path[2:])
     ])
 
-
 def _get_absolute_angle(edge1, edge2):
     """Return absolute angle between edges."""
     v1 = edge1[0] - edge1[1]
@@ -256,11 +209,9 @@ def _get_absolute_angle(edge1, edge2):
         np.degrees(math.atan2(np.linalg.det([v1, v2]), np.dot(v1, v2)))
     )
 
-
 def _get_end_nodes(graph):
     """Return list of nodes with just one neighbor node."""
     return [i for i in graph.nodes() if len(list(graph.neighbors(i))) == 1]
-
 
 def _graph_from_voronoi(vor, geometry):
     """Return networkx.Graph from Voronoi diagram within geometry."""
@@ -269,7 +220,6 @@ def _graph_from_voronoi(vor, geometry):
         graph.add_nodes_from([x, y])
         graph.add_edge(x, y, weight=dist)
     return graph
-
 
 def _multilinestring_from_voronoi(vor, geometry):
     """Return MultiLineString geometry from Voronoi diagram."""
@@ -280,7 +230,6 @@ def _multilinestring_from_voronoi(vor, geometry):
         ])
         for x, y in _yield_ridge_vertices(vor, geometry)
     ])
-
 
 def _yield_ridge_vertices(vor, geometry, dist=False):
     """Yield Voronoi ridge vertices within geometry."""

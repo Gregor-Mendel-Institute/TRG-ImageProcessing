@@ -22,7 +22,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-### Loading a preparing the model should be identical with the postprocessing file and does not need to be here
+### Loading a preparing the model should be identical with the processing file and does not need to be here
 # Root directory of the project
 # Import Mask RCNN
 ROOT_DIR = os.path.abspath("../Mask_RCNN/")
@@ -518,7 +518,7 @@ df_PrecRec.to_csv(os.path.join(weight_eval_DIR, 'PrecRec_graph_data_{}.csv'.form
 """
 """
 ######## TEST EVALUATE_TRAINING in DEVELOPMENT STAGE
-training_log = "/Users/miroslav.polacek/Github/TRG_development/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/postprocessing/logs/fake_training"
+training_log = "/Users/miroslav.polacek/Github/TRG_development/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/processing/logs/fake_training"
 dataset = "/Users/miroslav.polacek/Github/TRG_development/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/training/sample_dataset"
 dataset = "/Users/miroslav.polacek/Documents/DebugDataset_temp"
 test_output = evaluate_training(model, training_log, dataset)
