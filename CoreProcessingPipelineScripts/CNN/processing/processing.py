@@ -97,6 +97,10 @@ def get_args():
                         metavar="logfile",
                         help="logfile name to put in output dir. Prepends other info (used to be 'CNN_')")
 
+    parser.add_argument('--debug', required=False,
+                        default=False,
+                        help="True will set logging level to debug")
+
     ## Additional retrainig arguments
     parser.add_argument('--dataset', required=False,
                         metavar="/path/to/treering/dataset/",
@@ -136,20 +140,22 @@ def main():
                         format='%(asctime)s-%(name)s-%(levelname)s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger(__name__)
+    if args.debug == 'True':
+        logging.getLogger().setLevel(logging.DEBUG)
 
     logging.info(f"Output path set to: {path_out}")
     # PREPARE THE MODEL
     # Check compulsory argument
     if args.weightRing is None or not os.path.isfile(args.weightRing):
         print("Compulsory argument --weightRing is missing or is not correct. Specify the path to ring weight file.")
-        logger.info("Compulsory argument --weightRing is missing or is not correct. Specify the path to ring weight file.")
+        logger.warning("Compulsory argument --weightRing is missing or is not correct. Specify the path to ring weight file.")
         exit()
     logger.info(f"Loading weights: {args.weightRing}")
     modelRing = YOLO(args.weightRing)
 
     # check available devices to run model
     if torch.cuda.device_count() > 0:
-        logger.info(f"{torch.cuda.device_count()} cuda devices are available")
+        logger.debug(f"{torch.cuda.device_count()} cuda devices are available")
         device_names = [torch.cuda.get_device_name(device_n) for device_n in range(torch.cuda.device_count())]
 
     else:
@@ -162,9 +168,10 @@ def main():
     if args.dataset is not None:
         if not os.path.exists(args.dataset):
             print("Path to --dataset does not exist.")
+            logger.warning("Path to --dataset does not exist.")
 
         print("Starting retraining mode")
-        logger.info("Starting retraining mode")
+        logger.info("STARTING RETRAINING MODE")
         # Check and prepare annotations
         prepare_all_annotations(dataset_path=args.dataset, buffer=10, overwrite_existing=True)
 
@@ -173,20 +180,19 @@ def main():
     # DETECTION
     else:
         print("Starting inference mode")
-        logger.info("Starting inference mode")
+        logger.info("STARTING INFERENCE MODE")
         # Check compulsory argument and print which are missing
-        print('Checking compulsory arguments')
         if args.input is None or not os.path.exists(args.input):
             print("Compulsory argument --input is missing. Specify the path to image file of folder")
-            logger.info("Compulsory argument --input is missing or is not correct. Specify the path to image file of folder.")
+            logger.warning("Compulsory argument --input is missing or is not correct. Specify the path to image file of folder.")
             exit()
         if args.dpi is None:
             print("Compulsory argument --dpi is missing. Specify the DPI value for the image")
-            logger.info("Compulsory argument --dpi is missing. Specify the DPI value for the image")
+            logger.warning("Compulsory argument --dpi is missing. Specify the DPI value for the image")
             exit()
         if args.run_ID is None:
             print("Compulsory argument --run_ID is missing. Specify the Run ID")
-            logger.info("Compulsory argument --run_ID is missing. Specify the Run ID")
+            logger.warning("Compulsory argument --run_ID is missing. Specify the Run ID")
             exit()
 
         # Create a list of already exported jsons to prevent re-running the same image
@@ -196,16 +202,16 @@ def main():
         # Check pathin if its folder or file and get file list of either
         if os.path.isfile(input):
             # Get file name and dir to file
-            input_l = [os.path.basename(input)]
+            input_l = (os.path.basename(input),)
             input_path = os.path.split(input)[0]
         elif os.path.isdir(input):
             # Get a list of files in the dir and filter hidden files
             #input_list = [f for f in os.listdir(input) if not f.startswith('.')]
-            input_l = tuple(f for f in os.listdir(input) if not f.startswith('.'))
+            input_l = (f for f in os.listdir(input) if not f.startswith('.'))
             input_path = input
         else:
             print("Input argument is neither valid file nor directory") # input or image?
-            logger.info("Input argument is neither valid file nor directory")
+            logger.warning("Input argument is neither valid file nor directory")
 
         for f in input_l:
             supported_extensions = ('.tif', '.tiff', '.png')
@@ -237,7 +243,7 @@ def main():
                     else:
                         sliding_window_overlap = 0.75
 
-                    if args.n_detection_rows is None or args.n_detection_rows==1:
+                    if args.n_detection_rows is None or args.n_detection_rows == 1:
                         detection_rows = 1
                     else:
                         detection_rows = int(args.n_detection_rows)
@@ -260,8 +266,8 @@ def main():
                                                             overlap=sliding_window_overlap,
                                                             cropUpandDown=cropUpandDown)
 
-                    logger.info("sliding_window_detection_multirow done")
-                    print("sliding_window_detection_multirow done")
+                    logger.debug("sliding_window_detection_multirow done")
+                    #print("sliding_window_detection_multirow done")
 
                     # CLEAN UP MASKS
                     ## RINGS
@@ -269,26 +275,25 @@ def main():
                     # print("detected_mask_rings", detected_mask_rings.shape)
                     clean_contours_rings = clean_up_mask(detected_mask_rings,
                                                          min_mask_overlap=min_mask_overlap, is_ring=True)
-                    logger.info("clean_up_mask done")
-                    print("clean_up_mask done")
+                    logger.debug("clean_up_mask done")
+                    #print("clean_up_mask done")
 
                     ## CRACKS
                     clean_contours_cracks = None
                     if cracks is True:
                         detected_mask_cracks = detected_mask[:, :, 1]
-                        print("detected_mask_cracks", detected_mask_cracks.shape)
+                        logger.debug(f"detected_mask_cracks{detected_mask_cracks.shape}")
                         clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
-                        logger.info("clean_up_mask cracks done")
-                        print("clean_up_mask cracks done")
+                        logger.debug("clean_up_mask cracks done")
+                        #print("clean_up_mask cracks done")
 
                     # FIND CENTERLINES
-                    print("debug check")
                     centerlines_rings = find_centerlines(clean_contours_rings,
                                                          cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
-                    logger.info("find_centerlines done")
-                    print("find_centerlines done")
+                    logger.debug("find_centerlines done")
+                    #print("find_centerlines done")
                     if centerlines_rings is None:
-                        logger.info("No centerlines were detected")
+                        logger.warning("No centerlines were detected")
                         print("No centerlines were detected")
                         centerlines = None
                         measure_points = None
@@ -298,7 +303,7 @@ def main():
                         # MEASURE RING DISTANCES
                         # if statement to prevent crushing in case centerlines_rings contains only one centerline
                         if centerlines_rings.geom_type == 'LineString':
-                            logger.info("centerlines_rings contains only one centerline for this image")
+                            logger.warning("centerlines_rings contains only one centerline for this image")
                             print("centerlines_rings contains only one centerline for this image")
                             centerlines = centerlines_rings  # for visualisation of the result
                             measure_points = None
@@ -306,25 +311,25 @@ def main():
 
                         elif centerlines_rings.geom_type == 'MultiLineString':
                             centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
-                            logger.info("measure_contours done")
-                            print("measure_contours done")
+                            logger.debug("measure_contours done")
+                            #print("measure_contours done")
 
                             # WRITE RING MEASUREMENTS
                             write_to_json(image_name=f, cutting_point=cutting_point, run_ID=run_ID,
                                           path_out=path_out, centerlines_rings=centerlines_rings,
                                           clean_contours_rings=clean_contours_rings,
                                           clean_contours_cracks=clean_contours_cracks)
-                            logger.info("write_to_json done")
+                            logger.debug("write_to_json done")
 
                             DPI = float(args.dpi)
-                            write_to_pos(centerlines, measure_points, image_name, f, DPI, path_out)
+                            write_to_pos(measure_points, image_name, f, DPI, path_out)
                             finished = True
 
                     # PRINT DETECTED IMAGES
                     if args.print_detections == "yes":
                         # Plotting lines is mostly for debugging
                         masked_image = im_origin.copy()
-                        print("masked_image.dtype", masked_image.dtype)
+                        logger.debug(f"masked_image.dtype{masked_image.dtype}")
                         masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
 
                         if cracks is True:
@@ -332,7 +337,7 @@ def main():
 
                         plot_lines(masked_image, centerlines, measure_points,
                                     image_name, path_out)
-                        logger.info("plot_lines done")
+                        logger.debug("plot_lines done")
 
                     if finished:
                         logger.info("IMAGE FINISHED")
