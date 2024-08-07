@@ -63,7 +63,18 @@ conda activate YOLOv82_P312
 \pard\pardeftab720\partightenfactor0
 \cf0 \
 \pard\pardeftab720\partightenfactor0
-\cf0 \outl0\strokewidth0 \strokec2 conda install -c pytorch -c nvidia -c conda-forge pytorch torchvision ultralytics \outl0\strokewidth0 lxml shapely scikit-image\outl0\strokewidth0 \strokec2 \
+\cf0 conda install -c pytorch -c nvidia -c conda-forge pypy pytorch torchvision ultralytics lxml shapely scikit-image\
+\
+\
+##### TO TEST WITH PYPY ####\
+# did not work at all with some problem in loading torch c something\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 \kerning1\expnd0\expndtw0 conda create -n YOLOv8_P39_PYPY python==3.9\
+conda activate YOLOv8_P39_PYPY
+\f1\fs26 \expnd0\expndtw0\kerning0
+\
 \pard\pardeftab720\partightenfactor0
-\cf0 \outl0\strokewidth0 \
+\cf0 \
+conda install -c pytorch -c nvidia -c conda-forge pypy pytorch=2.3 torchvision ultralytics lxml shapely scikit-image opencv=4.7\
 }

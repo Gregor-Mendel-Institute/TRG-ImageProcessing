@@ -6,14 +6,19 @@
 #SBATCH --mem=32G
 #SBATCH --qos=medium
 #SBATCH --time=00-20:00:00
-#SBATCH --output=Time_images_TF1.stdout
+#SBATCH --output=Time_images_OldDataset_Yolov8.stdout
 
-ml load anaconda3/2019.03
-source activate ~/.conda/envs/TreeRingCNN
+ml load build-env/f2022 # required for anaconda3
+ml load anaconda3/2023.03
+source activate ~/.conda/envs/YOLOv82_P312
 
-~/.conda/envs/TreeRingCNN/bin/python3 postprocessingCracksRings.py \
+~/.conda/envs/YOLOv82_P312/bin/python3 ../processing/processing.py \
   --dpi=13039 \
-  --run_ID=Inference_time_test_TF1 \
+  --run_ID=Time_images_OldDataset_Yolov8 \
   --input=/groups/swarts/lab/DendroImages/CNN_test/AlexPOS/MEECNNPaperTreeringSupplementalInfo/Tiffs \
-  --weightRing=/groups/swarts/lab/ImageProcessingPipeline/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/Mask_RCNN/logs/treeringcrackscomb2_onlyring20210121T1457/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5 \
+  --weightRing=../weights/best10pxlowerlrf.pt \
   --output_folder=../output \
+  --cracks=False \
+  --sliding_window_overlap=0.5 \
+  --debug=True \
+  --print_detections=yes \

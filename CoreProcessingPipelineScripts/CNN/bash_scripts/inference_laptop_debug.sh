@@ -1,13 +1,14 @@
 
 time python ../processing/processing.py \
   --dpi=13039 \
-  --run_ID=Redoing_centerline_functions \
-  --input=/Users/miroslav.polacek/Pictures/23_weird_image \
+  --run_ID=OldDataYolov8 \
+  --input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
   --weightRing=../weights/best10pxlowerlrf.pt \
   --output_folder=../output \
   --cropUpandDown=0 \
   --sliding_window_overlap=0.5 \
   --cracks=True \
+  --debug=True \
   --print_detections=yes\
 
 #--input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
