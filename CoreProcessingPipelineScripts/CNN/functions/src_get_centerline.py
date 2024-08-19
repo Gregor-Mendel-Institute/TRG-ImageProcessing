@@ -5,12 +5,28 @@ import math
 from networkx.exception import NetworkXNoPath
 import numpy as np
 import operator
+from multiprocessing import Pool
 from scipy.spatial import Voronoi
 from scipy.ndimage import gaussian_filter1d
 from shapely.geometry import LineString, MultiLineString, Point, MultiPoint
 
 logger = logging.getLogger(__name__)
+#### TRY MULTIPROCESSING ####
+def _get_centerline_pool(contour):
+    # logger.debug(f"ring_contour: {i}")
+    polygon = shapely.geometry.Polygon(contour)
+    try:
+        cline = get_centerline(polygon, segmentize_maxlen=0.5, max_points=600, simplification=0.15,
+                               segmentize_maxlen_post=11, smooth_sigma=5)  # max_points=600, simplification=0.1
+    except Exception as e:
+        logger.warning(f'Centerline of the ring failed with exception {e}')
+        print(f'Centerline of the ring failed with exception {e}')
+def get_centerline_pool(contours_tuples):
+    with Pool() as p:
+        centerlines = p.map(_get_centerline_pool, contours_tuples)
+    return centerlines
 
+###################
 def get_centerline(
     geom,
     segmentize_maxlen=0.5,

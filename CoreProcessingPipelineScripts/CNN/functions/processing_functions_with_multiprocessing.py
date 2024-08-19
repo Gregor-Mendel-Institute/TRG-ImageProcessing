@@ -34,7 +34,7 @@ import logging
 ROOT_DIR = os.path.abspath("../")
 #print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library
-from functions.src_get_centerline import get_centerline
+from functions.src_get_centerline import get_centerline_pool
 
 # set up logger
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ def apply_mask(image, mask, alpha=0.5):
 def convert_to_binary_mask(result, class_number):
     # result is yolov8 result for one image
     # it will output a binary mask of all the detected masks of desired class_number
-    logger.info("convert_to_binary_mask START")
+    logger.info("convert_to_binary_mask started")
     im_shape = result.orig_shape
     logger.debug(f"im_shape: {im_shape}")
     cls_list = result.boxes.cls.int().tolist()
@@ -90,7 +90,7 @@ def convert_to_binary_mask(result, class_number):
         binary_mask = cv2.fillPoly(mask, pts=all_mask_coords, color=1)
         logging.debug("cv2.fillPoly finished")
 
-    logging.info("convert_to_binary_mask FINISH")
+    logging.info("convert_to_binary_mask finished")
     return binary_mask
 
 ############################################################################################################
@@ -100,7 +100,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
     # The mask for ring is in position the_mask_clean_origin_size[:,:,0] while cracks in the_mask_clean_origin_size[:,:,1]
     # px_to_crop - how many pixels on the edges of detected mask to replace with zeros to clean the edges
     #print("sliding_window_detection_multirow started")
-    logger.info("sliding_window_detection_multirow START")
+    logger.info("sliding_window_detection_multirow started")
     logger.debug(f"Sliding window overlap = {overlap} and cropUpandDown = {cropUpandDown}")
     # Crop image top and bottom to avoid detectectig useles part of the image
     imgheight_origin, imgwidth_origin = image.shape[:2]
@@ -223,7 +223,6 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
     the_mask_clean_origin_size = np.concatenate((to_concatenate, the_mask_clean, to_concatenate), axis=0)
     logger.debug(f"the_mask_clean_origin_size: {the_mask_clean_origin_size.shape}")
 
-    logger.info("sliding_window_detection_multirow FINISH")
     return the_mask_clean_origin_size
 
 #######################################################################
@@ -231,7 +230,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
 #######################################################################
 def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     # Detects countours of the masks, removes small contours
-    logger.info("clean_up_mask START")
+    logger.info("clean_up_mask started")
     # Make the mask binary
     binary_mask = np.where(mask >= min_mask_overlap, 255, 0) # this part can be cleaned to remove some missdetections setting condition for higher value
     #print("binary_mask shape", binary_mask.shape)
@@ -272,7 +271,6 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
     else:
         contours_out = tuple(contours_filtered)
 
-    logger.info("clean_up_mask FINISH")
     # Returns filtered and ordered contours
     return contours_out
 
@@ -283,7 +281,8 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
     # Find ceneterlines in polygons
     # cut_off clips upper and lower edges which are sometimes turning horizontal and affect measurements
     # y_length_threshold removes lines that are too short on y axes thus most probably horizontal misdetections
-    logger.info("find_centerlines START")
+
+    logger.info("find_centerlines started")
     # First need to reorganise the data
     contours_list = [[(x, y) for [[x, y]] in contour] for contour in clean_contours]
     x_mins = [np.min([x for [[x, _]] in contour]) for contour in clean_contours]
@@ -291,39 +290,12 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
     # Order contours by x_min
     contourszip = zip(x_mins, contours_list)
     contours_tuples = tuple(t for _, t in sorted(contourszip, key=itemgetter(0)))
+    # paralelised get centerline
+    centerlines_raw = get_centerline_pool(contours_tuples)
 
-    centerlines = []
-    for i, contour in enumerate(contours_tuples):
-        logger.debug(f"ring_contour: {i}")
-        #print('contour:', contour)
-        polygon = shapely.geometry.Polygon(contour)
-        #x0, y0 = polygon.exterior.coords.xy
-        #plt.plot(x0, y0)
-        #exterior_coords = polygon.exterior.coords
-        #print('polygon_points:', len(exterior_coords))
-        #with open(f'shapely_polygon{i}.pkl', 'wb') as file:
-        #    pickle.dump(polygon, file)
-        try:
-            cline = get_centerline(polygon, segmentize_maxlen=0.5, max_points=600, simplification=0.15,
-                                   segmentize_maxlen_post=11, smooth_sigma=5)  # max_points=600, simplification=0.1
-        except Exception as e:
-            logger.warning('Centerline of the ring {} failed with exception {}'.format(i, e))
-            print('Centerline of the ring {} failed with exception {}'.format(i, e))
-            continue
-        #xc,yc = cline.coords.xy
-        #plt.plot(xc,yc,'g')
-        #print('cline done')
-        #to remove horizontal lines
-        _, miny, _, maxy = cline.bounds
-        line_y_diff = maxy - miny
-        #print("miny and maxy", miny, maxy)
-        #print("line_y_diff", line_y_diff)
-        if line_y_diff < y_length_threshold:  # This threshold is in px. Originaly 100
-            logger.warning(f'Contour {i} was skipped because with line_y_diff {line_y_diff} was less then '
-                        f'threshold y_length_threshold {y_length_threshold}')
-            continue
-        else:
-            centerlines.append(cline)
+    # filter the centerlines
+    # to remove horizontal lines
+    centerlines = [cline for cline in centerlines_raw if cline.bounds[3]-cline.bounds[1] > y_length_threshold]
 
     # test if centerline list contains something and if not abort and give a message
     if not centerlines: # empty list is False
@@ -348,7 +320,6 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
         #minx, miny, maxx, maxy = Multi_centerlines.bounds
         #print('minx, miny, maxx, maxy after', minx, miny, maxx, maxy)
 
-    logger.info("find_centerlines FINISH")
     return Multi_centerlines
 
 #######################################################################
@@ -356,7 +327,7 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
 #######################################################################
 # Return table of distances or paired point coordinates
 def measure_contours(Multi_centerlines, image):
-    logger.info("measure_contours START")
+    logger.info("measure_contours started")
     imgheight, imgwidth = image.shape[:2]
     logger.debug(f"Image has height {imgheight} and width {imgwidth}")
     logger.debug(f"{len(Multi_centerlines.geoms)} ring boundries were detected")
@@ -531,14 +502,13 @@ def measure_contours(Multi_centerlines, image):
         # Find nearest_points for each pair of lines
         measure_points = tuple(shapely.ops.nearest_points(Multi_centerlines.geoms[i], Multi_centerlines.geoms[i+1]) for i in range(len(Multi_centerlines.geoms)-1))
 
-        logger.info("measure_contours FINISH")
         return (Multi_centerlines,), (measure_points,), cutting_point
+
 #######################################################################
 # Plot contours
 #######################################################################
 def plot_contours(image, contours, file_name, path_out, labels=None):
     # plot image with extracted contours to facilitate debuging
-    logger.info("plot_contours START")
     image_copy = copy.deepcopy(image)
     contours = tuple(contours)
     if labels:
@@ -579,7 +549,6 @@ def plot_contours(image, contours, file_name, path_out, labels=None):
         plt.imshow(image_copy)
     plt.savefig(os.path.join(export_path, f), bbox_inches='tight', pad_inches=0)
     plt.close()
-    logger.info("plot_contours FINISH")
 #######################################################################
 # Extract annotations from yolov8 format text files
 #######################################################################
@@ -588,7 +557,7 @@ def load_annot(annot_path, im_size):
     # im_size is output of .shape method
     # output contours are in shape acceptable for cv2 contours
     # load annotations
-    logger.info("load_annot START")
+    logger.info("loading_annot start")
     labels, contours = [], []
     with open(annot_path, "r") as f:
         for line in f:
@@ -605,13 +574,13 @@ def load_annot(annot_path, im_size):
                 annot_list_xy.append([annot_list[i]*im_size[1], annot_list[i + 1]*im_size[0]])
                 i += 2
             contours.append(np.array(annot_list_xy, dtype=np.int32))
-    logger.info("load_annot FINISH")
+    logger.info("loading_annot finished")
     return contours, labels
 ##########################################################################################
 # Function to print annotations as a png files plus save txt with some summary information
 ##########################################################################################
 def check_annot_folder(folder_path):
-    logger.info("check_annot_folder START")
+    logger.info("check_annot_folder start")
     out_path = os.path.join(folder_path, "annot_check")
     im_list = (f for f in os.listdir(folder_path) if f.endswith('.tif') and not f.startswith('.'))
     labels_all, no_annot_file, no_annot_im = [], [], []
@@ -656,86 +625,82 @@ def check_annot_folder(folder_path):
                 f'Images without annotations {no_annot_im} \n'
                 f'Images without annotation file {no_annot_file}')
 
-    logger.info("check_annot_folder FINISH")
+    logger.info("check_annot_folder finish")
 #######################################################################
 # Run annot check on val and train folders of dataset
 #######################################################################
 def check_annot_dataset(dataset_path):
-    logger.info("check_annot_dataset START")
+    logger.info("check_annot_dataset start")
     folders = ("train", "val")
     for folder in folders:
         folder_path = os.path.join(dataset_path, folder)
         check_annot_folder(folder_path)
-    logger.info("check_annot_dataset FINISH")
+    logger.info("check_annot_dataset finish")
 #######################################################################
 # Plot predicted lines and points of measurements to visually assess
 #######################################################################
-def plot_lines(image, centerlines, measure_points, file_name, path_out, plot_dpi=100, line_width=2):
-    # line_width bigger means thicker line
+def plot_lines(image, centerlines, measure_points, file_name, path_out):
     # Create pngs folder in output path
-    logger.info("plot_lines START")
+    logger.info("plot_lines start")
     export_path = os.path.join(path_out, 'pngs')
     if not os.path.exists(export_path):
         os.makedirs(export_path)
 
     f = file_name + '.png'
-    # Save images at original size unles they are bigger in px than length 30000. Should improve diagnostics on the images
+    # Save images at original size unles they are bigger then px in  length 30000. Should improve diagnostics on the images
     imgheight, imgwidth = image.shape[:2]
     # since I use cv2 to load image I need to convert it to RGB before plotting with matplotlib
     #print("image.dtype", image.dtype)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     #print('imgheight, imgwidth', imgheight, imgwidth)
+    plot_dpi = 100
 
     if imgwidth < 30000:
         plt.figure(figsize=(imgwidth/plot_dpi, 2*(imgheight/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
-        linewidth = (imgheight/1000)*line_width   # looks very variable depending on the image resolution whne set as a constant
+        linewidth = (imgheight/1000)*3   # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
     else:  # adjust image size if it`s exceeding 30000 pixels to 30000
         resized_height = imgheight*(30000/imgwidth)
         plt.figure(figsize=(30000/plot_dpi, 2*(resized_height/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
-        linewidth = (resized_height/1000)*line_width  # looks very variable depending on the image resolution when set as a constant
+        linewidth = (resized_height/1000)*3  # looks very variable depending on the image resolution whne set as a constant defaoult is 1.5
 
     if centerlines:
         # Plot the lines to the image
         for l in range(len(centerlines)):
             color = ['g', 'b']
-            # define centerlines1 as a linestring in both cases if centerlines is Linestrin or multilinestring
-            if centerlines[l].geom_type == 'MultiLineString':
-                centerlines1 = centerlines[l].geoms
-            else:
-                centerlines1 = centerlines
+            centerlines1 = centerlines[l]
+            #print('measure_points:', len(measure_points))
+            measure_points1 = measure_points[l]
+            if len(measure_points1) == 0:  # Precaution in case the first part of measure points is empty
+                continue
+            centr1_loop_len = len(centerlines1.geoms) - 1
+            for i in range(centr1_loop_len):
+                #print('loop', i)
 
-            logging.debug(f'centerlines1: {centerlines1}')
-            if measure_points:
-                measure_points1 = measure_points[l]
-                if len(measure_points1) == 0:  # Precaution in case the first part of measure points is empty
-                    continue
-
-            for i, centerline in enumerate(centerlines1):
-                logging.debug(f'centerline: {centerline}')
-
-                xc, yc = centerline.coords.xy
+                xc, yc = centerlines1.geoms[i].coords.xy
                 plt.plot(xc, yc, color[l], linewidth=linewidth)
 
-                if measure_points:
-                    if i < len(measure_points1):  # there is one less measure points than lines
-                        points = measure_points1[i]
-                        xp, yp = points[0].coords.xy
-                        xp1, yp1 = points[1].coords.xy
-                        plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
+                points = measure_points1[i]
+                xp, yp = points[0].coords.xy
+                xp1, yp1 = points[1].coords.xy
+                plt.plot([xp, xp1], [yp, yp1], 'r', linewidth=linewidth)
+
+            xc, yc = centerlines1.geoms[-1].coords.xy # To print the last point
+            plt.plot(xc, yc, color[l], linewidth=linewidth)
+        #plt.show()
 
     plt.savefig(os.path.join(export_path, f), bbox_inches='tight', pad_inches=0)
     plt.close()
-    logger.info("plot_lines FINISH")
+    logger.info("plot_lines finish")
 #######################################################################
 # Create a JSON file for shiny app
 #######################################################################
 def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings,
                     clean_contours_rings, clean_contours_cracks=None):
-    logger.info("write_to_json START")
+    logger.info("write_to_json start")
     # Define the structure of json
     out_json = {image_name: {'run_ID':run_ID, 'predictions':{}, 'directionality': {},
                             'center': {}, 'est_rings_to_pith': {}, 'ring_widths': {}}}
@@ -798,12 +763,12 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
     output = os.path.join(path_out, os.path.splitext(image_name)[0] + '.json')
     with open(output, 'w') as outfile:
         json.dump(out_json, outfile, indent=4)
-    logger.info("write_to_json FINISH")
+    logger.info("write_to_json finish")
 #######################################################################
 # Create a POS file with measure points
 #######################################################################
 def write_to_pos(measure_points, file_name, image_name, DPI, path_out):
-    logger.info("write_to_pos START")
+    logger.info("write_to_pos start")
     # If two adjust naming. Nothing for the normal one and add "x" at the end for the second part
     # Prepare date, time
     now = datetime.now()
@@ -859,4 +824,4 @@ def write_to_pos(measure_points, file_name, image_name, DPI, path_out):
                     f'#C licensedTo=; \n')
             for i in str_measure_points1:
                 f.write(i)
-    logger.info("write_to_pos FINISH")
+    logger.info("write_to_pos finish")

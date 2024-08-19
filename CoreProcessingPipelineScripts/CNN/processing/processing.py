@@ -241,7 +241,7 @@ def main():
                     if args.sliding_window_overlap is not None:
                         sliding_window_overlap = float(args.sliding_window_overlap)
                     else:
-                        sliding_window_overlap = 0.75
+                        sliding_window_overlap = 0.50
 
                     if args.n_detection_rows is None or args.n_detection_rows == 1:
                         detection_rows = 1
@@ -305,7 +305,7 @@ def main():
                         if centerlines_rings.geom_type == 'LineString':
                             logger.warning("centerlines_rings contains only one centerline for this image")
                             print("centerlines_rings contains only one centerline for this image")
-                            centerlines = centerlines_rings  # for visualisation of the result
+                            centerlines = [centerlines_rings]  # for visualisation of the result
                             measure_points = None
                             finished = False
 
