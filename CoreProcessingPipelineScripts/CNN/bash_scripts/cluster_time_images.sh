@@ -16,7 +16,7 @@ source activate ~/.conda/envs/YOLOv82_P312
   --dpi=13039 \
   --run_ID=Time_images_OldDataset_Yolov8 \
   --input=/groups/swarts/lab/DendroImages/CNN_test/AlexPOS/MEECNNPaperTreeringSupplementalInfo/Tiffs \
-  --weightRing=../weights/best10pxlowerlrf.pt \
+  --weightRing=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
   --cracks=False \
   --sliding_window_overlap=0.5 \

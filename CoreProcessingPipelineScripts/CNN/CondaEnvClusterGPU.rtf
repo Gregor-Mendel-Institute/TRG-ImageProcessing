@@ -43,23 +43,36 @@ conda create -n yolo python\
 
 \f0\fs24 \cf0 \kerning1\expnd0\expndtw0 conda create -n YOLOv82_P312 python==3.12.4\
 conda activate YOLOv82_P312\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
-\f1\fs26 \expnd0\expndtw0\kerning0
+\f1\fs26 \cf0 \expnd0\expndtw0\kerning0
 \
 ####did not work\
 \pard\pardeftab720\partightenfactor0
-\cf0 \outl0\strokewidth0 \strokec6 conda install -c pytorch -c nvidia -c conda-forge pytorch torchvision pytorch-cuda=11.8 ultralytics \outl0\strokewidth0 lxml shapely scikit-image\
+\cf0 conda install -c pytorch -c nvidia -c conda-forge pytorch torchvision pytorch-cuda=11.8 ultralytics lxml shapely scikit-image\
 \
 ## after I tried this and seem to work\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
 \f2\fs22 \cf7 \kerning1\expnd0\expndtw0 \CocoaLigature0 /users/miroslav.polacek/.conda/envs/YOLOv82_P312/bin/pip install ultralytics lxml shapely scikit-image
 \f1\fs26 \cf0 \expnd0\expndtw0\kerning0
-\CocoaLigature1 \outl0\strokewidth0 \strokec6 \
+\CocoaLigature1 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
-\f0\fs24 \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 \
+\f0\fs24 \cf0 \kerning1\expnd0\expndtw0 \
+######before packageing 21.08.2024 - trying to get it with conda only because it seems that micromamba has problem with pip\
+## failed becuse it claims there is no ultralytics package\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 conda create -n YOLOv82_P312_onlyConda 
+\f1\fs26 \expnd0\expndtw0\kerning0
+-c pytorch -c nvidia -c conda-forge
+\f0\fs24 \kerning1\expnd0\expndtw0  python=3.12 
+\f1\fs26 \expnd0\expndtw0\kerning0
+pytorch torchvision pytorch-cuda=11.8 \outl0\strokewidth0 \strokec6 ultralytics\outl0\strokewidth0  lxml shapely scikit-image
+\f0\fs24 \kerning1\expnd0\expndtw0 \
 \
 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \
 \
 }

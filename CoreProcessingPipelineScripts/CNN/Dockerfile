@@ -1,16 +1,14 @@
-FROM mambaorg/micromamba:0.20.0
+FROM mambaorg/micromamba:1.5.8
 
-COPY Mask_RCNN /home/mambauser/
+COPY . /home/mambauser/
 
 WORKDIR /home/mambauser
 
-RUN micromamba install -y -n base wget -f /home/mambauser/environment.yml && micromamba clean -y -a
+RUN micromamba install -y -n base -f /home/mambauser/environment.yml && micromamba clean -y -a
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 
-RUN wget https://data.swarts.gmi.oeaw.ac.at/treeringcrackscomb2_onlycracks20210121T2224/mask_rcnn_treeringcrackscomb2_onlycracks_0522.h5 && wget https://data.swarts.gmi.oeaw.ac.at/treeringcrackscomb2_onlyring20210121T1457/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5
+ENV PATH="/home/mambauser/processing:$MAMBA_ROOT_PREFIX/bin:$PATH"
+ENV PYTHONPATH="/home/mambauser:$PYTHONPATH"
 
-ENV PATH "/home/mambauser/postprocessing:$MAMBA_ROOT_PREFIX/bin:$PATH"
-ENV PYTHONPATH "/home/mambauser:$PYTHONPATH"
-
-ENTRYPOINT ["postprocessingCracksRings.py", "--weightRing", "/home/mambauser/mask_rcnn_treeringcrackscomb2_onlyring_0186.h5", "--weightCrack", "/home/mambauser/mask_rcnn_treeringcrackscomb2_onlycracks_0522.h5"]
+ENTRYPOINT ["processing.py", "--weightRing", "/home/mambauser/weights/best10px1000eAugEnlargedDataset.pt"]
