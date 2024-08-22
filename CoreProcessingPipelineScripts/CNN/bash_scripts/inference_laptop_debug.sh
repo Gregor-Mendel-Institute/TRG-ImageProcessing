@@ -1,12 +1,10 @@
 
 time python ../processing/processing.py \
   --dpi=13039 \
-  --run_ID=OldDataYolov8 \
-  --input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
-  --weightRing=../weights/best10pxlowerlrf.pt \
+  --run_ID=checkBeforeBetaRelease_test \
+  --input=/Users/miroslav.polacek/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/training/sample_dataset/val \
+  --weightRing=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
-  --cropUpandDown=0 \
-  --sliding_window_overlap=0.5 \
   --cracks=True \
   --debug=True \
   --print_detections=yes\
@@ -17,3 +15,4 @@ time python ../processing/processing.py \
 #--input=/Volumes/T7\ Shield/CNN_yolov8_retraining_data/Plot23_badsamplequality/chopped/00023007a_mo1973_pS1.96536799834280303030_3784.tif \
 #--input=/Users/miroslav.polacek/Pictures/23_weird_image \
 #--cropUpandDown=0 \
+#--sliding_window_overlap=0.5 \

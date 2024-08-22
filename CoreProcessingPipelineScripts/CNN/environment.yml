@@ -1,84 +1,16 @@
-name: yolo
+name: TreeRingCNN
 channels:
   - pytorch
   - nvidia
   - conda-forge
   - defaults
 dependencies:
-  - _libgcc_mutex=0.1=conda_forge
-  - _openmp_mutex=4.5=2_gnu
-  - bzip2=1.0.8=h7f98852_4
-  - ca-certificates=2023.08.22=h06a4308_0
-  - ld_impl_linux-64=2.39=hc81fddc_0
-  - libffi=3.4.4=h6a678d5_0
-  - libgcc-ng=12.2.0=h65d4601_19
-  - libgomp=12.2.0=h65d4601_19
-  - libstdcxx-ng=12.2.0=h46fd767_19
-  - libuuid=1.41.5=h5eee18b_0
-  - libzlib=1.2.13=h166bdaf_4
-  - ncurses=6.4=h6a678d5_0
-  - openssl=3.0.11=h7f8727e_2
-  - python=3.11.5=h955ad1f_0
-  - readline=8.2=h5eee18b_0
-  - sqlite=3.41.2=h5eee18b_0
-  - tk=8.6.12=h27826a3_0
-  - xz=5.4.2=h5eee18b_0
-  - zlib=1.2.13=h166bdaf_4
-  - pip:
-    - certifi==2023.7.22
-    - charset-normalizer==3.2.0
-    - cmake==3.27.5
-    - contourpy==1.1.1
-    - cycler==0.11.0
-    - filelock==3.12.4
-    - fonttools==4.42.1
-    - idna==3.4
-    - jinja2==3.1.2
-    - kiwisolver==1.4.5
-    - lit==17.0.1
-    - lxml==4.9.3
-    - markupsafe==2.1.3
-    - matplotlib==3.8.0
-    - mpmath==1.3.0
-    - networkx==3.1
-    - numpy==1.26.0
-    - nvidia-cublas-cu11==11.10.3.66
-    - nvidia-cuda-cupti-cu11==11.7.101
-    - nvidia-cuda-nvrtc-cu11==11.7.99
-    - nvidia-cuda-runtime-cu11==11.7.99
-    - nvidia-cudnn-cu11==8.5.0.96
-    - nvidia-cufft-cu11==10.9.0.58
-    - nvidia-curand-cu11==10.2.10.91
-    - nvidia-cusolver-cu11==11.4.0.1
-    - nvidia-cusparse-cu11==11.7.4.91
-    - nvidia-nccl-cu11==2.14.3
-    - nvidia-nvtx-cu11==11.7.91
-    - opencv-python==4.8.0.76
-    - packaging==23.1
-    - pandas==2.1.1
-    - pillow==10.0.1
-    - pip==23.2.1
-    - psutil==5.9.5
-    - py-cpuinfo==9.0.0
-    - pyparsing==3.1.1
-    - python-dateutil==2.8.2
-    - pytz==2023.3.post1
-    - pyyaml==6.0.1
-    - requests==2.31.0
-    - scipy==1.11.2
-    - seaborn==0.12.2
-    - setuptools==68.0.0
-    - shapely==2.0.1
-    - six==1.16.0
-    - sympy==1.12
-    - torch==2.0.1
-    - torchvision==0.15.2
-    - tqdm==4.66.1
-    - triton==2.0.0
-    - typing-extensions==4.8.0
-    - tzdata==2023.3
-    - ultralytics==8.0.188
-    - urllib3==2.0.5
-    - wheel==0.41.2
-prefix: /users/miroslav.polacek/.conda/envs/yolo
-
+  - ultralytics=8.2.79
+  - python=3.12.5
+  - pytorch=2.4.0
+  - torchvision=0.19.0
+  - pytorch-cuda=11.8
+  - lxml=5.3.0
+  - shapely=2.0.6
+  - scikit-image=0.24.0
+prefix: /users/miroslav.polacek/.conda/envs/TreeRingCNN

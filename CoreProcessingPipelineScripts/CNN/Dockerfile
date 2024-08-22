@@ -4,7 +4,7 @@ COPY . /home/mambauser/
 
 WORKDIR /home/mambauser
 
-RUN micromamba install -y -n base -f /home/mambauser/environment.yml && micromamba clean -y -a
+RUN micromamba install -y -n base wget -f /home/mambauser/environment.yml && micromamba clean -y -a
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 
