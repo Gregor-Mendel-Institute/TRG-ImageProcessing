@@ -2,9 +2,9 @@
 \cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fmodern\fcharset0 Courier;\f2\fnil\fcharset0 Menlo-Regular;
 }
 {\colortbl;\red255\green255\blue255;\red183\green98\blue39;\red32\green32\blue32;\red153\green168\blue186;
-\red109\green109\blue109;\red0\green0\blue0;\red0\green0\blue0;}
+\red109\green109\blue109;\red0\green0\blue0;}
 {\*\expandedcolortbl;;\csgenericrgb\c71765\c38431\c15294;\csgenericrgb\c12549\c12549\c12549;\csgenericrgb\c60000\c65882\c72941;
-\csgenericrgb\c42745\c42745\c42745;\cssrgb\c0\c0\c0;\csgray\c0;}
+\csgenericrgb\c42745\c42745\c42745;\csgray\c0;}
 \paperw11900\paperh16840\margl1440\margr1440\vieww16000\viewh8400\viewkind0
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
@@ -54,25 +54,23 @@ conda activate YOLOv82_P312\
 ## after I tried this and seem to work\
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f2\fs22 \cf7 \kerning1\expnd0\expndtw0 \CocoaLigature0 /users/miroslav.polacek/.conda/envs/YOLOv82_P312/bin/pip install ultralytics lxml shapely scikit-image
+\f2\fs22 \cf6 \kerning1\expnd0\expndtw0 \CocoaLigature0 /users/miroslav.polacek/.conda/envs/YOLOv82_P312/bin/pip install ultralytics lxml shapely scikit-image
 \f1\fs26 \cf0 \expnd0\expndtw0\kerning0
 \CocoaLigature1 \
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
 \f0\fs24 \cf0 \kerning1\expnd0\expndtw0 \
 ######before packageing 21.08.2024 - trying to get it with conda only because it seems that micromamba has problem with pip\
-## failed becuse it claims there is no ultralytics package\
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-\cf0 conda create -n YOLOv82_P312_onlyConda 
+## failed becuse it claims there is no paralytics package\
+micromamba create -n base 
 \f1\fs26 \expnd0\expndtw0\kerning0
--c pytorch -c nvidia -c conda-forge
+-c pytorch -c nvidia -c conda-forge -c defaults
 \f0\fs24 \kerning1\expnd0\expndtw0  python=3.12 
 \f1\fs26 \expnd0\expndtw0\kerning0
-pytorch torchvision pytorch-cuda=11.8 \outl0\strokewidth0 \strokec6 ultralytics\outl0\strokewidth0  lxml shapely scikit-image
+pytorch torchvision pytorch-cuda=11.8 ultralytics lxml shapely scikit-image
 \f0\fs24 \kerning1\expnd0\expndtw0 \
 \
 \
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-\cf0 \
+\
 \
 }

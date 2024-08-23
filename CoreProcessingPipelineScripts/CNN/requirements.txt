@@ -1,0 +1,4 @@
+ultralytics
+lxml
+shapely
+scikit-image
