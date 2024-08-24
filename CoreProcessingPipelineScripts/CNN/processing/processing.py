@@ -241,7 +241,7 @@ def main():
                     if args.sliding_window_overlap is not None:
                         sliding_window_overlap = float(args.sliding_window_overlap)
                     else:
-                        sliding_window_overlap = 0.50
+                        sliding_window_overlap = 0.75
 
                     if args.n_detection_rows is None or args.n_detection_rows == 1:
                         detection_rows = 1
