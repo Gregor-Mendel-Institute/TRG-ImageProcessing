@@ -21,6 +21,7 @@ import torch
 from datetime import datetime
 from ultralytics import YOLO
 import logging
+import platform
 
 # Import custom functions
 ROOT_DIR = os.path.abspath("../")
@@ -122,7 +123,7 @@ def main():
     args = get_args()
 
     if args.output_folder is None or not os.path.exists(args.output_folder):
-        print("Compulsory argument --output_folder is missing or is not correct. Specify the path to output folder.")
+        print(f"Compulsory argument --output_folder is missing or the path {args.output_folder} does not exist.")
         exit()
     # set up logging
     path_out = os.path.join(args.output_folder, args.run_ID)
@@ -144,11 +145,13 @@ def main():
         logging.getLogger().setLevel(logging.DEBUG)
 
     logging.info(f"Output path set to: {path_out}")
+    # Report os
+    logger.debug(f"OS specs: {platform.platform()}")
     # PREPARE THE MODEL
     # Check compulsory argument
     if args.weightRing is None or not os.path.isfile(args.weightRing):
-        print("Compulsory argument --weightRing is missing or is not correct. Specify the path to ring weight file.")
-        logger.warning("Compulsory argument --weightRing is missing or is not correct. Specify the path to ring weight file.")
+        print(f"Compulsory argument --weightRing is missing or the path {args.weightRing} does not exist.")
+        logger.warning(f"Compulsory argument --weightRing is missing or the path {args.weightRing} does not exist.")
         exit()
     logger.info(f"Loading weights: {args.weightRing}")
     modelRing = YOLO(args.weightRing)
@@ -183,8 +186,8 @@ def main():
         logger.info("STARTING INFERENCE MODE")
         # Check compulsory argument and print which are missing
         if args.input is None or not os.path.exists(args.input):
-            print("Compulsory argument --input is missing. Specify the path to image file of folder")
-            logger.warning("Compulsory argument --input is missing or is not correct. Specify the path to image file of folder.")
+            print(f"Compulsory argument --input is missing or the path {args.input} does not exist.")
+            logger.warning(f"Compulsory argument --input is missing or the path {args.input} does not exist.")
             exit()
         if args.dpi is None:
             print("Compulsory argument --dpi is missing. Specify the DPI value for the image")
@@ -266,17 +269,12 @@ def main():
                                                             overlap=sliding_window_overlap,
                                                             cropUpandDown=cropUpandDown)
 
-                    logger.debug("sliding_window_detection_multirow done")
-                    #print("sliding_window_detection_multirow done")
-
                     # CLEAN UP MASKS
                     ## RINGS
                     detected_mask_rings = detected_mask[:, :, 0]
                     # print("detected_mask_rings", detected_mask_rings.shape)
                     clean_contours_rings = clean_up_mask(detected_mask_rings,
                                                          min_mask_overlap=min_mask_overlap, is_ring=True)
-                    logger.debug("clean_up_mask done")
-                    #print("clean_up_mask done")
 
                     ## CRACKS
                     clean_contours_cracks = None
@@ -284,14 +282,11 @@ def main():
                         detected_mask_cracks = detected_mask[:, :, 1]
                         logger.debug(f"detected_mask_cracks{detected_mask_cracks.shape}")
                         clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
-                        logger.debug("clean_up_mask cracks done")
-                        #print("clean_up_mask cracks done")
 
                     # FIND CENTERLINES
                     centerlines_rings = find_centerlines(clean_contours_rings,
                                                          cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
-                    logger.debug("find_centerlines done")
-                    #print("find_centerlines done")
+
                     if centerlines_rings is None:
                         logger.warning("No centerlines were detected")
                         print("No centerlines were detected")
@@ -311,15 +306,12 @@ def main():
 
                         elif centerlines_rings.geom_type == 'MultiLineString':
                             centerlines, measure_points, cutting_point = measure_contours(centerlines_rings, detected_mask_rings)
-                            logger.debug("measure_contours done")
-                            #print("measure_contours done")
 
                             # WRITE RING MEASUREMENTS
                             write_to_json(image_name=f, cutting_point=cutting_point, run_ID=run_ID,
                                           path_out=path_out, centerlines_rings=centerlines_rings,
                                           clean_contours_rings=clean_contours_rings,
                                           clean_contours_cracks=clean_contours_cracks)
-                            logger.debug("write_to_json done")
 
                             DPI = float(args.dpi)
                             write_to_pos(measure_points, image_name, f, DPI, path_out)
@@ -337,7 +329,6 @@ def main():
 
                         plot_lines(masked_image, centerlines, measure_points,
                                     image_name, path_out)
-                        logger.debug("plot_lines done")
 
                     if finished:
                         logger.info("IMAGE FINISHED")
