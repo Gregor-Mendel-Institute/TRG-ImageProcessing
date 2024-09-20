@@ -1,8 +1,8 @@
 
 time python ../processing/processing.py \
   --dpi=13039 \
-  --run_ID=checkBeforeBetaRelease_test \
-  --input=/Users/miroslav.polacek/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/training/sample_dataset/val \
+  --run_ID=overlap075checkBeforeBetaRelease_test \
+  --input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
   --weightRing=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
   --cracks=True \

@@ -210,7 +210,7 @@ def main():
             input_l = (f for f in os.listdir(input) if not f.startswith('.'))
             input_path = input
         else:
-            print("Input argument is neither valid file nor directory") # input or image?
+            print("Input argument is neither valid file nor directory")  # input or image?
             logger.warning("Input argument is neither valid file nor directory")
 
         for f in input_l:

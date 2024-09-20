@@ -15,7 +15,7 @@ TIFS=$(find ${STITCH_FOLDER} -name "000"$PLOT"*_pS1.945*.tif" )
 for i in $TIFS; do
 runID_dir=${i%/*}
 runID=${runID_dir##*/}
-singularity run --nv /scratch-cbe/shared/containers/trg-imageprocessing_master.sif \
+apptainer run --nv trg-imageprocessing_master.sif \
   --dpi=13039 \
   --run_ID=$runID \
   --input=$i \
