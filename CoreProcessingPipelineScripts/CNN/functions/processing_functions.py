@@ -24,7 +24,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.set_loglevel (level = 'warning')
 import shapely
-from shapely.ops import nearest_points
 import scipy
 from datetime import datetime
 from operator import itemgetter
@@ -177,9 +176,9 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
                                                        preserve_range=True, resize=True).astype(np.uint8)
 
             ## Run the detection on all 3 at the same time
-            logger.debug("Detection starts")
+            logger.debug("CNN detection starts")
             results = model([cropped_part, cropped_part_90, cropped_part_45])
-            logger.debug("Detection finished")
+            logger.debug("CNN detection finished")
 
             for class_number in classes:
                 ## create flattened binary masks for every detected image and given class
