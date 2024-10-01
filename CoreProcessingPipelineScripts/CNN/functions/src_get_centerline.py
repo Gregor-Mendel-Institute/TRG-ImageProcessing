@@ -182,8 +182,8 @@ def _smooth_linestring(linestring, smooth_sigma):
     """Use a gauss filter to smooth out the LineString coordinates."""
     return LineString(
         zip(
-            np.array(gaussian_filter1d(linestring.xy[0], smooth_sigma)),
-            np.array(gaussian_filter1d(linestring.xy[1], smooth_sigma))
+            np.array(gaussian_filter1d(linestring.xy[0], smooth_sigma), dtype='uint32'),
+            np.array(gaussian_filter1d(linestring.xy[1], smooth_sigma), dtype='uint32')
         )
     )
 

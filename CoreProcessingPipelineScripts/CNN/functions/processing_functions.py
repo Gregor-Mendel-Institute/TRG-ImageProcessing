@@ -24,6 +24,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.set_loglevel (level = 'warning')
 import shapely
+from shapely.ops import nearest_points
 import scipy
 from datetime import datetime
 from operator import itemgetter
@@ -317,7 +318,7 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
         line_y_diff = maxy - miny
         #print("miny and maxy", miny, maxy)
         #print("line_y_diff", line_y_diff)
-        if line_y_diff < y_length_threshold:  # This threshold is in px. Originaly 100
+        if line_y_diff < y_length_threshold:  # This threshold is in px. Originally 100
             logger.warning(f'Contour {i} was skipped because with line_y_diff {line_y_diff} was less then '
                         f'threshold y_length_threshold {y_length_threshold}')
             continue
@@ -339,8 +340,9 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
         ## Cut off upper and lower part of detected lines. It should help with problems of horizontal ends of detections
         Multi_centerlines_to_crop = shapely.geometry.MultiLineString(centerlines)
         minx, miny, maxx, maxy = Multi_centerlines_to_crop.bounds
-        px_to_cut_off = (maxy-miny)*cut_off
-        #print('minx, miny, maxx, maxy', minx, miny, maxx, maxy)
+        px_to_cut_off = int((maxy-miny)*cut_off)
+        print('px_to_cut_off', px_to_cut_off)
+        print('minx, miny, maxx, maxy', minx, miny, maxx, maxy)
         frame_to_crop = shapely.geometry.box(minx, miny+px_to_cut_off, maxx, maxy-px_to_cut_off)
         Multi_centerlines = Multi_centerlines_to_crop.intersection(frame_to_crop)
         # To check if it cropps something
@@ -479,7 +481,7 @@ def measure_contours(Multi_centerlines, image):
         centerlines1 = [x for _, x in sorted(contourszip, key=itemgetter(0))]
         Multi_centerlines1 = shapely.geometry.MultiLineString(centerlines1)
         #print('ordered centerlines2:', Multi_centerlines2.geom_type)
-        measure_points1 = tuple(shapely.ops.nearest_points(Multi_centerlines1.geoms[i], Multi_centerlines1.geoms[i + 1]) for
+        measure_points1 = tuple(nearest_points(Multi_centerlines1.geoms[i], Multi_centerlines1.geoms[i + 1]) for
                            i in range(len(Multi_centerlines1.geoms) - 1))
 
         if Multi_centerlines2.geom_type=='LineString':
@@ -498,7 +500,7 @@ def measure_contours(Multi_centerlines, image):
             Multi_centerlines2 = shapely.geometry.MultiLineString(centerlines2)
             #print('ordered centerlines2:', Multi_centerlines2.geom_type)
             # Find nearest_points for each pair of lines
-            measure_points2 = tuple(shapely.ops.nearest_points(Multi_centerlines2.geoms[i], Multi_centerlines2.geoms[i + 1]) for
+            measure_points2 = tuple(nearest_points(Multi_centerlines2.geoms[i], Multi_centerlines2.geoms[i + 1]) for
                               i in range(len(Multi_centerlines2.geoms) - 1))
 
         if not measure_points2:
@@ -528,7 +530,7 @@ def measure_contours(Multi_centerlines, image):
         Multi_centerlines = shapely.geometry.MultiLineString(centerlines)
         #print('ordered centerlines:', Multi_centerlines2.geom_type)
         # Find nearest_points for each pair of lines
-        measure_points = tuple(shapely.ops.nearest_points(Multi_centerlines.geoms[i], Multi_centerlines.geoms[i+1]) for i in range(len(Multi_centerlines.geoms)-1))
+        measure_points = tuple(nearest_points(Multi_centerlines.geoms[i], Multi_centerlines.geoms[i+1]) for i in range(len(Multi_centerlines.geoms)-1))
 
         logger.info("measure_contours FINISH")
         return (Multi_centerlines,), (measure_points,), cutting_point
@@ -763,9 +765,9 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
             for geom in input_vars[v].geoms:
                 #print("geom", geom)
                 x_list, y_list = geom.coords.xy
-                #print('x_list', x_list)
-                x_list = x_list.tolist()
-                y_list = y_list.tolist()
+                x_list = list(map(int, x_list))
+                y_list = list(map(int, x_list))
+                print('x_list', x_list)
                 # now add everything in the json
                 x_min = math.floor(np.min(x_list))
                 the_coord = str(x_min) + '_' + 'coords'
@@ -780,6 +782,7 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
                 x_list = []
                 y_list = []
                 for [[x, y]] in input_var:
+                    #print(x,y)  # they are already integers
                     x_list.append(int(x))
                     y_list.append(int(y))
                 #print("type(x_list)", type(x_list))
