@@ -68,7 +68,7 @@ def get_centerline(
         # segmentized Polygon outline
 
         outline = geom.exterior.segmentize(segmentize_maxlen) # add points to be sure there are no empty zones
-        logger.debug("outline: %s", outline)
+        #logger.debug("outline: %s", outline)
 
         # simplify segmentized geometry if necessary and get points
         outline_s = outline
@@ -87,7 +87,7 @@ def get_centerline(
                 break
             #print('outline_points_while_B:',  len(outline_s.coords))
         logger.debug("simplification used: %s", simplification_updated)
-        logger.debug("simplified points: %s", MultiPoint(outline_s.coords))
+        #logger.debug("simplified points: %s", MultiPoint(outline_s.coords))
 
         outline_points = outline_s.segmentize(segmentize_maxlen_post).coords
         _point_check(outline_points)
@@ -97,9 +97,7 @@ def get_centerline(
         #scipy.spatial.voronoi_plot_2d(vor)
         #plt.show()
         graph = _graph_from_voronoi(vor, geom)
-        logger.debug(
-            "voronoi diagram: %s", _multilinestring_from_voronoi(vor, geom)
-        )
+        #logger.debug("voronoi diagram: %s", _multilinestring_from_voronoi(vor, geom))
 
         # determine longest path between all end nodes from graph
         end_nodes = _get_end_nodes(graph)
@@ -111,10 +109,11 @@ def get_centerline(
         if not longest_paths:
             logger.debug("no paths found between end nodes")
             raise CenterlineError("no paths found between end nodes")
-        if logger.getEffectiveLevel() <= 10:
-            logger.debug("longest paths:")
-            for path in longest_paths:
-                logger.debug(LineString(vor.vertices[path]))
+        # these next line seem to be only for debug and print too much i commented them
+        #if logger.getEffectiveLevel() <= 10:
+            #logger.debug("longest paths:")
+            #for path in longest_paths:
+                #logger.debug(LineString(vor.vertices[path]))
 
         # get least curved path from the five longest paths, smooth and
         # return as LineString
@@ -125,7 +124,7 @@ def get_centerline(
                 )]
             ), smooth_sigma
         )
-        logger.debug("centerline: %s", centerline)
+        #logger.debug("centerline: %s", centerline)
         logger.debug("return linestring")
         return centerline
 

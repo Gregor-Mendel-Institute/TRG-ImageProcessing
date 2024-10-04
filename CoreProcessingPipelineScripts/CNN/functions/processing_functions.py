@@ -262,7 +262,7 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
             x_mins.append(x_min)
             #print("contour shape", contours[i].shape)
 
-    logger.debug(f"Filtered_contours_length: {len(contours_filtered)}")
+    logger.debug(f"Filtered_contours_n: {len(contours_filtered)}")
 
     # Extract longest contour to use for center estimate
     if is_ring:
@@ -337,6 +337,7 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
                        "Try to crop tighter.")
         return
     else:
+        logger.debug(f'Filtered_centerlines: {len(centerlines)}')
         ## Cut off upper and lower part of detected lines. It should help with problems of horizontal ends of detections
         Multi_centerlines_to_crop = shapely.geometry.MultiLineString(centerlines)
         minx, miny, maxx, maxy = Multi_centerlines_to_crop.bounds
@@ -757,7 +758,7 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
     for v in range(len(input_vars)):
         logger.debug(f"v {v}")
         logger.debug(f'json_name: {json_names[v]}')
-        logger.debug(f'input_vars[v]: {input_vars[v]}')
+        #logger.debug(f'input_vars[v]: {input_vars[v]}')
         coords = {}
         # 'If else' becasue ring_line is shapely object and clean contours are from opencv and have different structure
         #print(json_names[v]) #### just for debug, remove
@@ -766,8 +767,8 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
                 #print("geom", geom)
                 x_list, y_list = geom.coords.xy
                 x_list = list(map(int, x_list))
-                y_list = list(map(int, x_list))
-                print('x_list', x_list)
+                y_list = list(map(int, y_list))
+                #print('x_list', x_list)
                 # now add everything in the json
                 x_min = math.floor(np.min(x_list))
                 the_coord = str(x_min) + '_' + 'coords'

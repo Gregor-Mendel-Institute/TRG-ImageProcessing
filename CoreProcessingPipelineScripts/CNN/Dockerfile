@@ -1,19 +1,21 @@
-FROM mambaorg/micromamba:1.5.8
+FROM pytorch/pytorch:2.3.1-cuda12.1-cudnn8-runtime
 
-ENV MKL_THREADING_LAYER=GNU
-
-COPY . /home/mambauser/
-
-WORKDIR /home/mambauser
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_BREAK_SYSTEM_PACKAGES=1 \
+    MKL_THREADING_LAYER=GNU
 
 RUN apt update \
     && apt install --no-install-recommends -y gcc libgl1 libglib2.0-0 libpython3-dev gnupg g++ libusb-1.0-0 libsm6
 
-RUN micromamba install -y -n base wget -f /home/mambauser/environment.yml && micromamba clean -y -a
+WORKDIR /home
 
-ARG MAMBA_DOCKERFILE_ACTIVATE=1
+COPY . /home
 
-ENV PATH="/home/mambauser/processing:$MAMBA_ROOT_PREFIX/bin:$PATH"
-ENV PYTHONPATH="/home/mambauser:$PYTHONPATH"
+RUN pip install -r requirements.txt
 
-ENTRYPOINT ["processing.py", "--weightRing", "/home/mambauser/weights/best10px1000eAugEnlargedDataset.pt"]
+ENV PATH="/home/processing:$PATH"
+ENV PYTHONPATH="/home:$PYTHONPATH"
+
+ENTRYPOINT ["processing.py", "--weightRing", "/home/weights/best10px1000eAugEnlargedDataset.pt"]
