@@ -22,6 +22,8 @@ import copy
 import skimage.io
 import numpy as np
 import matplotlib.pyplot as plt
+from shapely.geometry.multilinestring import MultiLineString
+
 plt.set_loglevel (level = 'warning')
 import shapely
 from shapely.ops import nearest_points
@@ -229,7 +231,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
 #######################################################################
 # Extract distances from the mask
 #######################################################################
-def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
+def clean_up_mask(mask, min_mask_overlap=3, is_ring=True, simplify_tolerance=0):
     # Detects countours of the masks, removes small contours
     logger.info("clean_up_mask START")
     # Make the mask binary
@@ -251,6 +253,8 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
         logger.debug(f"min_size_threshold for ring: {min_size_threshold}")
     else:
         min_size_threshold = 1
+
+    # filter the size and convert into shapely polygons and simplify
     contours_filtered = []
     x_mins = []
     for contour in contours:
@@ -258,45 +262,36 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True):
         #remove those that are too short
         dim_max = max(cv2.minAreaRect(contour)[1])
         if dim_max > min_size_threshold:
-            contours_filtered.append(contour)
             x_mins.append(x_min)
-            #print("contour shape", contours[i].shape)
+            # convert in shapely polygon
+            cont_polygon = shapely.geometry.Polygon([(x, y) for [[x, y]] in contour])
+            simpl_cont_polygon = cont_polygon.simplify(tolerance=simplify_tolerance, preserve_topology=True)
+            contours_filtered.append(simpl_cont_polygon)
 
-    logger.debug(f"Filtered_contours_n: {len(contours_filtered)}")
-
-    # Extract longest contour to use for center estimate
-    if is_ring:
-        unique_vector = range(len(x_mins))  # added to prevent sorting problems if x_mins values are the same
-        contourszip = zip(x_mins, unique_vector, contours_filtered)
-        contours_out = tuple(x for _, _, x in sorted(contourszip, reverse=False))
-    else:
-        contours_out = tuple(contours_filtered)
+            #print("contour shape", contours[i].shape
+    logger.debug(f"contours_filtered_n: {len(contours_filtered)}")
+    # Order contours by x, e.g. from left to right
+    contourszip = zip(x_mins, contours_filtered)
+    contours_out = tuple(contour for _, contour in sorted(contourszip, key=itemgetter(0)))
 
     logger.info("clean_up_mask FINISH")
-    # Returns filtered and ordered contours
+    # Returns filtered and ordered contours in a form of tuple of shapely polygons
     return contours_out
 
 #######################################################################
 # Finds centerlines in contours
 #######################################################################
-def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
+def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simplification_tolerance=0):
     # Find ceneterlines in polygons
     # cut_off clips upper and lower edges which are sometimes turning horizontal and affect measurements
     # y_length_threshold removes lines that are too short on y axes thus most probably horizontal misdetections
     logger.info("find_centerlines START")
-    # First need to reorganise the data
-    contours_list = [[(x, y) for [[x, y]] in contour] for contour in clean_contours]
-    x_mins = [np.min([x for [[x, _]] in contour]) for contour in clean_contours]
-
-    # Order contours by x_min
-    contourszip = zip(x_mins, contours_list)
-    contours_tuples = tuple(t for _, t in sorted(contourszip, key=itemgetter(0)))
 
     centerlines = []
-    for i, contour in enumerate(contours_tuples):
+    for i, polygon in enumerate(clean_contours):
         logger.debug(f"ring_contour: {i}")
         #print('contour:', contour)
-        polygon = shapely.geometry.Polygon(contour)
+        #polygon = shapely.geometry.Polygon(contour)  # its created in clean_up_contours now
         #x0, y0 = polygon.exterior.coords.xy
         #plt.plot(x0, y0)
         #exterior_coords = polygon.exterior.coords
@@ -313,17 +308,7 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
         #xc,yc = cline.coords.xy
         #plt.plot(xc,yc,'g')
         #print('cline done')
-        #to remove horizontal lines
-        _, miny, _, maxy = cline.bounds
-        line_y_diff = maxy - miny
-        #print("miny and maxy", miny, maxy)
-        #print("line_y_diff", line_y_diff)
-        if line_y_diff < y_length_threshold:  # This threshold is in px. Originally 100
-            logger.warning(f'Contour {i} was skipped because with line_y_diff {line_y_diff} was less then '
-                        f'threshold y_length_threshold {y_length_threshold}')
-            continue
-        else:
-            centerlines.append(cline)
+        centerlines.append(cline)
 
     # test if centerline list contains something and if not abort and give a message
     if not centerlines: # empty list is False
@@ -342,16 +327,24 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100):
         Multi_centerlines_to_crop = shapely.geometry.MultiLineString(centerlines)
         minx, miny, maxx, maxy = Multi_centerlines_to_crop.bounds
         px_to_cut_off = int((maxy-miny)*cut_off)
-        print('px_to_cut_off', px_to_cut_off)
-        print('minx, miny, maxx, maxy', minx, miny, maxx, maxy)
+        logger.debug('px_to_cut_off', px_to_cut_off)
+        logger.debug('minx, miny, maxx, maxy', minx, miny, maxx, maxy)
         frame_to_crop = shapely.geometry.box(minx, miny+px_to_cut_off, maxx, maxy-px_to_cut_off)
-        Multi_centerlines = Multi_centerlines_to_crop.intersection(frame_to_crop)
+        Multi_centerlines_cropped = Multi_centerlines_to_crop.intersection(frame_to_crop)
         # To check if it cropps something
         #minx, miny, maxx, maxy = Multi_centerlines.bounds
         #print('minx, miny, maxx, maxy after', minx, miny, maxx, maxy)
+        # Remove too short lines based on the threshold and simplify the number of points in order to reduce final size
+
+        if Multi_centerlines_cropped.geom_type == 'MultiLineString':
+            Multi_centerlines_clean_list = [l.simplify(tolerance=simplification_tolerance, preserve_topology=False) for l in Multi_centerlines_cropped.geoms
+                    if (l.bounds[3]-l.bounds[1]) > y_length_threshold] # _, miny, _, maxy = cline.bounds; the tolerance is in pixels
+
+        elif Multi_centerlines_cropped.geom_type == 'LineString':
+            Multi_centerlines_clean_list = Multi_centerlines_cropped.simplify(tolerance=simplification_tolerance, preserve_topology=False)
 
     logger.info("find_centerlines FINISH")
-    return Multi_centerlines
+    return shapely.geometry.MultiLineString(Multi_centerlines_clean_list)
 
 #######################################################################
 # Turn contours into lines and find nearest points between them for measure
@@ -749,10 +742,12 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
     out_json[image_name]['ring_widths'] = {'directionality': {}, 'shortest_distance': {},
                                             'manual': {}}
     # Separate x and y coordinates for polygons and line
-    if clean_contours_cracks is None:
-        input_vars = (centerlines_rings, clean_contours_rings)
+    if clean_contours_cracks is None or len(clean_contours_cracks)==0:
+        input_vars = (centerlines_rings, shapely.multipolygons(clean_contours_rings))
     else:
-        input_vars = (centerlines_rings, clean_contours_rings, clean_contours_cracks)
+        logger.debug(f'clean_contours_rings length: {len(clean_contours_rings)}')
+        logger.debug(f'clean_contours_cracks length: {len(clean_contours_cracks)}')
+        input_vars = (centerlines_rings, shapely.multipolygons(clean_contours_rings), shapely.multipolygons(clean_contours_cracks))
     logger.debug(f'input_vars length: {len(input_vars)}')
     json_names = ('ring_line', 'ring_polygon', 'crack_polygon')
     for v in range(len(input_vars)):
@@ -761,40 +756,25 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
         #logger.debug(f'input_vars[v]: {input_vars[v]}')
         coords = {}
         # 'If else' becasue ring_line is shapely object and clean contours are from opencv and have different structure
-        #print(json_names[v]) #### just for debug, remove
-        if json_names[v] == 'ring_line':
-            for geom in input_vars[v].geoms:
-                #print("geom", geom)
-                x_list, y_list = geom.coords.xy
-                x_list = list(map(int, x_list))
-                y_list = list(map(int, y_list))
-                #print('x_list', x_list)
-                # now add everything in the json
-                x_min = math.floor(np.min(x_list))
-                the_coord = str(x_min) + '_' + 'coords'
-                logger.debug(f"the_coord: {the_coord}")
-                coords[the_coord] = {}
-                coords[the_coord]['x'] = x_list
-                coords[the_coord]['y'] = y_list
-                # print("coords",type(coords))
-        else:
-            for input_var in input_vars[v]:
-                logger.debug(f"input_var: {input_var}")
-                x_list = []
-                y_list = []
-                for [[x, y]] in input_var:
-                    #print(x,y)  # they are already integers
-                    x_list.append(int(x))
-                    y_list.append(int(y))
-                #print("type(x_list)", type(x_list))
-                #print("type(y_list)", type(y_list))
-                # now add everything in the json
-                x_min = math.floor(np.min(x_list))
-                the_coord = str(x_min)+'_'+'coords'
-                logger.debug(f"the_coord: {the_coord}")
-                coords[the_coord] = {}
-                coords[the_coord]['x'] = x_list
-                coords[the_coord]['y'] = y_list
+
+        for geom in input_vars[v].geoms:
+            logger.debug(f"geom {geom}")
+            logger.debug(f'geom type: {geom.geom_type}')
+            if geom.geom_type == 'Polygon':
+                geom = geom.exterior
+            x_list, y_list = geom.coords.xy
+            x_list = list(map(int, x_list))
+            y_list = list(map(int, y_list))
+            #print('x_list', x_list)
+            # now add everything in the json
+            x_min = math.floor(np.min(x_list))
+            the_coord = str(x_min) + '_' + 'coords'
+            logger.debug(f"the_coord: {the_coord}")
+            coords[the_coord] = {}
+            coords[the_coord]['x'] = x_list
+            coords[the_coord]['y'] = y_list
+            # print("coords",type(coords))
+
         #print("coords",type(coords))
         out_json[image_name]['predictions'][json_names[v]] = coords
 
