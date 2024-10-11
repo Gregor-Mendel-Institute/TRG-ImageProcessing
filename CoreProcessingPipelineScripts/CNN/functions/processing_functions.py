@@ -14,7 +14,6 @@ Print the image with mask over it.
 #######################################################################
 import os
 import sys
-import math
 import cv2
 import json
 import skimage
@@ -22,7 +21,6 @@ import copy
 import skimage.io
 import numpy as np
 import matplotlib.pyplot as plt
-from shapely.geometry.multilinestring import MultiLineString
 
 plt.set_loglevel (level = 'warning')
 import shapely
@@ -753,9 +751,7 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
     for v in range(len(input_vars)):
         logger.debug(f"v {v}")
         logger.debug(f'json_name: {json_names[v]}')
-        #logger.debug(f'input_vars[v]: {input_vars[v]}')
         coords = {}
-        # 'If else' becasue ring_line is shapely object and clean contours are from opencv and have different structure
 
         for geom in input_vars[v].geoms:
             logger.debug(f"geom {geom}")
@@ -767,7 +763,7 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
             y_list = list(map(int, y_list))
             #print('x_list', x_list)
             # now add everything in the json
-            x_min = math.floor(np.min(x_list))
+            x_min = min(x_list)
             the_coord = str(x_min) + '_' + 'coords'
             logger.debug(f"the_coord: {the_coord}")
             coords[the_coord] = {}
@@ -794,10 +790,7 @@ def write_to_pos(measure_points, file_name, image_name, DPI, path_out):
     # Prepare unit conversion
     pixel_per_mm = DPI/25.4
     # Create paths for output files
-    pos_name = file_name + '.pos'
-    posX_name = file_name + 'X' + '.pos'
-    out_file_path = os.path.join(path_out, pos_name)
-    out_fileX_path = os.path.join(path_out, posX_name)
+    out_file_path, out_fileX_path = os.path.join(path_out, file_name+'.pos'), os.path.join(path_out, file_name+'X'+'.pos')
     out_file_paths = (out_file_path, out_fileX_path)
 
     logger.debug(f"measure_points {measure_points}")
