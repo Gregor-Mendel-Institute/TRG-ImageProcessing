@@ -15,7 +15,7 @@ Print the image with mask over it.
 import os
 import sys
 import cv2
-import json
+import ujson
 import skimage
 import copy
 import skimage.io
@@ -776,7 +776,7 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
 
     output = os.path.join(path_out, os.path.splitext(image_name)[0] + '.json')
     with open(output, 'w') as outfile:
-        json.dump(out_json, outfile, indent=4)
+        ujson.dump(out_json, outfile)
     logger.info("write_to_json FINISH")
 #######################################################################
 # Create a POS file with measure points
