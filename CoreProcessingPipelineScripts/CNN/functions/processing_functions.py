@@ -300,8 +300,8 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
             cline = get_centerline(polygon, segmentize_maxlen=0.5, max_points=600, simplification=0.15,
                                    segmentize_maxlen_post=11, smooth_sigma=5)  # max_points=600, simplification=0.1
         except Exception as e:
-            logger.warning('Centerline of the ring {} failed with exception {}'.format(i, e))
-            print('Centerline of the ring {} failed with exception {}'.format(i, e))
+            logger.warning(f'Centerline of the ring {i} failed with exception {e}')
+            print('Centerline of the ring {i} failed with exception {e}')
             continue
         #xc,yc = cline.coords.xy
         #plt.plot(xc,yc,'g')
@@ -325,8 +325,8 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
         Multi_centerlines_to_crop = shapely.geometry.MultiLineString(centerlines)
         minx, miny, maxx, maxy = Multi_centerlines_to_crop.bounds
         px_to_cut_off = int((maxy-miny)*cut_off)
-        logger.debug('px_to_cut_off', px_to_cut_off)
-        logger.debug('minx, miny, maxx, maxy', minx, miny, maxx, maxy)
+        logger.debug(f'px_to_cut_off: {px_to_cut_off}')
+        logger.debug(f'minx: {minx}, miny: {miny}, maxx: {maxx}, maxy: {maxy}')
         frame_to_crop = shapely.geometry.box(minx, miny+px_to_cut_off, maxx, maxy-px_to_cut_off)
         Multi_centerlines_cropped = Multi_centerlines_to_crop.intersection(frame_to_crop)
         # To check if it cropps something
