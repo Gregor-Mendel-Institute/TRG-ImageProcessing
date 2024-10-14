@@ -1,4 +1,4 @@
-ultralytics == 8.2.79
+ultralytics == 8.3.7
 lxml == 5.3.0
 shapely == 2.0.6
 scikit-image == 0.24.0
