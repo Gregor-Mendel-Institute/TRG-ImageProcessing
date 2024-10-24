@@ -256,11 +256,16 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True, simplify_tolerance=0):
     contours_filtered = []
     x_mins = []
     for contour in contours:
-        x_min = np.min([x for [[x, _]] in contour])
+        x_list = [x for [[x, _]] in contour]
+        x_min = np.min(x_list)
+        # check the number of points as Polygon requires at least 4
+        n_points = len(x_list)
+        logger.debug(f"Contour has {n_points}")
         #remove those that are too short
         dim_max = max(cv2.minAreaRect(contour)[1])
-        if dim_max > min_size_threshold:
+        if dim_max > min_size_threshold and n_points >= 4:
             x_mins.append(x_min)
+            logger.debug(f"Contour taken")
             # convert in shapely polygon
             cont_polygon = shapely.geometry.Polygon([(x, y) for [[x, y]] in contour])
             simpl_cont_polygon = cont_polygon.simplify(tolerance=simplify_tolerance, preserve_topology=True)
