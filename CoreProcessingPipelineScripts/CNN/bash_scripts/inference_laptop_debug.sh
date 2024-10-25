@@ -1,13 +1,13 @@
 
 time python ../processing/processing.py \
   --dpi=13039 \
-  --run_ID=test_ujson \
+  --run_ID=test_contour_point_number \
   --input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
   --weightRing=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
   --cracks=True \
   --debug=True \
-  --print_detections=yes\
+  --print_detections=True\
 
 #--input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
 #--input=/Users/miroslav.polacek/Downloads/TC_selection_of_cores/F4b_B1.png \
