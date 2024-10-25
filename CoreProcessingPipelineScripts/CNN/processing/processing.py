@@ -86,7 +86,7 @@ def get_args():
                         help="Proportion of sliding frame that should overlap")
 
     parser.add_argument('--print_detections', required=False,
-                        help="yes, if printing is desired")
+                        help="True, if printing is desired")
 
     parser.add_argument('--min_mask_overlap', required=False,
                         help="Minimum of detected masks to consider good detection")
@@ -318,7 +318,7 @@ def main():
                             finished = True
 
                     # PRINT DETECTED IMAGES
-                    if args.print_detections == "yes":
+                    if args.print_detections == 'True':
                         # Plotting lines is mostly for debugging
                         masked_image = im_origin.copy()
                         logger.debug(f"masked_image.dtype{masked_image.dtype}")
