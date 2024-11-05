@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime
+FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -11,7 +11,11 @@ RUN apt update \
 
 WORKDIR /home
 
-COPY . /home
+COPY ./functions /home
+COPY ./processing /home
+COPY ./training /home
+COPY ./weights /home
+COPY ./requirements.txt /home
 
 RUN pip install -r requirements.txt
 
