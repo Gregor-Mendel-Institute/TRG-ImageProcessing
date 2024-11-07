@@ -735,12 +735,11 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
                     clean_contours_rings, clean_contours_cracks=None):
     logger.info("write_to_json START")
     # Define the structure of json
-    out_json = {'version':'2.0.0',
-                image_name: {'run_ID':run_ID, 'predictions':{}, 'directionality': {},
+    out_json = {image_name: {'run_ID':run_ID, 'predictions':{}, 'directionality': {},
                             'center': {}, 'est_rings_to_pith': {}, 'ring_widths': {}}}
     out_json[image_name]['predictions'] = {'ring_line': {}, 'ring_polygon': {},
                                             'crack_polygon': {}, 'resin_polygon': {},
-                                            'pith_polygon': {}}
+                                            'pith_polygon': {}, 'version': '2.0.0'}
     out_json[image_name]['center'] = {'cutting_point': cutting_point, 'pith_present': {},
                                         'pith_inferred': {'coords': {'x': [], 'y': []}}}
     out_json[image_name]['ring_widths'] = {'directionality': {}, 'shortest_distance': {},
