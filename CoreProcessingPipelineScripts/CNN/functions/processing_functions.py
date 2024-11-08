@@ -69,7 +69,7 @@ def apply_mask(image, mask, alpha=0.5):
 def convert_to_binary_mask(result, class_number):
     # result is yolov8 result for one image
     # it will output a binary mask of all the detected masks of desired class_number
-    logger.info("convert_to_binary_mask START")
+    logger.debug("convert_to_binary_mask START")
     im_shape = result.orig_shape
     logger.debug(f"im_shape: {im_shape}")
     cls_list = result.boxes.cls.int().tolist()
@@ -90,7 +90,7 @@ def convert_to_binary_mask(result, class_number):
         binary_mask = cv2.fillPoly(mask, pts=all_mask_coords, color=1)
         logging.debug("cv2.fillPoly finished")
 
-    logging.info("convert_to_binary_mask FINISH")
+    logging.debug("convert_to_binary_mask FINISH")
     return binary_mask
 
 ############################################################################################################
