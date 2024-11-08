@@ -325,7 +325,7 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
                        "Try to crop tighter.")
         return
     else:
-        logger.debug(f'Filtered_centerlines: {len(centerlines)}')
+        logger.info(f'Filtered_centerlines: {len(centerlines)}')
         ## Cut off upper and lower part of detected lines. It should help with problems of horizontal ends of detections
         Multi_centerlines_to_crop = shapely.geometry.MultiLineString(centerlines)
         minx, miny, maxx, maxy = Multi_centerlines_to_crop.bounds
