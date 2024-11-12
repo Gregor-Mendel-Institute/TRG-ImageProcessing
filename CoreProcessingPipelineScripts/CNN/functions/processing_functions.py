@@ -340,14 +340,15 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
         # Remove too short lines based on the threshold and simplify the number of points in order to reduce final size
 
         if Multi_centerlines_cropped.geom_type == 'MultiLineString':
-            Multi_centerlines_clean_list = [l.simplify(tolerance=simplification_tolerance, preserve_topology=False) for l in Multi_centerlines_cropped.geoms
+            Centerlines_clean = [l.simplify(tolerance=simplification_tolerance, preserve_topology=False) for l in Multi_centerlines_cropped.geoms
                     if (l.bounds[3]-l.bounds[1]) > y_length_threshold] # _, miny, _, maxy = cline.bounds; the tolerance is in pixels
-
+            Centerlines_clean_out = shapely.geometry.MultiLineString(Centerlines_clean)
         elif Multi_centerlines_cropped.geom_type == 'LineString':
-            Multi_centerlines_clean_list = Multi_centerlines_cropped.simplify(tolerance=simplification_tolerance, preserve_topology=False)
+            Centerlines_clean_out = Multi_centerlines_cropped.simplify(tolerance=simplification_tolerance, preserve_topology=False)
+
 
     logger.info("find_centerlines FINISH")
-    return shapely.geometry.MultiLineString(Multi_centerlines_clean_list)
+    return Centerlines_clean_out
 
 #######################################################################
 # Turn contours into lines and find nearest points between them for measure
