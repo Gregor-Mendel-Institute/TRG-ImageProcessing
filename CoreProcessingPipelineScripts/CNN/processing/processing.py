@@ -286,7 +286,7 @@ def main():
                     # FIND CENTERLINES
                     centerlines_rings = find_centerlines(clean_contours_rings,
                                                          cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
-                    logger.debug(f"centerlines_rings type {centerlines_rings.geom_type}")
+                    logger.debug(f"centerlines_rings type {type(centerlines_rings)}")
                     if centerlines_rings is None:
                         logger.warning("No centerlines were detected")
                         print("No centerlines were detected")
