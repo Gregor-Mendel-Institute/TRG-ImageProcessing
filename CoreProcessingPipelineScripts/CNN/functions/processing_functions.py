@@ -541,14 +541,12 @@ def plot_contours(image, contours, file_name, path_out, labels=None):
     image_copy = copy.deepcopy(image)
     contours = tuple(contours)
     if labels:
-        # for now I assume 2 categories 0 for ring and 1 for crack
-        contours_r = (contour for i, contour in enumerate(contours) if labels[i] == '0')
-        for contour in contours_r:
-            cv2.drawContours(image_copy, [contour], -1, (0, 255, 0), 1)
+        color = [(0, 255, 0), (255, 0, 0)]
+        for l in labels:
+            contours_r = (contour for i, contour in enumerate(contours) if labels[i] == l)
+            for contour in contours_r:
+                cv2.drawContours(image_copy, [contour], -1, color[int(l)], 1)
 
-        contours_c = (contour for i, contour in enumerate(contours) if labels[i] == '1')
-        for contour in contours_c:
-            cv2.drawContours(image_copy, [contour], -1, (255, 0, 0), 1)
     else:
         for contour in contours:
             cv2.drawContours(image_copy, [contour], -1, (0, 255, 0), 1)
@@ -558,7 +556,7 @@ def plot_contours(image, contours, file_name, path_out, labels=None):
     if not os.path.exists(export_path):
         os.makedirs(export_path)
 
-    f = file_name + '.png'
+    f = os.path.splitext(file_name)[0] + '.png' # can not use replace as original extension can be .tif, or .tiff or .png...
     # Save images at original size unles they are bigger then px in  length 30000. Should improve diagnostics on the images
     imgheight, imgwidth = image_copy.shape[:2]
     # since I use cv2 to load image I need to convert it to RGB before plotting with matplotlib
