@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 
 ####### Functions #####################
 def get_speed_df(folder_path):
@@ -33,6 +34,13 @@ LOGS_Debug_Png = "/Volumes/swarts/user/miroslav.polacek/Container_test/output/sp
 df_New_No_debug_No_png = get_speed_df(LOGS_NO_Debug_NO_Png)
 df_New_debug_png = get_speed_df(LOGS_Debug_Png)
 
+### NO DEBUG ####
+mean = np.mean(df_New_No_debug_No_png["time_s"])/60
+min = np.min(df_New_No_debug_No_png["time_s"])/60
+max = np.max(df_New_No_debug_No_png["time_s"])/60
+rings_sum = np.sum(df_New_debug_png["rings"])
 
-
-
+### WITH DEBUG #####
+mean_debug = np.mean(df_New_No_debug_No_png["time_s"])/60
+min_debug = np.min(df_New_No_debug_No_png["time_s"])/60
+max_debug = np.max(df_New_No_debug_No_png["time_s"])/60

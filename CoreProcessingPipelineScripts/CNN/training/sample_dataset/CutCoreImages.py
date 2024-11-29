@@ -4,12 +4,11 @@ import os
 
 # path to folder with cores to be chopped
 core_folder_path = '/Volumes/T7 Shield/CNN_yolov8_retraining_data/Plot23_badsamplequality/'
+out_path = '/Volumes/T7 Shield/CNN_yolov8_retraining_data/Plot23_badsamplequality/chopped'
 # search location and make a list
 im_names_list = [f for f in os.listdir(core_folder_path) if not f.startswith('.') and f.endswith('.tif')]
 # Append to make image_path
 
-#image_path = '/Volumes/T7 Shield/CNN_yolov8_retraining_data/OurImages_raw/00019005b_mo4577_pS1.96536799834280303030.tif'
-out_path = '/Volumes/T7 Shield/CNN_yolov8_retraining_data/Plot23_badsamplequality/chopped'
 # start function here
 for im_name in im_names_list:
     image_path = os.path.join(core_folder_path, im_name)
@@ -18,6 +17,7 @@ for im_name in im_names_list:
     for i in range(0, imwidth, imheight):
         print(i)
         im_crop = im[:, i:i+imheight, :]
+
         # get file name
         #file_name = os.path.basename(image_path)
         file_name_no_ext = os.path.splitext(im_name)[0]

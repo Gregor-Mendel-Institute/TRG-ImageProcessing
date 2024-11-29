@@ -8,7 +8,7 @@ import os
 import numpy as np
 import time
 # Import Mask RCNN
-ROOT_DIR = os.path.abspath('./CoreProcessingPipelineScripts/CNN/')
+ROOT_DIR = os.path.abspath('./CoreProcessingPipelineScripts/CNN/') # to run in Pycharm
 print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library
 from functions.processing_functions import check_annot_dataset

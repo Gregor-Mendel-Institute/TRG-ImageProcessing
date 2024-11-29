@@ -18,7 +18,7 @@ import cv2
 import ujson
 import skimage
 import copy
-import skimage.io
+#import skimage.io
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -582,7 +582,7 @@ def plot_contours(image, contours, file_name, path_out, labels=None):
 #######################################################################
 def load_annot(annot_path, im_size):
     # annot_path is path to annotation txt file of yolov8 format
-    # im_size is output of .shape method
+    # im_size is output of .shape[:2] method e.g. (im_height, im_width)
     # output contours are in shape acceptable for cv2 contours
     # load annotations
     logger.info("load_annot START")

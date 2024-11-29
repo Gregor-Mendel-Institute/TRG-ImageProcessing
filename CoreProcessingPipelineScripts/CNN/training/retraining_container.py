@@ -26,3 +26,7 @@ def retraining(model, dataset, out_path):
     else:
         # Train from
         model.train(data=data_yaml, epochs=2, imgsz=640, project=out_path)
+
+#### experiment
+#data_yaml = "/Users/miroslav.polacek/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/training/sample_dataset/data.yaml"
+#model = YOLO('yolo11x-seg.pt')

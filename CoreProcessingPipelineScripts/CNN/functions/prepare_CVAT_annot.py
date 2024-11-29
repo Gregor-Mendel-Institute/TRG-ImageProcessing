@@ -126,7 +126,7 @@ def prepare_annotations(dataset_path, annot_list, buffer=10, overwrite_existing=
             f.close()
 
 ######## MAIN ############################
-def prepare_all_annotations(dataset_path, buffer=5, overwrite_existing=True):
+def prepare_all_annotations(dataset_path, buffer=10, overwrite_existing=True):
 
     CVAT_ANNOT_PATH = os.path.join(dataset_path, 'CVAT_annotations')
     all_annot_list = collect_annotations(CVAT_folder=CVAT_ANNOT_PATH)

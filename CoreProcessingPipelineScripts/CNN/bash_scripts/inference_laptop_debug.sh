@@ -1,10 +1,12 @@
 
 time python ../processing/processing.py \
   --dpi=13039 \
-  --run_ID=test_contour_point_number \
-  --input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
+  --run_ID=Debug \
+  --input=/Users/miroslav.polacek/Pictures/pngs/test.png \
   --weightRing=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
+  --cropUpandDown=0 \
+  --sliding_window_overlap=0 \
   --cracks=True \
   --debug=True \
   --print_detections=True\

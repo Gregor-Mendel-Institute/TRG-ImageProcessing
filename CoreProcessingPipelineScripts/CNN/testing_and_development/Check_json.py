@@ -1,7 +1,7 @@
 import os
 import json
 
-JSON_PATH = '/Volumes/Storage/JSONs_old_new/new_00019002a_mo4724_pS1.96536799834280303030.json'
+JSON_PATH = '/Volumes/Storage/JSONs_old_new/thelast_00019002a_mo4724_pS1.96536799834280303030.json'
 
 with open(JSON_PATH, 'r') as file:
     json_dict = json.load(file)
@@ -19,7 +19,7 @@ ring_poly_cum_points = sum(ring_poly_lengths)
 crack_poly_lengths = [len(crack_d['x']) for _, crack_d in iter(pred['crack_polygon'].items())]
 crack_poly_cum_points = sum(crack_poly_lengths)
 
-OUT_PATH = '/Volumes/Storage/JSONs_old_new/old_00019002a_mo4724_pS1.96536799834280303030.txt'
+OUT_PATH = '/Volumes/Storage/JSONs_old_new/thelast_00019002a_mo4724_pS1.96536799834280303030.txt'
 with open(OUT_PATH, 'w') as f:
     f.write(f'Ring lines: {ring_line_n} \n'
             f'Ring polygons: {ring_poly_n} \n'
