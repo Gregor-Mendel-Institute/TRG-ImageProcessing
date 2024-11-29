@@ -14,6 +14,7 @@ from ultralytics import YOLO
 import numpy as np
 import shapely
 import cv2
+import sys
 
 # os.chdir("/Users/miroslav.polacek/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/functions")
 # Import custom functions
