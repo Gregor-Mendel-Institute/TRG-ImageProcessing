@@ -112,6 +112,7 @@ def eval_dataset(data, model, n_classes, detection_rows, sliding_window_overlap,
     results = []
     # im_name = "33627_201908231505-01(4)_8037a.tif"
     # im_name = "2019102817-01(12)_00015058a33_m01.tif" # many empty polygons loaded
+    # im_name = "20115_00041007a_0_pSX1.965424714300121_pSY1.9655438706947042.tif"
     for im_name in im_list:
         ## load image to extract the im size and other values
         print("evaluating image", im_name)
@@ -135,9 +136,9 @@ weights ="/groups/swarts/user/miroslav.polacek/TRG-ImplementYolov8/TRG-ImageProc
 
 data_yaml = os.path.join(DATASET, "data.yaml")
 OUTPUT_PATH = os.path.join(ROOT_DIR, "output")
-vals_dir = os.path.join(OUTPUT_PATH, "vals")
+evals_dir = os.path.join(OUTPUT_PATH, "evals")
 test_name = "best10px1000eAugEnlargedDataset" # later will be derived in function
-output_folder = os.path.join(vals_dir, test_name)
+output_folder = os.path.join(evals_dir, test_name)
 # more parameters
 detection_rows = 1
 sliding_window_overlap = 0.5
@@ -151,12 +152,12 @@ model = YOLO(weights)
 res_yolo = model.val(data = data_yaml, project=vals_dir, name=test_name)
 
 ## search all the images in the
-val_data = os.path.join(DATASET, "val")
+data = os.path.join(DATASET, "val")
 
 ###### TEST DIFFERENT CROP ######
 cropUpandDown_tuple = (0.2, 0.17, 0.10, 0)
 for cropUpandDown in cropUpandDown_tuple:
-    res_arr = eval_dataset(val_data, model, n_classes, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap, IoU_thresholds)
+    res_arr = eval_dataset(data, model, n_classes, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap, IoU_thresholds)
     out_file_results = os.path.join(output_folder, "Res_array" + str(cropUpandDown) + ".npy")
     np.save(out_file_results, res_arr)
 
