@@ -15,6 +15,9 @@ import numpy as np
 import shapely
 import cv2
 import sys
+import matplotlib.pyplot as plt
+import logging
+import datetime
 
 # os.chdir("/Users/miroslav.polacek/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/functions")
 # Import custom functions
@@ -34,13 +37,13 @@ def load_annot_Polygons(yolo_annot_file, im_size, n_classes, cropUpandDown):
     else:
         crop_box = shapely.geometry.box(0, 0, im_size[1], im_size[0])  # (minx, miny, maxx, maxy)
 
-    print("crop_box bounds", crop_box.bounds)
+    #print("crop_box bounds", crop_box.bounds)
     polys = [[] for _ in range(n_classes)]
     for an, c_id in zip(annot[0], annot[1]):
         polys[int(c_id)].append(shapely.geometry.Polygon(an).intersection(crop_box))
 
-    print("at the end", polys)
-    print("first ring bounds", polys[0][0].bounds)
+    #print("at the end", polys)
+    #print("first ring bounds", polys[0][0].bounds)
     return polys
 
 def get_detection_polys(image, model, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap):
@@ -69,6 +72,22 @@ def _get_metrics(poly_d, poly_t, IoU_thresholds):
     # Recall as correctly detected/all real (ground truth) rings
     #print("poly_d", poly_d)
     #print("poly_t", poly_t)
+    # ADD COMPREHENSION TO filter ONLY VALID POLYGONS
+    #poly_t_v = [pT for pT in poly_t if shapely.is_valid(pT)] # just to see but remove, does not make sense they should be good
+    #poly_d_v = [pD for pD in poly_d if shapely.is_valid_reason(pD)]
+    #print(f'poly_t: {len(poly_t)}')
+    """
+    for pD in poly_d:
+        print("area", pD.area)
+        reason = shapely.is_valid_reason(pD)
+        print("reason", reason)
+        if 'Ring Self-intersection' in reason:
+            x, y = pD.exterior.coords.xy
+            plt.plot(x,y)
+            plt.show()
+
+    #print(f'poly_d: {len(poly_d)} poly_d_v: {len(poly_d_v)}')
+    """
     if len(poly_t) == 0:
         NANs = np.repeat(np.nan, len(IoU_thresholds))
         P, R, IoU = NANs, NANs, NANs
@@ -76,8 +95,9 @@ def _get_metrics(poly_d, poly_t, IoU_thresholds):
         zeros = np.repeat(0, len(IoU_thresholds))
         P, R, IoU = zeros, zeros, np.repeat(np.nan, len(IoU_thresholds))
     else:
-        IoU_list = tuple(max((pT.intersection(pD).area/pT.union(pD).area for pD in poly_d))
-                     for pT in poly_t)
+        IoU_list = [max((pT.intersection(pD).area / pT.union(pD).area for pD in poly_d))
+                         for pT in poly_t]
+
         TPs = np.array([len(np.where(IoU_list > IoU_threshold)[0]) for IoU_threshold in IoU_thresholds])
         #print("TPs", TPs)
         P = TPs / len(poly_d)
@@ -139,6 +159,9 @@ OUTPUT_PATH = os.path.join(ROOT_DIR, "output")
 evals_dir = os.path.join(OUTPUT_PATH, "evals")
 test_name = "best10px1000eAugEnlargedDataset" # later will be derived in function
 output_folder = os.path.join(evals_dir, test_name)
+# Check if output dir for run_ID exists and if not create it
+if not os.path.isdir(output_folder):
+    os.makedirs(output_folder)
 # more parameters
 detection_rows = 1
 sliding_window_overlap = 0.5
@@ -146,7 +169,20 @@ sliding_window_overlap = 0.5
 min_mask_overlap = 3
 IoU_thresholds = np.arange(0.5,1,0.05)
 n_classes = 2
+"""
+# SET UP LOGGER
+now = datetime.now()
+dt_string_name = now.strftime('D%Y%m%d_%H%M%S')  # "%Y-%m-%d_%H:%M:%S"
+log_file_name = 'Eval_log' + '_' + dt_string_name + '.log'
+log_file_path = os.path.join(output_folder, log_file_name)
 
+logging.basicConfig(level=logging.INFO, filename=log_file_path,
+                    format='%(asctime)s-%(name)s-%(levelname)s %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger(__name__)
+if args.debug == 'True':
+    logging.getLogger().setLevel(logging.DEBUG)
+"""
 # RUN GENERAL YOLO EVALUATION
 model = YOLO(weights)
 res_yolo = model.val(data = data_yaml, project=vals_dir, name=test_name)
@@ -164,3 +200,9 @@ for cropUpandDown in cropUpandDown_tuple:
 # nanmean_across_IoU_thresholds = np.nanmean(nanmean_ar, axis=2)
 load_file_results = os.path.join(output_folder, "Res_array0.2.npy")
 test = np.load(load_file_results)
+
+###### Debug stuff delete #######
+for geom in pv.geoms:
+    x, y = geom.exterior.xy
+    plt.plot(x, y)
+plt.show()

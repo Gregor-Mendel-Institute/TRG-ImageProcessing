@@ -21,6 +21,7 @@ import copy
 #import skimage.io
 import numpy as np
 import matplotlib.pyplot as plt
+from numba import njit
 
 plt.set_loglevel (level = 'warning')
 import shapely
@@ -41,6 +42,7 @@ logger = logging.getLogger(__name__)
 #######################################################################
 # apply mask to an original image
 #######################################################################
+@njit
 def apply_mask(image, mask, alpha=0.5):
     """Apply the given mask to the image. In BGR
     """
@@ -269,7 +271,14 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True, simplify_tolerance=0):
             # convert in shapely polygon
             cont_polygon = shapely.geometry.Polygon([(x, y) for [[x, y]] in contour])
             simpl_cont_polygon = cont_polygon.simplify(tolerance=simplify_tolerance, preserve_topology=True)
-            contours_filtered.append(simpl_cont_polygon)
+            # seems that simplification can create invalid polygons in some cases so I check and correct that
+            if shapely.is_valid(simpl_cont_polygon):
+                contours_filtered.append(simpl_cont_polygon)
+            else:
+                simpl_cont_mp = shapely.make_valid(simpl_cont_polygon)
+                contours_filtered.append(max(simpl_cont_mp.geoms, key=lambda a: a.area))
+
+
 
             #print("contour shape", contours[i].shape
     logger.debug(f"contours_filtered_n: {len(contours_filtered)}")
@@ -306,7 +315,7 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
                                    segmentize_maxlen_post=11, smooth_sigma=5)  # max_points=600, simplification=0.1
         except Exception as e:
             logger.warning(f'Centerline of the ring {i} failed with exception {e}')
-            print('Centerline of the ring {i} failed with exception {e}')
+            print(f'Centerline of the ring {i} failed with exception {e}')
             continue
         #xc,yc = cline.coords.xy
         #plt.plot(xc,yc,'g')
