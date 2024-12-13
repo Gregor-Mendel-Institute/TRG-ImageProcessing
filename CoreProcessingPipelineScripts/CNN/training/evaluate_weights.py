@@ -185,7 +185,7 @@ if args.debug == 'True':
 """
 # RUN GENERAL YOLO EVALUATION
 model = YOLO(weights)
-res_yolo = model.val(data = data_yaml, project=vals_dir, name=test_name)
+res_yolo = model.val(data = data_yaml, project=evals_dir, name=test_name)
 
 ## search all the images in the
 data = os.path.join(DATASET, "val")
