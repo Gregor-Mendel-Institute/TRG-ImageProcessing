@@ -41,8 +41,13 @@ def load_annot_Polygons(yolo_annot_file, im_size, n_classes, cropUpandDown):
     polys = [[] for _ in range(n_classes)]
     for an, c_id in zip(annot[0], annot[1]):
         an_poly_raw = shapely.geometry.Polygon(an)
-        logger.debug(f"an_poly_raw area{an_poly_raw.area}")
-        an_poly = an_poly_raw.intersection(crop_box)
+        logger.debug(f"an_poly_raw area {an_poly_raw.area}")
+        try:
+            an_poly = an_poly_raw.intersection(crop_box)
+        except Exception as e:
+            logger.warning(f'Polygon not valid after cropping with exception {e}')
+            print(f'Polygon not valid after cropping with exception {e}')
+            continue
         poly_area = an_poly.area
         logger.debug(f"an_poly area {poly_area}")
         if poly_area > 0:
@@ -157,6 +162,7 @@ def eval_dataset(data, model, n_classes, detection_rows, sliding_window_overlap,
     for im_name in im_list:
         ## load image to extract the im size and other values
         print("evaluating image", im_name)
+        logger.info(f"evaluating image  {im_name}")
         im_path = os.path.join(data, im_name)
         im = cv2.imread(im_path)
         im_size = im.shape[:2]
