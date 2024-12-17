@@ -17,7 +17,7 @@ import cv2
 import sys
 import matplotlib.pyplot as plt
 import logging
-import datetime
+from datetime import datetime
 
 # os.chdir("/Users/miroslav.polacek/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/functions")
 # Import custom functions
@@ -37,10 +37,16 @@ def load_annot_Polygons(yolo_annot_file, im_size, n_classes, cropUpandDown):
     else:
         crop_box = shapely.geometry.box(0, 0, im_size[1], im_size[0])  # (minx, miny, maxx, maxy)
 
-    #print("crop_box bounds", crop_box.bounds)
+    logger.debug(f"crop_box bounds{crop_box.bounds}")
     polys = [[] for _ in range(n_classes)]
     for an, c_id in zip(annot[0], annot[1]):
-        polys[int(c_id)].append(shapely.geometry.Polygon(an).intersection(crop_box))
+        an_poly_raw = shapely.geometry.Polygon(an)
+        logger.debug(f"an_poly_raw area{an_poly_raw.area}")
+        an_poly = an_poly_raw.intersection(crop_box)
+        poly_area = an_poly.area
+        logger.debug(f"an_poly area {poly_area}")
+        if poly_area > 0:
+            polys[int(c_id)].append(an_poly)
 
     #print("at the end", polys)
     #print("first ring bounds", polys[0][0].bounds)
@@ -70,8 +76,8 @@ def _get_metrics(poly_d, poly_t, IoU_thresholds):
     # poly_d and poly_t are detected and truth shapely polygons
     # Precision as correctly detected/all detected
     # Recall as correctly detected/all real (ground truth) rings
-    #print("poly_d", poly_d)
-    #print("poly_t", poly_t)
+    logger.debug(f"poly_d length {len(poly_d)}")
+    logger.debug(f"poly_t length {len(poly_t)}")
     # ADD COMPREHENSION TO filter ONLY VALID POLYGONS
     #poly_t_v = [pT for pT in poly_t if shapely.is_valid(pT)] # just to see but remove, does not make sense they should be good
     #poly_d_v = [pD for pD in poly_d if shapely.is_valid_reason(pD)]
@@ -95,11 +101,26 @@ def _get_metrics(poly_d, poly_t, IoU_thresholds):
         zeros = np.repeat(0, len(IoU_thresholds))
         P, R, IoU = zeros, zeros, np.repeat(np.nan, len(IoU_thresholds))
     else:
+        IoU_list_debug = []
+        for pT in poly_t:
+            IoUs_temp_debug = []
+            for pD in poly_d:
+                logger.debug(f"intersection {pT.intersection(pD).area}")
+                logger.debug(f"union {pT.union(pD).area}")
+                logger.debug(f"pD area {pD.area}")
+                logger.debug(f"pT area {pT.area}")
+                IoU = pT.intersection(pD).area / pT.union(pD).area
+                logger.debug(f"IoU {IoU}")
+                if pD.area == 0:
+                    crush
+
+
+
         IoU_list = [max((pT.intersection(pD).area / pT.union(pD).area for pD in poly_d))
                          for pT in poly_t]
 
         TPs = np.array([len(np.where(IoU_list > IoU_threshold)[0]) for IoU_threshold in IoU_thresholds])
-        #print("TPs", TPs)
+        logger.debug(f"TPs {TPs}")
         P = TPs / len(poly_d)
         R = TPs / len(poly_t)
         #print("IoU_list", IoU_list)
@@ -151,7 +172,7 @@ def eval_dataset(data, model, n_classes, detection_rows, sliding_window_overlap,
 # SET VARIABLES
 #DATASET = "/Users/miroslav.polacek/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/training/sample_dataset/"
 DATASET = "/groups/swarts/user/miroslav.polacek/UpdatedTRGDataset10px"
-#weights = "/Users/miroslav.polacek/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/weights/best10px1000eAugEnlargedDataset.pt"
+#weights = "/Users/miroslav.polacek/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/weights/yolo11_15112024_best.pt"
 weights ="/groups/swarts/user/miroslav.polacek/TRG-ImplementYolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/weights/best10px1000eAugEnlargedDataset.pt"
 
 data_yaml = os.path.join(DATASET, "data.yaml")
@@ -165,24 +186,25 @@ if not os.path.isdir(output_folder):
 # more parameters
 detection_rows = 1
 sliding_window_overlap = 0.5
-# cropUpandDown = 0.2
+# cropUpandDown = 0.1
 min_mask_overlap = 3
 IoU_thresholds = np.arange(0.5,1,0.05)
 n_classes = 2
-"""
+
 # SET UP LOGGER
 now = datetime.now()
 dt_string_name = now.strftime('D%Y%m%d_%H%M%S')  # "%Y-%m-%d_%H:%M:%S"
 log_file_name = 'Eval_log' + '_' + dt_string_name + '.log'
 log_file_path = os.path.join(output_folder, log_file_name)
 
-logging.basicConfig(level=logging.INFO, filename=log_file_path,
+logging.basicConfig(level=logging.INFO,handlers=[logging.FileHandler(log_file_path), logging.StreamHandler()],
                     format='%(asctime)s-%(name)s-%(levelname)s %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
+
 logger = logging.getLogger(__name__)
-if args.debug == 'True':
+if True: #args.debug == 'True'
     logging.getLogger().setLevel(logging.DEBUG)
-"""
+
 # RUN GENERAL YOLO EVALUATION
 model = YOLO(weights)
 res_yolo = model.val(data = data_yaml, project=evals_dir, name=test_name)
@@ -197,12 +219,8 @@ for cropUpandDown in cropUpandDown_tuple:
     out_file_results = os.path.join(output_folder, "Res_array" + str(cropUpandDown) + ".npy")
     np.save(out_file_results, res_arr)
 
-# nanmean_across_IoU_thresholds = np.nanmean(nanmean_ar, axis=2)
+# nanmean_across_IoU_thresholds = np.nanmean(res_arr, axis=2)
+"""
 load_file_results = os.path.join(output_folder, "Res_array0.2.npy")
 test = np.load(load_file_results)
-
-###### Debug stuff delete #######
-for geom in pv.geoms:
-    x, y = geom.exterior.xy
-    plt.plot(x, y)
-plt.show()
+"""

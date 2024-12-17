@@ -266,17 +266,19 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True, simplify_tolerance=0):
         #remove those that are too short
         dim_max = max(cv2.minAreaRect(contour)[1])
         if dim_max > min_size_threshold and n_points >= 4:
-            x_mins.append(x_min)
-            logger.debug(f"Contour taken")
             # convert in shapely polygon
             cont_polygon = shapely.geometry.Polygon([(x, y) for [[x, y]] in contour])
             simpl_cont_polygon = cont_polygon.simplify(tolerance=simplify_tolerance, preserve_topology=True)
             # seems that simplification can create invalid polygons in some cases so I check and correct that
-            if shapely.is_valid(simpl_cont_polygon):
-                contours_filtered.append(simpl_cont_polygon)
-            else:
-                simpl_cont_mp = shapely.make_valid(simpl_cont_polygon)
-                contours_filtered.append(max(simpl_cont_mp.geoms, key=lambda a: a.area))
+            #### CHECK IF POLYGON IS BIGGER THAN 0 AREA
+            if simpl_cont_polygon.area > 0:
+                logger.debug(f"Contour taken")
+                x_mins.append(x_min)
+                if shapely.is_valid(simpl_cont_polygon):
+                    contours_filtered.append(simpl_cont_polygon)
+                else:
+                    simpl_cont_mp = shapely.make_valid(simpl_cont_polygon)
+                    contours_filtered.append(max(simpl_cont_mp.geoms, key=lambda a: a.area))
 
 
 
