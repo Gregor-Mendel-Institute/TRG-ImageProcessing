@@ -3,7 +3,7 @@ Neural network-based application for automated detection and measurement of tree
 Processing of full core images can take long and GPU is recommended to achieve reasonable processing time.
 
 Detailed information can be found in our publication:
-Poláček, M., Arizpe, A., Hüther, P., Weidlich, L., Steindl, S., & Swarts, K. (2022). Automation of tree-ring detection and measurements using deep learning (p. 2022.01.10.475709). bioRxiv. https://doi.org/10.1101/2022.01.10.475709
+Poláček, M., Arizpe, A., Hüther, P., Weidlich, L., Steindl, S., & Swarts, K. (2023). Automation of tree-ring detection and measurements using deep learning (p. 2022.01.10.475709). Methods in Ecology and Evolution. https://doi.org/10.1111/2041-210X.14183
 
 ## Run as a Docker container (using Singularity) – the easiest way
 1. Install Singularity https://sylabs.io/guides/3.0/user-guide/installation.html
