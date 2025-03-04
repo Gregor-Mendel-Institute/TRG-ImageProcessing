@@ -43,6 +43,11 @@ Input can be either path to an individual core image or a folder containing imag
 ```
 Output_folder specifies the location where to save results.
 
+```
+--weightRing
+```
+Retrained weights in a form of .h5 file can be passed using this argument.
+
 ### Optional
 ```
 --cropUpandDown
@@ -64,7 +69,3 @@ How many overlapping masks should be considered a good detection. Default is 3
 --print_detections=yes
 ```
 Saves images with detected masks and distances in “pngs” subfolder within output folder. Default is no.
-```
---weightRing
-```
-Retrained weights in a form of .h5 file can be passed using this argument.
