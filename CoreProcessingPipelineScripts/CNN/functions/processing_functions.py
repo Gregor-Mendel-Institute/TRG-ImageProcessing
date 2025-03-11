@@ -30,7 +30,8 @@ import scipy
 from datetime import datetime
 from operator import itemgetter
 import logging
-
+numba_logger = logging.getLogger('numba')
+numba_logger.setLevel(logging.WARNING) # prevent numba to flood my log file
 # Import Mask RCNN
 ROOT_DIR = os.path.abspath("../")
 #print('ROOT_DIR', ROOT_DIR)
