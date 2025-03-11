@@ -205,9 +205,13 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
                 combined_mask_section = r_mask + r1_mask_back + r2_mask_back_cropped
                 logger.debug(f"combined_mask_section.shape{combined_mask_section.shape}")
                 # Crop the edges of detected square to get cleaner mask
-                section_cleaned_edges = np.zeros(shape=combined_mask_section.shape, dtype='uint8')
-                section_cleaned_edges[px_to_crop:-px_to_crop, px_to_crop:-px_to_crop] = combined_mask_section[px_to_crop:-px_to_crop, px_to_crop:-px_to_crop]
-
+                if px_to_crop == 0:
+                    section_cleaned_edges = combined_mask_section
+                else:
+                    section_cleaned_edges = np.zeros(shape=combined_mask_section.shape, dtype='uint8')
+                    section_cleaned_edges[px_to_crop:-px_to_crop, px_to_crop:-px_to_crop] = combined_mask_section[
+                                                                                            px_to_crop:-px_to_crop,
+                                                                                            px_to_crop:-px_to_crop]
                 logger.debug(f"section_cleaned_edges.shape{section_cleaned_edges.shape}")
                 combined_masks_per_class[rl:rl+row_height, i:i+row_height, class_number] = combined_masks_per_class[rl:rl+row_height, i:i+row_height, class_number] + section_cleaned_edges
 
