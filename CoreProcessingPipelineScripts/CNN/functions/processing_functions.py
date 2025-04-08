@@ -31,6 +31,7 @@ from datetime import datetime
 from operator import itemgetter
 import logging
 numba_logger = logging.getLogger('numba')
+
 numba_logger.setLevel(logging.WARNING) # prevent numba to flood my log file
 # Import Mask RCNN
 ROOT_DIR = os.path.abspath("../")
@@ -154,8 +155,8 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
 
     ## columns
     looping_range = range(0, imgwidth, int(row_height-(row_height*overlap)))
-    looping_gen = (i for i in looping_range if i < imgwidth-row_height)  # before the condition was int(row_height-(row_height*overlap)) + imgwidth_origin
-    logger.debug(f'looping_gen: {looping_gen}')
+    looping_list = [i for i in looping_range if i < imgwidth-row_height]  # before the condition was int(row_height-(row_height*overlap)) + imgwidth_origin
+    logger.debug(f'looping_list: {looping_list}')
 
     if cracks:
         classes = (0, 1)
@@ -166,7 +167,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
     logger.debug(f"combined_masks_per_class.shape: {combined_masks_per_class.shape}")
     for rl in row_looping_range:
         logger.debug(f"rl: {rl}")
-        for i in looping_gen:  # defines the slide value
+        for i in looping_list:  # defines the slide value
             logger.debug(f"i: {i}")
             # crop the image
             cropped_part = im_padded[rl:rl+row_height, i:i+row_height]
@@ -267,7 +268,7 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True, simplify_tolerance=0):
         x_min = np.min(x_list)
         # check the number of points as Polygon requires at least 4
         n_points = len(x_list)
-        logger.debug(f"Contour has {n_points}")
+        logger.debug(f"Contour has {n_points} points")
         #remove those that are too short
         dim_max = max(cv2.minAreaRect(contour)[1])
         if dim_max > min_size_threshold and n_points >= 4:
