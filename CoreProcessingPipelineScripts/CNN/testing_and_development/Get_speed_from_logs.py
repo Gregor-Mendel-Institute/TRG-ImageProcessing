@@ -28,19 +28,22 @@ def get_speed_df(folder_path):
     return speed_df
 #######################################
 
-LOGS_NO_Debug_NO_Png = "/Volumes/swarts/user/miroslav.polacek/Container_test/output/speed_test_no_debug_and_png"
-LOGS_Debug_Png = "/Volumes/swarts/user/miroslav.polacek/Container_test/output/speed_test_debug_and_png"
+LOGS_1 = "/Users/miroslav/Documents/tmp_results_HPC2Nspeed/v100_venvultra83P3123CUDA124"
+LOGS_A40 = "/Users/miroslav/Documents/tmp_results_HPC2Nspeed/a40"
 
-df_New_No_debug_No_png = get_speed_df(LOGS_NO_Debug_NO_Png)
-df_New_debug_png = get_speed_df(LOGS_Debug_Png)
+df_1 = get_speed_df(LOGS_1)
+df_2 = get_speed_df(LOGS_A40)
 
 ### NO DEBUG ####
-mean = np.mean(df_New_No_debug_No_png["time_s"])/60
-min = np.min(df_New_No_debug_No_png["time_s"])/60
-max = np.max(df_New_No_debug_No_png["time_s"])/60
-rings_sum = np.sum(df_New_debug_png["rings"])
+mean1 = np.mean(df_1["time_s"])
+min1 = np.min(df_1["time_s"])
+max1 = np.max(df_1["time_s"])
+rings_sum = np.sum(df_1["rings"])
 
-### WITH DEBUG #####
-mean_debug = np.mean(df_New_No_debug_No_png["time_s"])/60
-min_debug = np.min(df_New_No_debug_No_png["time_s"])/60
-max_debug = np.max(df_New_No_debug_No_png["time_s"])/60
+### WITH DEBUG ##### in minutes
+mean2 = np.mean(df_2["time_s"])/60
+min2 = np.min(df_2["time_s"])/60
+max2 = np.max(df_2["time_s"])/60
+
+dif = abs(mean1 - mean2)
+prop_dif = dif/np.max([mean1, mean2])

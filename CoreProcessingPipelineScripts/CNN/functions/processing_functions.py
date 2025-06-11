@@ -18,7 +18,6 @@ import cv2
 import ujson
 import skimage
 import copy
-#import skimage.io
 import numpy as np
 import matplotlib.pyplot as plt
 from numba import njit
@@ -31,9 +30,9 @@ from datetime import datetime
 from operator import itemgetter
 import logging
 numba_logger = logging.getLogger('numba')
-
 numba_logger.setLevel(logging.WARNING) # prevent numba to flood my log file
-# Import Mask RCNN
+
+# Import get_centerline
 ROOT_DIR = os.path.abspath("../")
 #print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library
@@ -94,7 +93,7 @@ def convert_to_binary_mask(result, class_number):
         binary_mask = cv2.fillPoly(mask, pts=all_mask_coords, color=1)
         logging.debug("cv2.fillPoly finished")
 
-    logging.debug("convert_to_binary_mask FINISH")
+    logger.debug("convert_to_binary_mask FINISH")
     return binary_mask
 
 ############################################################################################################
@@ -627,7 +626,11 @@ def load_annot(annot_path, im_size):
 def check_annot_folder(folder_path):
     logger.info("check_annot_folder START")
     out_path = os.path.join(folder_path, "annot_check")
-    im_list = (f for f in os.listdir(folder_path) if f.endswith('.tif') and not f.startswith('.'))
+    print("folder_path", folder_path )
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
+    supported_extensions = ('.tif', '.tiff', '.png', '.jpg', '.jpeg')
+    im_list = (f for f in os.listdir(folder_path) if f.endswith(supported_extensions) and not f.startswith('.'))
     labels_all, no_annot_file, no_annot_im = [], [], []
     ok_im_count, im_with_ring, im_with_crack, im_with_both = 0, 0, 0, 0
 
@@ -636,9 +639,11 @@ def check_annot_folder(folder_path):
         im_path = os.path.join(folder_path, im_name)
         im = cv2.imread(im_path)
         im_size = im.shape
-        annot_path = im_path.replace(".tif", ".txt")
+        #annot_path = im_path.replace(".tif", ".txt")
+        annot_path = os.path.splitext(im_path)[0] + '.txt'
+        print("annot_path", annot_path)
         if not os.path.exists(annot_path):
-            no_annot_file.append(annot_path)
+            no_annot_file.append(im_name)
             print(f"Annot file for image {im_name} does not exist")
             continue
         contours, labels = load_annot(annot_path, im_size)

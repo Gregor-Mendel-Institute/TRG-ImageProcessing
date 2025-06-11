@@ -4,14 +4,63 @@ python -m venv --system-site-packages ~/venvs/yoloP311
 source ~/venvs/yoloP311/bin/activate
 pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml
 
-#### Testing env 05.12.2024 ######
-ml GCC/12.3.0 OpenMPI/4.1.5 PyTorch/2.1.2-CUDA-12.1.1 scikit-image/0.22.0
-python -m venv --system-site-packages ~/venvs/yoloP311
-source ~/venvs/yoloP311/bin/activate
-pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml
 
-#### Testing env 13.12.2024 ######
-ml GCC/13.3.0 cuDNN/9.2.0.82-CUDA-12.4.0 Python/3.12.3
+#### Testing env 19.12.2024 ######
+ml GCC/13.3.0 OpenMPI/5.0.3 CUDA/12.4.0 Python/3.12.3
 python -m venv --system-site-packages ~/venvs/ultra83P3123
 source ~/venvs/ultra83P3123/bin/activate
 pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson numba
+
+#### Testing env 28.12.2024 ###### DIDNOT INSTALL PROPERLY DUE TO SOME DEPENDANCY CONFLICT
+ml GCC/13.2.0 CUDA/12.4.0 Python/3.11.5
+python -m venv --system-site-packages ~/venvs/ultra83P3115
+source ~/venvs/ultra83P3115/bin/activate
+pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson numba
+
+#### Testing env 28.12.2024 ###### STILL the problem with missing libGL.so.1
+ml GCC/13.3.0 CUDA/12.4.0 Python/3.12.3
+python -m venv --system-site-packages ~/venvs/ultra83P3123
+source ~/venvs/ultra83P3123/bin/activate
+pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson numba
+
+#### Testing env 2.1.2024 ###### did not work for some torchvision error
+ml GCC/12.3.0 OpenMPI/4.1.5 OpenCV/4.8.1-CUDA-12.1.1-contrib PyTorch/2.1.2-CUDA-12.1.1 Seaborn/0.13.2 numba/0.58.1 lxml/4.9.2
+python -m venv --system-site-packages ~/venvs/ultra8P3113
+source ~/venvs/ultra8P3113/bin/activate
+pip install --no-cache-dir --no-build-isolation ultralytics shapely scikit-image torchvision==0.16.2 torch==2.1.2 typing_extensions==4.6.3 sympy==1.12 scipy==1.11.1 Pillow==10.0.0 
+
+#### Testing env 13.1.2024 ###### try to solve torch vision issue by installing PyTorch bundle package IT FINALLY SEEM TO WORK
+ml GCC/12.3.0 OpenMPI/4.1.5 OpenCV/4.8.1-CUDA-12.1.1-contrib PyTorch-bundle/2.1.2-CUDA-12.1.1 Seaborn/0.13.2 numba/0.58.1 lxml/4.9.2
+python -m venv --system-site-packages ~/venvs/ultra8P3113_PytorchBundle
+source ~/venvs/ultra8P3113_PytorchBundle/bin/activate
+pip install --no-cache-dir --no-build-isolation ultralytics shapely scikit-image torchvision==0.16.2 torch==2.1.2 typing_extensions==4.6.3 sympy==1.12 scipy==1.11.1 Pillow==9.5.0
+
+#### Testing env 16.12.2024 ###### still the same libgl1 error
+ml GCC/13.3.0 OpenMPI/5.0.3 CUDA/12.4.0 Python/3.12.3
+python -m venv --system-site-packages ~/venvs/ultra83P3123
+source ~/venvs/ultra83P3123/bin/activate
+pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson numba
+
+#### Testing env 16.01.2025 ######
+ml GCC/13.3.0 OpenMPI/5.0.3 OpenCV/4.11.0-CUDA-12.6.0-contrib
+python -m venv --system-site-packages ~/venvs/ultra83P3123
+source ~/venvs/ultra83P3123/bin/activate
+pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson numba
+
+#### Testing env 30.01.2025 ###### updating for opencv 4.11, torch is still compatible only with CUDA 12.4
+ml GCC/13.3.0 OpenMPI/5.0.3 OpenCV/4.11.0-CUDA-12.6.0-contrib
+python -m venv --system-site-packages ~/venvs/ultra83P3123
+source ~/venvs/ultra83P3123/bin/activate
+pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson numba
+
+#### Testing env 30.01.2025 ###### updating for opencv 4.11
+ml GCC/13.3.0 OpenMPI/5.0.3 OpenCV/4.11.0-contrib cuDNN/9.1.1.17-CUDA-12.4.0
+python -m venv --system-site-packages ~/venvs/ultra83P3123
+source ~/venvs/ultra83P3123/bin/activate
+pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson numba
+
+#### Testing env 25.02.2025 ###### updating for opencv 4.11, trying if torch cought up to CUDA 12.6, its not. still installe cuda 12.4.
+ml GCC/13.3.0 OpenMPI/5.0.3 OpenCV/4.11.0-CUDA-12.6.0-contrib
+python -m venv --system-site-packages ~/venvs/ultra83P3123test
+source ~/venvs/ultra83P3123test/bin/activate
+pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson numba openpyxl

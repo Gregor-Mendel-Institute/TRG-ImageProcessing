@@ -1,5 +1,9 @@
+#!/bin/zsh
 
 python evaluate_weights.py \
---dataset=sample_dataset  \
---train_log=../postprocessing/logs/fake_training \
+--dataset=sample_dataset \
+--weight=../weights/best10px1000eAugEnlargedDataset.pt \
+--out_path=../output \
+--test_name=anotherDebugTest \
+--debug=True
 

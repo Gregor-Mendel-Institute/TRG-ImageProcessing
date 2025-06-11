@@ -32,9 +32,6 @@ from functions.processing_functions import apply_mask, convert_to_binary_mask\
     , sliding_window_detection_multirow, clean_up_mask, find_centerlines, measure_contours, plot_lines, write_to_json\
     , write_to_pos, plot_contours
 
-from functions.prepare_CVAT_annot import prepare_all_annotations
-from training.retraining_container import retraining
-
 """
 stream_h = logging.StreamHandler()
 stream_h.setLevel(logging.WARNING)
@@ -56,6 +53,7 @@ def get_args():
 
     ## Compulsory arguments
     parser.add_argument('--dpi', required=False,
+                        type=float,
                         help="DPI value for the image")
 
     parser.add_argument('--run_ID', required=False,
@@ -65,9 +63,9 @@ def get_args():
                         metavar="/path/to/image/",
                         help="Path to image file of folder")
 
-    parser.add_argument('--weightRing', required=False,
-                        metavar="/path/to/weight/file",
-                        help="Path to ring weight file")
+    parser.add_argument('--weights', required=False,
+                        metavar="/path/to/weights/file",
+                        help="Path to weights file")
 
     parser.add_argument('--output_folder', required=False,
                         metavar="/path/to/out/folder",
@@ -76,23 +74,38 @@ def get_args():
     ## Optional arguments
     parser.add_argument('--cracks', required=False,
                         default=False,
-                        metavar="/path/to/weight/file",
-                        help="Path to crack weight file")
+                        type=bool,
+                        help="If cracks should be also detected")
 
     parser.add_argument('--cropUpandDown', required=False,
+                        default=0.17,
+                        type=float,
                         help="Fraction of image hight to crop away on both sides")
 
     parser.add_argument('--sliding_window_overlap', required=False,
+                        default=0.75,
+                        type=float,
                         help="Proportion of sliding frame that should overlap")
 
     parser.add_argument('--print_detections', required=False,
+                        default=False,
+                        type=bool,
                         help="True, if printing is desired")
 
     parser.add_argument('--min_mask_overlap', required=False,
+                        default=3,
+                        type=int,
                         help="Minimum of detected masks to consider good detection")
 
     parser.add_argument('--n_detection_rows', required=False,
+                        default=1,
+                        type=int,
                         help="Minimum of detected masks to consider good detection")
+
+    parser.add_argument('--logs', required=False,
+                        default="./logs",
+                        metavar="/path/to/logs/",
+                        help='Logs and checkpoints directory (default="./logs")')
 
     parser.add_argument('--logfile', required=False,
                         metavar="logfile",
@@ -103,14 +116,14 @@ def get_args():
                         help="True will set logging level to debug")
 
     ## Additional retrainig arguments
-    parser.add_argument('--dataset', required=False,
-                        metavar="/path/to/treering/dataset/",
-                        help='Directory of the Treering dataset')
+    parser.add_argument('--training_data', required=False,
+                        metavar="/path/to/training/dataset/",
+                        help='Directory of the training dataset')
 
-    parser.add_argument('--logs', required=False,
-                        default="./logs",
-                        metavar="/path/to/logs/",
-                        help='Logs and checkpoints directory (default="./logs")')
+    parser.add_argument('--epochs', required=False,
+                        default=1000,
+                        type=int,
+                        help='Number of training iteration to run the model')
 
     args = parser.parse_args()
     return args
@@ -126,7 +139,10 @@ def main():
         print(f"Compulsory argument --output_folder is missing or the path {args.output_folder} does not exist.")
         exit()
     # set up logging
-    path_out = os.path.join(args.output_folder, args.run_ID)
+    if args.training_data is not None:
+        path_out = os.path.join(args.output_folder, "retraining")
+    else:
+        path_out = os.path.join(args.output_folder, args.run_ID)
     # Check if output dir for run_ID exists and if not create it
     if not os.path.isdir(path_out):
         os.mkdir(path_out)
@@ -149,12 +165,12 @@ def main():
     logger.debug(f"OS specs: {platform.platform()}")
     # PREPARE THE MODEL
     # Check compulsory argument
-    if args.weightRing is None or not os.path.isfile(args.weightRing):
-        print(f"Compulsory argument --weightRing is missing or the path {args.weightRing} does not exist.")
-        logger.warning(f"Compulsory argument --weightRing is missing or the path {args.weightRing} does not exist.")
+    if args.weights is None or not os.path.isfile(args.weights):
+        print(f"Compulsory argument --weights is missing or the path {args.weights} does not exist.")
+        logger.warning(f"Compulsory argument --weights is missing or the path {args.weights} does not exist.")
         exit()
-    logger.info(f"Loading weights: {args.weightRing}")
-    modelRing = YOLO(args.weightRing)
+    logger.info(f"Loading weights: {args.weights}")
+    model = YOLO(args.weights)
 
     # check available devices to run model
     if torch.cuda.device_count() > 0:
@@ -168,18 +184,27 @@ def main():
     print(f"Model is running on: {device_names}")
 
     # RETRAINING
-    if args.dataset is not None:
-        if not os.path.exists(args.dataset):
-            print("Path to --dataset does not exist.")
-            logger.warning("Path to --dataset does not exist.")
+    if args.training_data is not None:
+        if not os.path.exists(args.training_data):
+            print("Path to --training_data does not exist.")
+            logger.warning("Path to --training_data does not exist.")
 
         print("Starting retraining mode")
         logger.info("STARTING RETRAINING MODE")
+        # Load training functions
+        from functions.training_functions import prepare_all_annotations, retraining, evaluate_training
+
         # Check and prepare annotations
-        prepare_all_annotations(dataset_path=args.dataset, buffer=10, overwrite_existing=True)
+        prepare_all_annotations(dataset_path=args.training_data, buffer=10, overwrite_existing=True)
 
         # Start retraining
-        retraining(model=modelRing, dataset=args.dataset, out_path=path_out) #pass the dataset and saving location
+        retraining(model=model, dataset_path=args.training_data, out_path=path_out, name=args.run_ID, epochs=args.epochs) #pass the training dataset and saving location
+
+        # Evaluate trained weights
+        evaluate_training(dataset_path=args.training_data, out_path=path_out, name=args.run_ID,
+                          detection_rows=args.n_detection_rows, sliding_window_overlap=args.sliding_window_overlap,
+                          cropUpandDown=args.cropUpandDown, min_mask_overlap=args.min_mask_overlap)
+
     # DETECTION
     else:
         print("Starting inference mode")
@@ -217,16 +242,16 @@ def main():
             logger.warning("Input argument is neither valid file nor directory")
 
         for f in input_l:
-            supported_extensions = ('.tif', '.tiff', '.png')
-            file_extension = os.path.splitext(f)[1]
+            supported_extensions = ('.tif', '.tiff', '.png', '.jpg', '.jpeg')
+            im_name_no_ext = os.path.splitext(f)[0]
 
-            if file_extension in supported_extensions and os.path.splitext(f)[0] in json_l:
+            if f.endswith(supported_extensions) and im_name_no_ext in json_l:
                 # print image name first to keep the output consistent
                 print("Processing image: {}".format(f))
                 logger.info("Processing image: {}".format(f))
                 print("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
                 logger.info("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
-            elif file_extension in supported_extensions and os.path.splitext(f)[0] not in json_l:
+            elif f.endswith(supported_extensions) and im_name_no_ext not in json_l:
                 try:
                     image_start_time = time.perf_counter()
                     print("Processing image: {}".format(f))
@@ -235,6 +260,8 @@ def main():
                     im_origin = cv2.imread(image_path)
                     image_name = os.path.splitext(f)[0]  # later for saving files
 
+                    """
+                    # This part was solved more elegantly in args kept temporarily only in case of some bugs
                     # Define default values if they were not provided as arguments
                     if args.cropUpandDown is not None:
                         cropUpandDown = float(args.cropUpandDown)
@@ -251,20 +278,21 @@ def main():
                     else:
                         detection_rows = int(args.n_detection_rows)
 
-                    if args.cracks == 'True':
-                        cracks = True
-                    else:
-                        cracks = False
-
                     if args.min_mask_overlap is not None:
                         min_mask_overlap = int(args.min_mask_overlap)
                     else:
                         min_mask_overlap = 3
+                    
+                    if args.cracks == 'True':
+                        cracks = True
+                    else:
+                        cracks = False
+                    """
 
                     # RUN DETECTION
                     detected_mask = sliding_window_detection_multirow(image=im_origin,
                                                             detection_rows=detection_rows,
-                                                            model=modelRing,
+                                                            model=model,
                                                             cracks=cracks,
                                                             overlap=sliding_window_overlap,
                                                             cropUpandDown=cropUpandDown)
@@ -318,7 +346,8 @@ def main():
                             finished = True
 
                     # PRINT DETECTED IMAGES
-                    if args.print_detections == 'True':
+                    #if args.print_detections == 'True':
+                    if args.print_detections:
                         # Plotting lines is mostly for debugging
                         masked_image = im_origin.copy()
                         logger.debug(f"masked_image.dtype{masked_image.dtype}")

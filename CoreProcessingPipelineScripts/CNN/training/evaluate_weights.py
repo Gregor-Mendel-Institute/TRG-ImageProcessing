@@ -18,17 +18,55 @@ import sys
 import matplotlib.pyplot as plt
 import logging
 from datetime import datetime
+import argparse
 
-# os.chdir("/Users/miroslav.polacek/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/functions")
+# set up logger
+logger = logging.getLogger(__name__)
+# os.chdir("/Users/miroslav/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/functions")
 # Import custom functions
 ROOT_DIR = os.path.abspath("../")
 print('ROOT_DIR', ROOT_DIR)
-sys.path.append(ROOT_DIR)  # To find local version of the library
+sys.path.append(ROOT_DIR) # To find local version of the library
 
 from functions.processing_functions import (apply_mask, convert_to_binary_mask, load_annot,
                                             sliding_window_detection_multirow, clean_up_mask)
 
+######################### ARGS #################################################
+def get_args():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description='Segmentation of whole core')
+
+    ## Compulsory arguments
+    parser.add_argument('--dataset', required=False,
+                        metavar="/path/to/dataset/folder",
+                        help="Path to validation dataset folder")
+
+    parser.add_argument('--weight', required=False,
+                        metavar="/path/to/weight/file",
+                        help="Path to ring weight file")
+
+    parser.add_argument('--out_path', required=False,
+                        metavar="/path/to/save/output",
+                        help="Path to output folder")
+
+    parser.add_argument('--test_name', required=False,
+                        help="Test name")
+
+    parser.add_argument('--debug', required=False,
+                        default=False,
+                        help="True for debug mode")
+
+    args = parser.parse_args()
+    return args
+
 ######################### FUNCTIONS #############################################
+def save_res_yolo(res_yolo, out_file):
+    box = res_yolo.box.all_ap
+    mask = res_yolo.seg.all_ap
+    out_data = np.array([box, mask]) # resulting array is 2,2,10 with out[0] being the box data
+    np.save(out_file, out_data)
+
 def load_annot_Polygons(yolo_annot_file, im_size, n_classes, cropUpandDown):
     annot = load_annot(yolo_annot_file, im_size)
     if cropUpandDown > 0:
@@ -87,18 +125,7 @@ def _get_metrics(poly_d, poly_t, IoU_thresholds):
     #poly_t_v = [pT for pT in poly_t if shapely.is_valid(pT)] # just to see but remove, does not make sense they should be good
     #poly_d_v = [pD for pD in poly_d if shapely.is_valid_reason(pD)]
     #print(f'poly_t: {len(poly_t)}')
-    """
-    for pD in poly_d:
-        print("area", pD.area)
-        reason = shapely.is_valid_reason(pD)
-        print("reason", reason)
-        if 'Ring Self-intersection' in reason:
-            x, y = pD.exterior.coords.xy
-            plt.plot(x,y)
-            plt.show()
 
-    #print(f'poly_d: {len(poly_d)} poly_d_v: {len(poly_d_v)}')
-    """
     if len(poly_t) == 0:
         NANs = np.repeat(np.nan, len(IoU_thresholds))
         P, R, IoU = NANs, NANs, NANs
@@ -118,8 +145,6 @@ def _get_metrics(poly_d, poly_t, IoU_thresholds):
                 logger.debug(f"IoU {IoU}")
                 if pD.area == 0:
                     crush
-
-
 
         IoU_list = [max((pT.intersection(pD).area / pT.union(pD).area for pD in poly_d))
                          for pT in poly_t]
@@ -141,6 +166,7 @@ def eval_image(image, model, yolo_annot_file, im_size, n_classes, detection_rows
     #print("polys_gt", polys_gt)
     # run detection and prepare the polygons
     polys_d = get_detection_polys(image, model, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap)
+
     # in that order are also the their metrics
     P, R, IoU = [], [], []
     for p_gt, p_d in zip(polys_gt, polys_d):
@@ -174,59 +200,109 @@ def eval_dataset(data, model, n_classes, detection_rows, sliding_window_overlap,
         results.append(im_res)
     out_array = np.nanmean(np.array(results), axis=0)  # average along the images
     return out_array
+
+def plot_results(res, IoU_thresholds, out_file_plot):
+    n_classes = res.shape[1]
+    linestyle = ['solid', 'dashed', 'dashdot', 'dotted']
+    for i in range(n_classes):
+        precision = res[0][i]
+        recall = res[1][i]
+        plt.plot(IoU_thresholds, precision, ls=linestyle[i], c='b')
+        plt.plot(IoU_thresholds, recall, ls=linestyle[i], c='orange')
+    plt.xlabel('IoU threshold')
+    plt.legend(['Precision', 'Recall'])
+    #plt.show()
+    plt.savefig(out_file_plot)
+    plt.close()
 #################################################################################
-# SET VARIABLES
-#DATASET = "/Users/miroslav.polacek/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/training/sample_dataset/"
-DATASET = "/groups/swarts/user/miroslav.polacek/UpdatedTRGDataset10px"
-#weights = "/Users/miroslav.polacek/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/weights/yolo11_15112024_best.pt"
-weights ="/groups/swarts/user/miroslav.polacek/TRG-ImplementYolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/weights/best10px1000eAugEnlargedDataset.pt"
+def main():
+    args = get_args()
 
-data_yaml = os.path.join(DATASET, "data.yaml")
-OUTPUT_PATH = os.path.join(ROOT_DIR, "output")
-evals_dir = os.path.join(OUTPUT_PATH, "evals")
-test_name = "best10px1000eAugEnlargedDataset" # later will be derived in function
-output_folder = os.path.join(evals_dir, test_name)
-# Check if output dir for run_ID exists and if not create it
-if not os.path.isdir(output_folder):
-    os.makedirs(output_folder)
-# more parameters
-detection_rows = 1
-sliding_window_overlap = 0.5
-# cropUpandDown = 0.1
-min_mask_overlap = 3
-IoU_thresholds = np.arange(0.5,1,0.05)
-n_classes = 2
+    # SET VARIABLES
+    #DATASET = "/Users/miroslav/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/training/sample_dataset/"
+    #DATASET = "/groups/swarts/user/miroslav.polacek/UpdatedTRGDataset10px"
+    DATASET = args.dataset
+    #weights = "/Users/miroslav/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/weights/yolo11_15112024_best.pt"
+    #weights ="/groups/swarts/user/miroslav.polacek/TRG-ImplementYolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/weights/best10px1000eAugEnlargedDataset.pt"
+    weights = args.weight
 
-# SET UP LOGGER
-now = datetime.now()
-dt_string_name = now.strftime('D%Y%m%d_%H%M%S')  # "%Y-%m-%d_%H:%M:%S"
-log_file_name = 'Eval_log' + '_' + dt_string_name + '.log'
-log_file_path = os.path.join(output_folder, log_file_name)
+    data_yaml = os.path.join(DATASET, "data.yaml")
+    OUTPUT_PATH = os.path.join(ROOT_DIR, "output")
+    evals_dir = os.path.join(OUTPUT_PATH, "evals")
+    #test_name = "debugEval" # later will be derived in function
+    test_name = args.test_name
+    output_folder = os.path.join(evals_dir, test_name)
+    # Check if output dir for run_ID exists and if not create it
+    if not os.path.isdir(output_folder):
+        os.makedirs(output_folder)
 
-logging.basicConfig(level=logging.INFO,handlers=[logging.FileHandler(log_file_path), logging.StreamHandler()],
-                    format='%(asctime)s-%(name)s-%(levelname)s %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
+    # SET UP LOGGER
+    now = datetime.now()
+    dt_string_name = now.strftime('D%Y%m%d_%H%M%S')  # "%Y-%m-%d_%H:%M:%S"
+    log_file_name = 'Eval_log' + '_' + dt_string_name + '.log'
+    log_file_path = os.path.join(output_folder, log_file_name)
 
-logger = logging.getLogger(__name__)
-if True: #args.debug == 'True'
-    logging.getLogger().setLevel(logging.DEBUG)
+    logging.basicConfig(level=logging.INFO, handlers=[logging.FileHandler(log_file_path)],
+                        format='%(asctime)s-%(name)s-%(levelname)s %(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S')
 
-# RUN GENERAL YOLO EVALUATION
-model = YOLO(weights)
-res_yolo = model.val(data = data_yaml, project=evals_dir, name=test_name)
+    logger = logging.getLogger(__name__)
+    if args.debug == 'True':  # args.debug == 'True'
+        logging.getLogger().setLevel(logging.DEBUG)
 
-## search all the images in the
-data = os.path.join(DATASET, "val")
+    # more parameters
+    detection_rows = 1
+    sliding_window_overlap = 0.5
+    # cropUpandDown = 0.1
+    min_mask_overlap = 3
+    IoU_thresholds = np.arange(0.5,1,0.05)
+    n_classes = 2
+    # prepare model
+    model = YOLO(weights)
 
-###### TEST DIFFERENT CROP ######
-cropUpandDown_tuple = (0.2, 0.17, 0.10, 0)
-for cropUpandDown in cropUpandDown_tuple:
-    res_arr = eval_dataset(data, model, n_classes, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap, IoU_thresholds)
-    out_file_results = os.path.join(output_folder, "Res_array" + str(cropUpandDown) + ".npy")
-    np.save(out_file_results, res_arr)
+    """
+    # It might not be necessary
+    # RUN GENERAL YOLO EVALUATION
+    model = YOLO(weights)
+    res_yolo = model.val(data = data_yaml, project=evals_dir, name=test_name)
+    res_yolo.seg.map # is map for all maps is for individial categories rings and crack
+    yolo_res_out_file = os.path.join(output_folder, "yolo_res_out.npy")
+    save_res_yolo(res_yolo, yolo_res_out_file)
+    """
+    ## search all the images in the
+    data = os.path.join(DATASET, "val")
 
-# nanmean_across_IoU_thresholds = np.nanmean(res_arr, axis=2)
-"""
-load_file_results = os.path.join(output_folder, "Res_array0.2.npy")
-test = np.load(load_file_results)
-"""
+    ###### TEST DIFFERENT CROP ######
+    cropUpandDown_tuple = (0,) #(0.2, 0.17, 0.10, 0)
+    for cropUpandDown in cropUpandDown_tuple:
+        res_arr = eval_dataset(data, model, n_classes, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap, IoU_thresholds)
+        out_file_results = os.path.join(output_folder, "Res_array" + str(cropUpandDown) + ".npy")
+        np.save(out_file_results, res_arr)
+
+    # nanmean_across_IoU_thresholds = np.nanmean(res_arr, axis=2)
+    """
+    test_results_path = "/Volumes/Storage/Eval_test_data"
+    res_file_names = os.listdir(test_results_path)
+    res_file = os.path.join(test_results_path, res_file_names[0])
+    
+    res = np.load(res_file)
+    res0 = res[0]
+    res1 = res[1]
+    res2 = res[2]
+    nanmean_across_IoU_thresholds_yolov8 = np.nanmean(res, axis=2)
+    """
+
+    res_file_names = (i for i in os.listdir(output_folder) if i.endswith('.npy'))
+
+    for rf_name in res_file_names:
+        res_file = os.path.join(output_folder, rf_name)
+        logger.info(f"Extracting data from {res_file}")
+        res = np.load(res_file)
+        summary_out = np.nanmean(res, axis=2)
+        csv_file_out = os.path.join(output_folder, rf_name.replace(".npy", ".csv"))
+        summary_out.tofile(csv_file_out, sep=',')#, format='%10.5f')
+        out_file_plot = os.path.join(output_folder, rf_name.replace(".npy", ".png"))
+        plot_results(res, IoU_thresholds, out_file_plot)
+
+if __name__ == '__main__':
+    main()

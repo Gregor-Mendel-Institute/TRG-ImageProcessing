@@ -2,11 +2,11 @@
 time python ../processing/processing.py \
   --dpi=13039 \
   --run_ID=Debug \
-  --input=/Users/miroslav.polacek/Pictures/pngs/test.png \
-  --weightRing=../weights/best10px1000eAugEnlargedDataset.pt \
+  --input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
+  --weights=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
-  --cropUpandDown=0 \
-  --sliding_window_overlap=0 \
+  --cropUpandDown=0.17 \
+  --sliding_window_overlap=0.75 \
   --cracks=True \
   --debug=True \
   --print_detections=True\

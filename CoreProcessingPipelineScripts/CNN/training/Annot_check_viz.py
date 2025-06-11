@@ -11,16 +11,19 @@ import time
 ROOT_DIR = os.path.abspath('./CoreProcessingPipelineScripts/CNN/') # to run in Pycharm
 print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library
+
+from functions.prepare_CVAT_annot import prepare_all_annotations
 from functions.processing_functions import check_annot_dataset
+
+# prepare variables
+#DATASET_PATH = "/Users/miroslav/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/training/sample_dataset/"
+DATASET_PATH = "/Users/miroslav/Documents/Timon_annot/Timon_all_annot_squares/Timon_data_training"
 
 # testing on sample dataset
 start_time = time.perf_counter()
-dataset = "/Users/miroslav.polacek/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/training/sample_dataset/"
-check_annot_dataset(dataset)
+prepare_all_annotations(dataset_path=DATASET_PATH, buffer=10, overwrite_existing=True)
+check_annot_dataset(DATASET_PATH)
 finished_time = time.perf_counter()
 print(f"Total time: {str(finished_time - start_time)}") # on mac the original:  32-34s
 
-# run on my dataset
-dataset = "/Volumes/T7 Shield/TRG_RingCrack_3rd_trainingdataset"
-check_annot_dataset(dataset)
 
