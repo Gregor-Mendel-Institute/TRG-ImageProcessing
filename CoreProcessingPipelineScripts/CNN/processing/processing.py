@@ -306,7 +306,7 @@ def main():
 
                     ## CRACKS
                     clean_contours_cracks = None
-                    if cracks is True:
+                    if args.cracks is True:
                         detected_mask_cracks = detected_mask[:, :, 1]
                         logger.debug(f"detected_mask_cracks{detected_mask_cracks.shape}")
                         clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
@@ -353,7 +353,7 @@ def main():
                         logger.debug(f"masked_image.dtype{masked_image.dtype}")
                         masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
 
-                        if cracks is True:
+                        if args.cracks is True:
                             masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
 
                         plot_lines(masked_image, centerlines, measure_points,
