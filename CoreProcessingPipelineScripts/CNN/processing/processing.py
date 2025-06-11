@@ -291,18 +291,18 @@ def main():
 
                     # RUN DETECTION
                     detected_mask = sliding_window_detection_multirow(image=im_origin,
-                                                            detection_rows=detection_rows,
+                                                            detection_rows=args.n_detection_rows,
                                                             model=model,
-                                                            cracks=cracks,
-                                                            overlap=sliding_window_overlap,
-                                                            cropUpandDown=cropUpandDown)
+                                                            cracks=args.cracks,
+                                                            overlap=args.sliding_window_overlap,
+                                                            cropUpandDown=args.cropUpandDown)
 
                     # CLEAN UP MASKS
                     ## RINGS
                     detected_mask_rings = detected_mask[:, :, 0]
                     # print("detected_mask_rings", detected_mask_rings.shape)
                     clean_contours_rings = clean_up_mask(detected_mask_rings,
-                                                         min_mask_overlap=min_mask_overlap, is_ring=True)
+                                                         min_mask_overlap=args.min_mask_overlap, is_ring=True)
 
                     ## CRACKS
                     clean_contours_cracks = None

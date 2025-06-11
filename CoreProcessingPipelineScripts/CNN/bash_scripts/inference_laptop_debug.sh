@@ -1,8 +1,8 @@
 
 time python ../processing/processing.py \
   --dpi=13039 \
-  --run_ID=Debug \
-  --input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
+  --run_ID=Debug_after_sipl \
+  --input=../training/sample_dataset/val \
   --weights=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
   --cropUpandDown=0.17 \
