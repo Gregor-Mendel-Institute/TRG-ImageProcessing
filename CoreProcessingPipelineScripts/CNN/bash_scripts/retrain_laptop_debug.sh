@@ -1,6 +1,6 @@
 
 time python ../processing/processing.py \
-  --training_data=/Volumes/T7\ Shield/Miro/work/work_archive/CNN/Quercus_retraining \
+  --training_data=../training/sample_dataset \
   --weights=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
   --epochs=2 \
