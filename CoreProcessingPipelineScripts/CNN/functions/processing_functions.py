@@ -239,6 +239,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
 def clean_up_mask(mask, min_mask_overlap=3, is_ring=True, simplify_tolerance=0):
     # Detects countours of the masks, removes small contours
     logger.info("clean_up_mask START")
+    logger.info(f'is_ring: {is_ring}')
     # Make the mask binary
     binary_mask = np.where(mask >= min_mask_overlap, 255, 0) # this part can be cleaned to remove some missdetections setting condition for higher value
     #print("binary_mask shape", binary_mask.shape)
@@ -279,13 +280,24 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True, simplify_tolerance=0):
             if simpl_cont_polygon.area > 0:
                 logger.debug(f"Contour taken")
                 x_mins.append(x_min)
+                logger.debug(f"x_mins: {x_mins}")
                 if shapely.is_valid(simpl_cont_polygon):
-                    contours_filtered.append(simpl_cont_polygon)
+                    logger.debug(f"Geometry is valid")
+                    if simpl_cont_polygon.geom_type == 'Polygon':
+                        contours_filtered.append(simpl_cont_polygon)
+                    else:
+                        logger.warning(f'Contour not appended because it is {simpl_cont_polygon.geom_type} and should be Polygon')
+
                 else:
+                    logger.debug(f"Geometry is not valid")
                     simpl_cont_mp = shapely.make_valid(simpl_cont_polygon)
-                    contours_filtered.append(max(simpl_cont_mp.geoms, key=lambda a: a.area))
-
-
+                    # if multiple created get the one with biggest area.
+                    # Assuming some miniture selfintersections around pixels at the edges.
+                    biggest_contour = max(simpl_cont_mp.geoms, key=lambda a: a.area)
+                    if biggest_contour.geom_type == 'Polygon':
+                        contours_filtered.append(biggest_contour)
+                    else:
+                        logger.warning(f'Contour not appended because it is {biggest_contour.geom_type} and expect Polygon')
 
             #print("contour shape", contours[i].shape
     logger.debug(f"contours_filtered_n: {len(contours_filtered)}")
@@ -319,11 +331,12 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
         #    pickle.dump(polygon, file)
         try:
             cline = get_centerline(polygon, segmentize_maxlen=0.5, max_points=600, simplification=0.15,
-                                   segmentize_maxlen_post=11, smooth_sigma=5)  # max_points=600, simplification=0.1
+                                   segmentize_maxlen_post=11, smooth_sigma=5)  # max_points=600, simplification=0.1 (0.15),
         except Exception as e:
             logger.warning(f'Centerline of the ring {i} failed with exception {e}')
             print(f'Centerline of the ring {i} failed with exception {e}')
             continue
+        logger.debug(f'Cline min x,y: {min(cline.coords.xy[0])}, {min(cline.coords.xy[1])} and max x,y: {max(cline.coords.xy[0])}, {max(cline.coords.xy[1])}')
         #xc,yc = cline.coords.xy
         #plt.plot(xc,yc,'g')
         #print('cline done')
