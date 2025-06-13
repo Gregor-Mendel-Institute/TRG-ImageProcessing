@@ -28,8 +28,8 @@ ROOT_DIR = os.path.abspath("../")
 print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR) # To find local version of the library
 
-from functions.processing_functions import (apply_mask, convert_to_binary_mask, load_annot,
-                                            sliding_window_detection_multirow, clean_up_mask)
+# Load training functions
+from functions.training_functions import evaluate_training
 
 ######################### ARGS #################################################
 def get_args():
@@ -37,272 +37,73 @@ def get_args():
     parser = argparse.ArgumentParser(
         description='Segmentation of whole core')
 
-    ## Compulsory arguments
-    parser.add_argument('--dataset', required=False,
-                        metavar="/path/to/dataset/folder",
-                        help="Path to validation dataset folder")
+    parser.add_argument('--training_data', required=False,
+                        metavar="/path/to/training/dataset/",
+                        help='Directory of the training dataset')
 
-    parser.add_argument('--weight', required=False,
-                        metavar="/path/to/weight/file",
-                        help="Path to ring weight file")
+    parser.add_argument('--run_ID', required=False,
+                        help="Run ID")
 
-    parser.add_argument('--out_path', required=False,
-                        metavar="/path/to/save/output",
+    parser.add_argument('--n_detection_rows', required=False,
+                        default=1,
+                        type=int,
+                        help="Minimum of detected masks to consider good detection")
+
+    parser.add_argument('--sliding_window_overlap', required=False,
+                        default=0.75,
+                        type=float,
+                        help="Proportion of sliding frame that should overlap")
+
+    parser.add_argument('--cropUpandDown', required=False,
+                        default=0.17,
+                        type=float,
+                        help="Fraction of image hight to crop away on both sides")
+
+    parser.add_argument('--min_mask_overlap', required=False,
+                        default=3,
+                        type=int,
+                        help="Minimum of detected masks to consider good detection")
+
+    parser.add_argument('--output_folder', required=False,
+                        metavar="/path/to/out/folder",
                         help="Path to output folder")
-
-    parser.add_argument('--test_name', required=False,
-                        help="Test name")
 
     parser.add_argument('--debug', required=False,
                         default=False,
-                        help="True for debug mode")
+                        type=bool,
+                        help="True will set logging level to debug")
 
     args = parser.parse_args()
     return args
 
 ######################### FUNCTIONS #############################################
-def save_res_yolo(res_yolo, out_file):
-    box = res_yolo.box.all_ap
-    mask = res_yolo.seg.all_ap
-    out_data = np.array([box, mask]) # resulting array is 2,2,10 with out[0] being the box data
-    np.save(out_file, out_data)
 
-def load_annot_Polygons(yolo_annot_file, im_size, n_classes, cropUpandDown):
-    annot = load_annot(yolo_annot_file, im_size)
-    if cropUpandDown > 0:
-        to_crop = int(im_size[0] * cropUpandDown)
-        crop_box = shapely.geometry.box(0, to_crop, im_size[1], im_size[0] - to_crop)  # (minx, miny, maxx, maxy)
-    else:
-        crop_box = shapely.geometry.box(0, 0, im_size[1], im_size[0])  # (minx, miny, maxx, maxy)
-
-    logger.debug(f"crop_box bounds{crop_box.bounds}")
-    polys = [[] for _ in range(n_classes)]
-    for an, c_id in zip(annot[0], annot[1]):
-        an_poly_raw = shapely.geometry.Polygon(an)
-        logger.debug(f"an_poly_raw area {an_poly_raw.area}")
-        try:
-            an_poly = an_poly_raw.intersection(crop_box)
-        except Exception as e:
-            logger.warning(f'Polygon not valid after cropping with exception {e}')
-            print(f'Polygon not valid after cropping with exception {e}')
-            continue
-        poly_area = an_poly.area
-        logger.debug(f"an_poly area {poly_area}")
-        if poly_area > 0:
-            polys[int(c_id)].append(an_poly)
-
-    #print("at the end", polys)
-    #print("first ring bounds", polys[0][0].bounds)
-    return polys
-
-def get_detection_polys(image, model, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap):
-    detected_mask = sliding_window_detection_multirow(image=image,
-                                                      detection_rows=detection_rows,
-                                                      model=model,
-                                                      cracks=True,
-                                                      overlap=sliding_window_overlap,
-                                                      cropUpandDown=cropUpandDown)
-    # CLEAN UP MASKS
-    ## RINGS
-    detected_mask_rings = detected_mask[:, :, 0]
-    # print("detected_mask_rings", detected_mask_rings.shape)
-    clean_contours_rings = clean_up_mask(detected_mask_rings,
-                                         min_mask_overlap=min_mask_overlap, is_ring=True)
-
-    ## CRACKS
-    detected_mask_cracks = detected_mask[:, :, 1]
-    clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
-    return (clean_contours_rings, clean_contours_cracks)
-
-def _get_metrics(poly_d, poly_t, IoU_thresholds):
-    # Calculate metrics per image per class
-    # poly_d and poly_t are detected and truth shapely polygons
-    # Precision as correctly detected/all detected
-    # Recall as correctly detected/all real (ground truth) rings
-    logger.debug(f"poly_d length {len(poly_d)}")
-    logger.debug(f"poly_t length {len(poly_t)}")
-    # ADD COMPREHENSION TO filter ONLY VALID POLYGONS
-    #poly_t_v = [pT for pT in poly_t if shapely.is_valid(pT)] # just to see but remove, does not make sense they should be good
-    #poly_d_v = [pD for pD in poly_d if shapely.is_valid_reason(pD)]
-    #print(f'poly_t: {len(poly_t)}')
-
-    if len(poly_t) == 0:
-        NANs = np.repeat(np.nan, len(IoU_thresholds))
-        P, R, IoU = NANs, NANs, NANs
-    elif len(poly_d) == 0 and len(poly_t) != 0:
-        zeros = np.repeat(0, len(IoU_thresholds))
-        P, R, IoU = zeros, zeros, np.repeat(np.nan, len(IoU_thresholds))
-    else:
-        IoU_list_debug = []
-        for pT in poly_t:
-            IoUs_temp_debug = []
-            for pD in poly_d:
-                logger.debug(f"intersection {pT.intersection(pD).area}")
-                logger.debug(f"union {pT.union(pD).area}")
-                logger.debug(f"pD area {pD.area}")
-                logger.debug(f"pT area {pT.area}")
-                IoU = pT.intersection(pD).area / pT.union(pD).area
-                logger.debug(f"IoU {IoU}")
-                if pD.area == 0:
-                    crush
-
-        IoU_list = [max((pT.intersection(pD).area / pT.union(pD).area for pD in poly_d))
-                         for pT in poly_t]
-
-        TPs = np.array([len(np.where(IoU_list > IoU_threshold)[0]) for IoU_threshold in IoU_thresholds])
-        logger.debug(f"TPs {TPs}")
-        P = TPs / len(poly_d)
-        R = TPs / len(poly_t)
-        #print("IoU_list", IoU_list)
-        IoU = [np.mean(IoU_list)] + np.repeat(np.nan, len(IoU_thresholds)-1).tolist() # make them same dimension to convert everything in np.array
-    #print("IoU", IoU)
-    #print("len IoU", len(IoU))
-    return P, R, IoU
-
-def eval_image(image, model, yolo_annot_file, im_size, n_classes, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap, IoU_thresholds):
-    # get ground truth as polygons
-    # GT and D are polygons by category. Ring in position 0 and crack in 1
-    polys_gt = load_annot_Polygons(yolo_annot_file, im_size, n_classes, cropUpandDown)
-    #print("polys_gt", polys_gt)
-    # run detection and prepare the polygons
-    polys_d = get_detection_polys(image, model, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap)
-
-    # in that order are also the their metrics
-    P, R, IoU = [], [], []
-    for p_gt, p_d in zip(polys_gt, polys_d):
-        Pt, Rt, IoUt = _get_metrics(poly_d=p_d, poly_t=p_gt, IoU_thresholds=IoU_thresholds)
-        #print("len Pt, Rt, IoUt", len(Pt), len(Rt), len(IoUt))
-        P.append(Pt)
-        R.append(Rt)
-        IoU.append(IoUt)
-
-    return (P, R, IoU)
-
-def eval_dataset(data, model, n_classes, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap, IoU_thresholds):
-    supported_extensions = ('.tif', '.tiff', '.png')
-    im_list = (i for i in os.listdir(data) if os.path.splitext(i)[1] in supported_extensions and not i.startswith("."))
-    results = []
-    # im_name = "33627_201908231505-01(4)_8037a.tif"
-    # im_name = "2019102817-01(12)_00015058a33_m01.tif" # many empty polygons loaded
-    # im_name = "20115_00041007a_0_pSX1.965424714300121_pSY1.9655438706947042.tif"
-    for im_name in im_list:
-        ## load image to extract the im size and other values
-        print("evaluating image", im_name)
-        logger.info(f"evaluating image  {im_name}")
-        im_path = os.path.join(data, im_name)
-        im = cv2.imread(im_path)
-        im_size = im.shape[:2]
-        im_name_no_ext = os.path.splitext(im_name)[0]
-        yolo_annot_file = os.path.join(data, im_name_no_ext + ".txt")
-
-        ## load annotations by image name as shapely polygon per class
-        im_res = eval_image(im, model, yolo_annot_file, im_size, n_classes, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap, IoU_thresholds)
-        results.append(im_res)
-    out_array = np.nanmean(np.array(results), axis=0)  # average along the images
-    return out_array
-
-def plot_results(res, IoU_thresholds, out_file_plot):
-    n_classes = res.shape[1]
-    linestyle = ['solid', 'dashed', 'dashdot', 'dotted']
-    for i in range(n_classes):
-        precision = res[0][i]
-        recall = res[1][i]
-        plt.plot(IoU_thresholds, precision, ls=linestyle[i], c='b')
-        plt.plot(IoU_thresholds, recall, ls=linestyle[i], c='orange')
-    plt.xlabel('IoU threshold')
-    plt.legend(['Precision', 'Recall'])
-    #plt.show()
-    plt.savefig(out_file_plot)
-    plt.close()
 #################################################################################
 def main():
     args = get_args()
 
-    # SET VARIABLES
-    #DATASET = "/Users/miroslav/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/training/sample_dataset/"
-    #DATASET = "/groups/swarts/user/miroslav.polacek/UpdatedTRGDataset10px"
-    DATASET = args.dataset
-    #weights = "/Users/miroslav/Github/TRG_yolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/weights/yolo11_15112024_best.pt"
-    #weights ="/groups/swarts/user/miroslav.polacek/TRG-ImplementYolov8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/weights/best10px1000eAugEnlargedDataset.pt"
-    weights = args.weight
-
-    data_yaml = os.path.join(DATASET, "data.yaml")
-    OUTPUT_PATH = os.path.join(ROOT_DIR, "output")
-    evals_dir = os.path.join(OUTPUT_PATH, "evals")
-    #test_name = "debugEval" # later will be derived in function
-    test_name = args.test_name
-    output_folder = os.path.join(evals_dir, test_name)
+    path_out = os.path.join(args.output_folder, "retraining")
     # Check if output dir for run_ID exists and if not create it
-    if not os.path.isdir(output_folder):
-        os.makedirs(output_folder)
+    if not os.path.isdir(path_out):
+        os.makedirs(path_out)
 
     # SET UP LOGGER
     now = datetime.now()
     dt_string_name = now.strftime('D%Y%m%d_%H%M%S')  # "%Y-%m-%d_%H:%M:%S"
     log_file_name = 'Eval_log' + '_' + dt_string_name + '.log'
-    log_file_path = os.path.join(output_folder, log_file_name)
+    log_file_path = os.path.join(path_out, log_file_name)
 
     logging.basicConfig(level=logging.INFO, handlers=[logging.FileHandler(log_file_path)],
                         format='%(asctime)s-%(name)s-%(levelname)s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
 
-    logger = logging.getLogger(__name__)
     if args.debug == 'True':  # args.debug == 'True'
         logging.getLogger().setLevel(logging.DEBUG)
 
-    # more parameters
-    detection_rows = 1
-    sliding_window_overlap = 0.5
-    # cropUpandDown = 0.1
-    min_mask_overlap = 3
-    IoU_thresholds = np.arange(0.5,1,0.05)
-    n_classes = 2
-    # prepare model
-    model = YOLO(weights)
-
-    """
-    # It might not be necessary
-    # RUN GENERAL YOLO EVALUATION
-    model = YOLO(weights)
-    res_yolo = model.val(data = data_yaml, project=evals_dir, name=test_name)
-    res_yolo.seg.map # is map for all maps is for individial categories rings and crack
-    yolo_res_out_file = os.path.join(output_folder, "yolo_res_out.npy")
-    save_res_yolo(res_yolo, yolo_res_out_file)
-    """
-    ## search all the images in the
-    data = os.path.join(DATASET, "val")
-
-    ###### TEST DIFFERENT CROP ######
-    cropUpandDown_tuple = (0,) #(0.2, 0.17, 0.10, 0)
-    for cropUpandDown in cropUpandDown_tuple:
-        res_arr = eval_dataset(data, model, n_classes, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap, IoU_thresholds)
-        out_file_results = os.path.join(output_folder, "Res_array" + str(cropUpandDown) + ".npy")
-        np.save(out_file_results, res_arr)
-
-    # nanmean_across_IoU_thresholds = np.nanmean(res_arr, axis=2)
-    """
-    test_results_path = "/Volumes/Storage/Eval_test_data"
-    res_file_names = os.listdir(test_results_path)
-    res_file = os.path.join(test_results_path, res_file_names[0])
-    
-    res = np.load(res_file)
-    res0 = res[0]
-    res1 = res[1]
-    res2 = res[2]
-    nanmean_across_IoU_thresholds_yolov8 = np.nanmean(res, axis=2)
-    """
-
-    res_file_names = (i for i in os.listdir(output_folder) if i.endswith('.npy'))
-
-    for rf_name in res_file_names:
-        res_file = os.path.join(output_folder, rf_name)
-        logger.info(f"Extracting data from {res_file}")
-        res = np.load(res_file)
-        summary_out = np.nanmean(res, axis=2)
-        csv_file_out = os.path.join(output_folder, rf_name.replace(".npy", ".csv"))
-        summary_out.tofile(csv_file_out, sep=',')#, format='%10.5f')
-        out_file_plot = os.path.join(output_folder, rf_name.replace(".npy", ".png"))
-        plot_results(res, IoU_thresholds, out_file_plot)
+    # Evaluate trained weights
+    evaluate_training(dataset_path=args.training_data, out_path=path_out, name=args.run_ID,
+                      detection_rows=args.n_detection_rows, sliding_window_overlap=args.sliding_window_overlap,
+                      cropUpandDown=args.cropUpandDown, min_mask_overlap=args.min_mask_overlap)
 
 if __name__ == '__main__':
     main()

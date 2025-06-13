@@ -6,7 +6,7 @@ time apptainer run ../image-processing_master.sif \
   --output_folder=/home/miroslav/Github/TRG_ImplementYOLOv8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/output \
   --cracks=True \
   --debug=True \
-  --print_detections=yes\/Users/miroslav.polacek/
+  --print_detections=yes\
 
 #--input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
 #--input=/Users/miroslav.polacek/Downloads/TC_selection_of_cores/F4b_B1.png \
