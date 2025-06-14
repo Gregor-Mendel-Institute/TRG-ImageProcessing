@@ -7,9 +7,11 @@ time python ../processing/processing.py \
   --output_folder=../output \
   --cropUpandDown=0.17 \
   --sliding_window_overlap=0.75 \
+  --min_mask_overlap=3 \
+  --n_detection_rows=1 \
   --cracks=True \
   --debug=True \
-  --print_detections=True\
+  --print_detections=True
 
 #--input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
 #--input=/Users/miroslav.polacek/Downloads/TC_selection_of_cores/F4b_B1.png \
