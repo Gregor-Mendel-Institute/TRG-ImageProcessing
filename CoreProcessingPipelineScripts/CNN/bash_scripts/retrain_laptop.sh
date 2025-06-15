@@ -4,8 +4,10 @@ time python ../processing/processing.py \
   --weights=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
   --epochs=2 \
+  --annot_buffer=40 \
+  --generate_annotations=True \
   --debug=True \
-  --run_ID=Retraining_debug
+  --run_ID=Retraining_run0
 
 #--training_data=../training/sample_dataset \
 #--input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
