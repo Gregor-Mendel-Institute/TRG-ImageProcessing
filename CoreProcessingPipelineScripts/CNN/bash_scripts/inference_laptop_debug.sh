@@ -1,11 +1,11 @@
 
 time python ../processing/processing.py \
   --dpi=13039 \
-  --run_ID=Debugging_centerlines \
-  --input=../training/sample_dataset/val/ \
+  --run_ID=Test_numba \
+  --input='../training/sample_dataset/val/2019102817-01(12)_00015058a33_m01.tif' \
   --weights=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
-  --cropUpandDown=0.17 \
+  --cropUpandDown=0 \
   --sliding_window_overlap=0.75 \
   --cracks=True \
   --debug=True \
