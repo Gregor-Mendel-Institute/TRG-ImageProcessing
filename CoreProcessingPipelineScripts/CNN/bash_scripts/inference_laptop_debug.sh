@@ -1,12 +1,12 @@
 
 time python ../processing/processing.py \
   --dpi=13039 \
-  --run_ID=Test_numba \
+  --run_ID=Numba_speed_test14  \
   --input='../training/sample_dataset/val/2019102817-01(12)_00015058a33_m01.tif' \
   --weights=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
-  --cropUpandDown=0 \
-  --sliding_window_overlap=0.75 \
+  --cropUpandDown=0.15 \
+  --sliding_window_overlap=0.50 \
   --cracks=True \
   --debug=True \
   --print_detections=True\
