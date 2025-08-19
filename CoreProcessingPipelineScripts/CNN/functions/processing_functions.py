@@ -20,8 +20,6 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 plt.set_loglevel (level = 'warning')
-from numba import njit
-import numba
 import shapely
 from shapely.ops import nearest_points
 import scipy
@@ -29,22 +27,12 @@ import pygeoops
 from datetime import datetime
 from operator import itemgetter
 import logging
-numba_logger = logging.getLogger('numba')
-numba_logger.setLevel(logging.WARNING) # prevent numba to flood my log file
 
-"""
-# Import get_centerline
-ROOT_DIR = os.path.abspath("../")
-#print('ROOT_DIR', ROOT_DIR)
-sys.path.append(ROOT_DIR)  # To find local version of the library
-from functions.src_get_centerline import get_centerline
-"""
 # set up logger
 logger = logging.getLogger(__name__)
 #######################################################################
 # apply mask to an original image
 ########################################################################
-#@njit
 def apply_mask(image, mask, alpha=0.5):
     """Apply the given mask to the image. In BGR
     """
@@ -110,14 +98,10 @@ def _crop_and_rotate(im_padded, rl, row_height, i):
     return [cropped_part, np.rot90(cropped_part, k=1), cropped_part_45]
 
 def _rotate_masks_back(results, row_height, class_number):
-    print("_rotate_masks_back")
     ## create flattened binary masks for every detected image and given class
     r_mask = np.ascontiguousarray(convert_to_binary_mask(results[0], class_number), dtype='int8')  # 0 degree mask
     r1_mask = convert_to_binary_mask(results[1], class_number)  # 90 degree mask
     r2_mask = convert_to_binary_mask(results[2], class_number)  # 45 degree mask
-    print("numba type", numba.typeof(r_mask))
-    print("numba type", numba.typeof(r1_mask))
-    print("numba type", numba.typeof(r2_mask))
 
     ## Rotate maskr1 masks back
     r1_mask_back = np.ascontiguousarray(np.rot90(r1_mask, k=-1), dtype='int8')
@@ -131,45 +115,17 @@ def _rotate_masks_back(results, row_height, class_number):
     logger.debug(f"r_mask: {r_mask.shape}")
     logger.debug(f"r1_mask_back: {r1_mask_back.shape}")
     logger.debug(f"r2_mask_back_cropped: {r2_mask_back_cropped.shape}")
-    print("numba type", numba.typeof(r_mask))
-    print("numba type", numba.typeof(r1_mask_back))
-    print("numba type", numba.typeof(r2_mask_back_cropped))
+
     return [r_mask, r1_mask_back, r2_mask_back_cropped]
 
-#@njit
 def _concat_top_bottom(to_crop, imgwidth_origin, the_mask_clean):
     to_concatenate = np.zeros(shape=(to_crop, imgwidth_origin, the_mask_clean.shape[2]), dtype='int8')
     return np.concatenate((to_concatenate, the_mask_clean, to_concatenate), axis=0)
 
-# works well without @njit
-def _clean_and_combine(combined_masks_per_class, binary_masks_back, class_number, rl, i, px_to_crop, row_height):
-    combined_mask_section = np.sum(binary_masks_back, axis=0)
-    #print(f"combined_mask_section shape: {combined_mask_section.shape}")
-    # logger.debug(f"combined_mask_section.shape{combined_mask_section.shape}")
-    # Crop the edges of detected square to get cleaner mask
-    if px_to_crop == 0:
-        section_cleaned_edges = combined_mask_section
-    else:
-        section_cleaned_edges = np.zeros(shape=combined_mask_section.shape, dtype='uint8')
-        section_cleaned_edges[px_to_crop:-px_to_crop, px_to_crop:-px_to_crop] = combined_mask_section[
-                                                                                px_to_crop:-px_to_crop,
-                                                                                px_to_crop:-px_to_crop]
-    #logger.debug(f"section_cleaned_edges.shape{section_cleaned_edges.shape}")
-    combined_masks_per_class[rl:rl + row_height, i:i + row_height, class_number] = np.sum([combined_masks_per_class[
-                                                                                   rl:rl + row_height,
-                                                                                   i:i + row_height,
-                                                                                   class_number], section_cleaned_edges], axis=0)
-
-    return combined_masks_per_class
-"""
-#@njit
 def _clean_and_combine(combined_masks_per_class, binary_masks_back, class_number, rl, i, px_to_crop, row_height):
     combined_mask_section = binary_masks_back[0] + binary_masks_back[1] + binary_masks_back[2]
 
-    #print("numba type", numba.typeof(combined_mask_section))
-    #combined_mask_section = np.sum(binary_masks_back, axis=0)
-    #print(f"combined_mask_section shape: {combined_mask_section.shape}")
-    # logger.debug(f"combined_mask_section.shape{combined_mask_section.shape}")
+    logger.debug(f"combined_mask_section.shape{combined_mask_section.shape}")
     # Crop the edges of detected square to get cleaner mask
     #section_cleaned_edges = _numba_clean(combined_mask_section, px_to_crop)
     if px_to_crop == 0:
@@ -180,14 +136,14 @@ def _clean_and_combine(combined_masks_per_class, binary_masks_back, class_number
                                                                                 px_to_crop:-px_to_crop,
                                                                                 px_to_crop:-px_to_crop]
 
-    #logger.debug(f"section_cleaned_edges.shape{section_cleaned_edges.shape}")
+    logger.debug(f"section_cleaned_edges.shape{section_cleaned_edges.shape}")
     combined_masks_per_class[rl:rl + row_height, i:i + row_height, class_number] = combined_masks_per_class[
                                                                                    rl:rl + row_height,
                                                                                    i:i + row_height,
                                                                                    class_number] + section_cleaned_edges
 
     return combined_masks_per_class
-"""
+
 def sliding_window_detection_multirow(image, detection_rows=1, model=None, cracks=False, overlap=0.75, row_overlap=0.1, cropUpandDown=0.17, px_to_crop = 10):
     # The mask for ring is in position the_mask_clean_origin_size[:,:,0] while cracks in the_mask_clean_origin_size[:,:,1]
     # px_to_crop - how many pixels on the edges of detected mask to replace with zeros to clean the edges
@@ -376,14 +332,7 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
     centerlines = []
     for i, polygon in enumerate(clean_contours):
         logger.debug(f"ring_contour: {i}")
-        #print('contour:', contour)
-        #polygon = shapely.geometry.Polygon(contour)  # its created in clean_up_contours now
-        #x0, y0 = polygon.exterior.coords.xy
-        #plt.plot(x0, y0)
-        #exterior_coords = polygon.exterior.coords
-        #print('polygon_points:', len(exterior_coords))
-        #with open(f'shapely_polygon{i}.pkl', 'wb') as file:
-        #    pickle.dump(polygon, file)
+
         try:
             cline = pygeoops.centerline(polygon, densify_distance=-1, min_branch_length=-10, simplifytolerance=-0.20, extend= False)
             # min_branch_length=-10 will filter out all branches shorter than 10 times polygon width. In problems when cline is multilinstring its because of branches.
@@ -448,7 +397,6 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
             Centerlines_clean_out = shapely.geometry.MultiLineString(Centerlines_clean)
         elif Multi_centerlines_cropped.geom_type == 'LineString':
             Centerlines_clean_out = Multi_centerlines_cropped.simplify(tolerance=simplification_tolerance, preserve_topology=False)
-
 
     logger.info("find_centerlines FINISH")
     return Centerlines_clean_out
@@ -806,25 +754,27 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out, plot_dpi
 
     if centerlines:
         # Plot the lines to the image
+        color = ['g', 'b']
         for l in range(len(centerlines)):
-            color = ['g', 'b']
             # define centerlines1 as a linestring in both cases if centerlines is Linestring or multilinestring
+            logger.debug(f'centerlines[l].geom_type: {centerlines[l].geom_type}')
             if centerlines[l].geom_type == 'MultiLineString':
                 centerlines1 = centerlines[l].geoms
             else:
                 centerlines1 = centerlines
-
             logging.debug(f'centerlines1: {centerlines1}')
-            if measure_points:
-                measure_points1 = measure_points[l]
-                if len(measure_points1) == 0:  # Precaution in case the first part of measure points is empty
-                    continue
 
             for i, centerline in enumerate(centerlines1):
                 logging.debug(f'centerline: {centerline}')
 
                 xc, yc = centerline.coords.xy
                 plt.plot(xc, yc, color[l], linewidth=linewidth)
+
+                if measure_points:
+                    measure_points1 = measure_points[l]
+                    logger.debug(f'measure_points1: {measure_points1}')
+                    if len(measure_points1) == 0:  # Precaution in case the first part of measure points is empty
+                        continue
 
                 if measure_points:
                     if i < len(measure_points1):  # there is one less measure points than lines

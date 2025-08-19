@@ -54,7 +54,7 @@ source ~/venvs/ultra83P3123/bin/activate
 pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson numba
 
 #### Testing env 30.01.2025 ###### updating for opencv 4.11
-ml GCC/13.3.0 OpenMPI/5.0.3 OpenCV/4.11.0-contrib cuDNN/9.1.1.17-CUDA-12.4.0
+ml GCC/13.3.0 OpenMPI/5.0.3 OpenCV/4.11.0-contrib cuDNN/9.1.ml 1.17-CUDA-12.4.0
 python -m venv --system-site-packages ~/venvs/ultra83P3123
 source ~/venvs/ultra83P3123/bin/activate
 pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson numba
@@ -64,3 +64,21 @@ ml GCC/13.3.0 OpenMPI/5.0.3 OpenCV/4.11.0-CUDA-12.6.0-contrib
 python -m venv --system-site-packages ~/venvs/ultra83P3123test
 source ~/venvs/ultra83P3123test/bin/activate
 pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson numba openpyxl
+
+#### Testing env 30.06.2025 ###### Truing to get it woking with the new numpy > 2 did not work
+ml GCC/13.3.0 OpenMPI/5.0.3 OpenCV/4.11.0-CUDA-12.6.0-contrib
+python -m venv --system-site-packages ~/venvs/ultra83P3123np2test
+source ~/venvs/ultra83P3123np2test/bin/activate
+pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson openpyxl pygeoops
+
+#### Testing env 30.06.2025 ###### Truing to get it woking with the new numpy > 2 I try by installing with --ignore-installed numpy. tried everything possible but it was impossible to make it ignore the numpy from opencv and install higher one:(
+ml GCC/13.3.0 OpenMPI/5.0.3 CUDA/12.6.0 Python/3.12.3 #OpenCV/4.11.0-CUDA-12.6.0-contrib
+python -m venv ~/venvs/ultra83P3123np2
+source ~/venvs/ultra83P3123np2/bin/activate
+pip install --no-cache-dir --isolated ultralytics shapely lxml scikit-image ujson openpyxl pygeoops
+
+#### Testing env 07.07.2025 ###### Gave up on numpy > 2 I will just instll generaly new enw with other newer packages
+ml GCC/13.3.0 OpenMPI/5.0.3 OpenCV/4.11.0-CUDA-12.6.0-contrib
+python -m venv --system-site-packages ~/venvs/ultra831P3123
+source ~/venvs/ultra831P3123/bin/activate
+pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson openpyxl pygeoops 'numpy<2'

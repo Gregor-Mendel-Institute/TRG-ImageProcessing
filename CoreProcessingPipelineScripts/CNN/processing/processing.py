@@ -28,7 +28,7 @@ ROOT_DIR = os.path.abspath("../")
 print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library
 
-from functions.processing_functions import apply_mask, convert_to_binary_mask\
+from functions.processing_functions import apply_mask, convert_to_binary_mask, check_annot_dataset\
     , sliding_window_detection_multirow, clean_up_mask, find_centerlines, measure_contours, plot_lines, write_to_json\
     , write_to_pos, plot_contours
 
@@ -120,6 +120,16 @@ def get_args():
                         metavar="/path/to/training/dataset/",
                         help='Directory of the training dataset')
 
+    parser.add_argument('--generate_annotations', required=False,
+                        default=True,
+                        type=bool,
+                        help='If you wish to generate annotations, or overwrite existing')
+
+    parser.add_argument('--annot_buffer', required=False,
+                        default=10,
+                        type=int,
+                        help='By how much should the boundary line be buffered for training')
+
     parser.add_argument('--epochs', required=False,
                         default=1000,
                         type=int,
@@ -195,7 +205,9 @@ def main():
         from functions.training_functions import prepare_all_annotations, retraining, evaluate_training
 
         # Check and prepare annotations
-        prepare_all_annotations(dataset_path=args.training_data, buffer=10, overwrite_existing=True)
+        prepare_all_annotations(dataset_path=args.training_data, buffer=args.annot_buffer, overwrite_existing=args.generate_annotations)
+        if args.generate_annotations:
+            check_annot_dataset(args.training_data)
 
         # Start retraining
         retraining(model=model, dataset_path=args.training_data, out_path=path_out, name=args.run_ID, epochs=args.epochs) #pass the training dataset and saving location
