@@ -263,50 +263,52 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True, simplify_tolerance=0):
     #print('contour_shape:', len(contours))
     logger.debug(f"Raw_contours: {len(contours)}")
 
-    # Here i extract dimensions and angle of individual contours bigger than threshold
+    # Here I extract dimensions and angle of individual contours bigger than threshold
     imgheight, imgwidth = mask.shape[:2]
     if is_ring:
-        min_size_threshold = imgheight/5 #imgheight/12 # Will take only contours that are bigger than 1/5 of the image
+        min_size_threshold = imgheight/5 #imgheight/12 # Will take only contours that are bigger than 1/5 of the image height
         logger.debug(f"min_size_threshold for ring: {min_size_threshold}")
     else:
         min_size_threshold = 1
 
-    # filter the size and convert into shapely polygons and simplify
+    # Filter the size and convert into shapely polygons and simplify
     contours_filtered = []
     x_mins = []
     for contour in contours:
         x_list = [x for [[x, _]] in contour]
         x_min = np.min(x_list)
-        # check the number of points as Polygon requires at least 4
+        # Check the number of points as Polygon requires at least 4
         n_points = len(x_list)
         logger.debug(f"Contour has {n_points} points")
-        #remove those that are too short
+        # Remove those that are too short
         dim_max = max(cv2.minAreaRect(contour)[1])
         if dim_max > min_size_threshold and n_points >= 4:
-            # convert in shapely polygon
+            # Convert in shapely polygon
             cont_polygon = shapely.geometry.Polygon([(x, y) for [[x, y]] in contour])
             simpl_cont_polygon = cont_polygon.simplify(tolerance=simplify_tolerance, preserve_topology=True)
-            # seems that simplification can create invalid polygons in some cases so I check and correct that
-            #### CHECK IF POLYGON IS BIGGER THAN 0 AREA
+            # Check if polygons are bigger than 0 and valid if not try to convert
             if simpl_cont_polygon.area > 0:
-                logger.debug(f"Contour taken")
-                x_mins.append(x_min)
-                logger.debug(f"x_mins: {x_mins}")
-                if shapely.is_valid(simpl_cont_polygon):
-                    logger.debug(f"Geometry is valid")
-                    if simpl_cont_polygon.geom_type == 'Polygon':
-                        contours_filtered.append(simpl_cont_polygon)
-                    else:
-                        logger.warning(f'Contour not appended because it is {simpl_cont_polygon.geom_type} and should be Polygon')
+                logger.debug(f"Contour area > 0")
+
+                if shapely.is_valid(simpl_cont_polygon) and simpl_cont_polygon.geom_type == 'Polygon':
+                    logger.debug(f"Geometry is valid and a Polygon")
+                    contours_filtered.append(simpl_cont_polygon)
+                    x_mins.append(x_min)
+                    logger.debug(f"x_mins: {x_mins}")
 
                 else:
-                    logger.debug(f"Geometry is not valid")
-                    simpl_cont_mp = shapely.make_valid(simpl_cont_polygon)
-                    # if multiple created get the one with biggest area.
+                    logger.debug(f"Geometry is not valid or not a Polygon")
+                    cont_val = shapely.make_valid(simpl_cont_polygon)
+                    # If multiple created get the one with biggest area.
                     # Assuming some miniture selfintersections around pixels at the edges.
-                    biggest_contour = max(simpl_cont_mp.geoms, key=lambda a: a.area)
-                    if biggest_contour.geom_type == 'Polygon':
-                        contours_filtered.append(biggest_contour)
+                    # Sometimes there are nested multipolygons hance the while loop
+                    while not cont_val.geom_type == 'Polygon':
+                        cont_val = max(cont_val.geoms, key=lambda a: a.area)
+
+                    if cont_val.geom_type == 'Polygon':
+                        contours_filtered.append(cont_val)
+                        x_mins.append(x_min)
+                        logger.debug(f"x_mins: {x_mins}")
                     else:
                         logger.warning(f'Contour not appended because it is {biggest_contour.geom_type} and expect Polygon')
 
@@ -334,12 +336,13 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
         logger.debug(f"ring_contour: {i}")
 
         try:
-            cline = pygeoops.centerline(polygon, densify_distance=-1, min_branch_length=-10, simplifytolerance=-0.20, extend= False)
+            cline = pygeoops.centerline(polygon, densify_distance=-0.8, min_branch_length=-10, simplifytolerance=-0.20, extend= False)
             # min_branch_length=-10 will filter out all branches shorter than 10 times polygon width. In problems when cline is multilinstring its because of branches.
             # the value does not affect performance only if its 0 because its probably skipping section of code
             # simplifytolerance is simplifying the line with 0 no simplification and -0.20 seems to be reasonable. with no simplification the lines are too wigly
             # seems it does not affect performance
-            # densify_distance=-1 segmentize the polygon sections longer then one polygon width. this seems to work well at least for now.
+            # densify_distance=-1 segmentize the polygon sections longer then one average polygon width. The -1 seems to work well at least for now.
+            # higher value means less points and worse line or none
             # affects perfomance a lot
             logger.debug(f"cline: {cline}")
             if cline.geom_type == 'LineString':
