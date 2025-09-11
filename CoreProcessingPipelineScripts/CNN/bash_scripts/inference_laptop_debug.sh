@@ -1,12 +1,12 @@
 
 time python ../processing/processing.py \
   --dpi=13039 \
-  --run_ID=Numba_speed_test14  \
-  --input='../training/sample_dataset/val/2019102817-01(12)_00015058a33_m01.tif' \
+  --run_ID=Test_line_fix_08  \
+  --input=/Users/miroslav/Documents/Pictures/Test_cores_from_speed_test/00014006b_core_id7_bc4_obj0_pid2_tN2_pS0.6485714396165350_pSX1.9653784325736006_pSY1.9658008396911357_crop.tif \
   --weights=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
-  --cropUpandDown=0.15 \
-  --sliding_window_overlap=0.50 \
+  --cropUpandDown=0 \
+  --sliding_window_overlap=0.75 \
   --cracks=True \
   --debug=True \
   --print_detections=True\

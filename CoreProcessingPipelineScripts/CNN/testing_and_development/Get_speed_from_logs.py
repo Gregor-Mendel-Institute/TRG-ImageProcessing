@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 
 ####### Functions #####################
+folder_path=LOGS_2
 def get_speed_df(folder_path):
     log_file_gen = (f for f in os.listdir(folder_path) if f.endswith('.log'))
     im_name_list = []
@@ -28,14 +29,14 @@ def get_speed_df(folder_path):
     return speed_df
 #######################################
 
-LOGS_1 = "/Users/miroslav/Documents/tmp_results_HPC2Nspeed/v100_venvultra83P3123CUDA124"
-LOGS_A40 = "/Users/miroslav/Documents/tmp_results_HPC2Nspeed/a40"
+LOGS_1 = "/Users/miroslav/Documents/SpeedTest_HPC2N_no_debug_pygeoops"
+LOGS_2 = "/Users/miroslav/Documents/SpeedTest_HPC2N_no_debug_ultra83P3123test_CV411Cuda124"
 
 df_1 = get_speed_df(LOGS_1)
-df_2 = get_speed_df(LOGS_A40)
+df_2 = get_speed_df(LOGS_2)
 
 ### NO DEBUG ####
-mean1 = np.mean(df_1["time_s"])
+mean1 = np.mean(df_1["time_s"])/60
 min1 = np.min(df_1["time_s"])
 max1 = np.max(df_1["time_s"])
 rings_sum = np.sum(df_1["rings"])

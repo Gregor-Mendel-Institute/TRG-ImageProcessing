@@ -205,8 +205,9 @@ def main():
         from functions.training_functions import prepare_all_annotations, retraining, evaluate_training
 
         # Check and prepare annotations
-        prepare_all_annotations(dataset_path=args.training_data, buffer=args.annot_buffer, overwrite_existing=args.generate_annotations)
         if args.generate_annotations:
+            prepare_all_annotations(dataset_path=args.training_data, buffer=args.annot_buffer,
+                                    overwrite_existing=args.generate_annotations)
             check_annot_dataset(args.training_data)
 
         # Start retraining
