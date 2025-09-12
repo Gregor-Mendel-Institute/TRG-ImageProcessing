@@ -74,7 +74,7 @@ def get_args():
     ## Optional arguments
     parser.add_argument('--cracks', required=False,
                         default=False,
-                        type=bool,
+                        action='store_true',
                         help="If cracks should be also detected")
 
     parser.add_argument('--cropUpandDown', required=False,
@@ -89,7 +89,6 @@ def get_args():
 
     parser.add_argument('--print_detections', required=False,
                         default=False,
-                        type=bool,
                         help="True, if printing is desired")
 
     parser.add_argument('--min_mask_overlap', required=False,
@@ -121,8 +120,7 @@ def get_args():
                         help='Directory of the training dataset')
 
     parser.add_argument('--generate_annotations', required=False,
-                        default=True,
-                        type=bool,
+                        default=False,
                         help='If you wish to generate annotations, or overwrite existing')
 
     parser.add_argument('--annot_buffer', required=False,
@@ -145,10 +143,12 @@ def main():
     # get the arguments
     args = get_args()
 
+    # set up logging
+    # first need output folder for logging file
     if args.output_folder is None or not os.path.exists(args.output_folder):
         print(f"Compulsory argument --output_folder is missing or the path {args.output_folder} does not exist.")
         exit()
-    # set up logging
+
     if args.training_data is not None:
         path_out = os.path.join(args.output_folder, "retraining")
     else:
@@ -205,9 +205,14 @@ def main():
         from functions.training_functions import prepare_all_annotations, retraining, evaluate_training
 
         # Check and prepare annotations
-        if args.generate_annotations:
+        logger.debug(f"args.debug: {args.debug}")
+        logger.debug(f"args.print_detections: {args.print_detections}")
+        logger.debug(f"args.generate_annotations: {args.generate_annotations}")
+
+        if args.generate_annotations == 'True':
+            logger.info("Generating annotations")
             prepare_all_annotations(dataset_path=args.training_data, buffer=args.annot_buffer,
-                                    overwrite_existing=args.generate_annotations)
+                                    overwrite_existing=True)
             check_annot_dataset(args.training_data)
 
         # Start retraining
@@ -359,8 +364,7 @@ def main():
                             finished = True
 
                     # PRINT DETECTED IMAGES
-                    #if args.print_detections == 'True':
-                    if args.print_detections:
+                    if args.print_detections == 'True':
                         # Plotting lines is mostly for debugging
                         masked_image = im_origin.copy()
                         logger.debug(f"masked_image.dtype{masked_image.dtype}")
