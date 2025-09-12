@@ -74,7 +74,6 @@ def get_args():
     ## Optional arguments
     parser.add_argument('--cracks', required=False,
                         default=False,
-                        action='store_true',
                         help="If cracks should be also detected")
 
     parser.add_argument('--cropUpandDown', required=False,
