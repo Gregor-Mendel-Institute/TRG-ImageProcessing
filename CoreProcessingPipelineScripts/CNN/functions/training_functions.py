@@ -39,8 +39,8 @@ def collect_annotations(CVAT_folder):
     for xml_name in CVAT_annot_file_list:
         if xml_name.endswith('.xml'):
             # load xml file
-            print("Loading annotation file", xml_name)
-            logger.info("Loading annotation file", xml_name)
+            print(f"Loading annotation file: {xml_name}")
+            logger.info(f"Loading annotation file: {xml_name}")
             with open(os.path.join(CVAT_folder, xml_name)) as file:
                 root = etree.parse(file).getroot()
 
@@ -95,7 +95,7 @@ def prepare_annotations(dataset_path, annot_list, buffer=10, overwrite_existing=
         elif os.path.isfile(annot_txt_file) and overwrite_existing==False:
             continue
         else:
-            print("Processing annotation file of image", image_name)
+            print(f"Processing annotation file of image: {image_name}")
             logger.info(f"Processing annotation file of image: {image_name}")
             # create a text file named filename.txt
             f = open(annot_txt_file, "w+")
