@@ -433,7 +433,7 @@ def measure_contours(Multi_centerlines, image):
         #plt.plot(x,y)
         # get lines inside of the frame
         intersection = Multi_centerlines.intersection(frame_poly)
-        #print('intersection:', intersection.geom_type)
+        logging.debug(f'intersection: {intersection.geom_type}')
         if intersection.geom_type == 'LineString':
             if intersection.is_empty:  # prevents crushing if segment is empty
                 logger.info("empty intersection")
@@ -508,8 +508,9 @@ def measure_contours(Multi_centerlines, image):
             break
         cutting_point = PlusMinus_index[i+1][1] + ((PlusMinus_index[i+2][1] - PlusMinus_index[i+1][1])/2)
         cutting_point_detected = 1
-        #if cutting_point is immediately at the beggining of the sample ignore it
+        #if cutting_point is immediately at the beginning of the sample ignore it
         if cutting_point < imgheight*2:  # if cutting point is within 2*image height it will be ignored
+            logging.debug("cutting point is at the beginning of the image and will be set to 0")
             cutting_point_detected = 0
 
     # Split sequence where it is crossing the middle
@@ -538,6 +539,8 @@ def measure_contours(Multi_centerlines, image):
 
         if Multi_centerlines2.geom_type=='LineString':
             logger.info("Multi_centerlines2, the part after cutting point, is only one line")
+            measure_points = (measure_points1,)
+            Multi_centerlines = (Multi_centerlines1,)
         else:
             # Order contours by x_maxs
             x_mins, x_maxs = [geom.bounds[0] for geom in Multi_centerlines2.geoms], [geom.bounds[2] for geom in
@@ -555,10 +558,6 @@ def measure_contours(Multi_centerlines, image):
             measure_points2 = tuple(nearest_points(Multi_centerlines2.geoms[i], Multi_centerlines2.geoms[i + 1]) for
                               i in range(len(Multi_centerlines2.geoms) - 1))
 
-        if not measure_points2:
-            measure_points = (measure_points1,)
-            Multi_centerlines = (Multi_centerlines1,)
-        else:
             measure_points = (measure_points1, measure_points2)
             Multi_centerlines = (Multi_centerlines1, Multi_centerlines2)
 
