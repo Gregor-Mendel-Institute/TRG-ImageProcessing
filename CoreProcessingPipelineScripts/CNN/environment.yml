@@ -5,12 +5,12 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - ultralytics=8.2.79
-  - python=3.12.5
-  - pytorch=2.4.0
-  - torchvision=0.19.0
-  - pytorch-cuda=11.8
-  - lxml=5.3.0
-  - shapely=2.0.6
-  - scikit-image=0.24.0
+  - ultralytics=8.3.199
+  - python=3.12.11
+  - pytorch=2.8.0
+  - torchvision=0.23.0
+  - pytorch-cuda=12.8
+  - lxml=6.0.1
+  - shapely=2.1.1
+  - scikit-image=0.25.2
 prefix: /users/miroslav.polacek/.conda/envs/TreeRingCNN

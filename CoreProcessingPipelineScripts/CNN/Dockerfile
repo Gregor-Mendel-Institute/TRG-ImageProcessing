@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -22,4 +22,4 @@ RUN pip install -r requirements.txt
 ENV PATH="/home/processing:$PATH"
 ENV PYTHONPATH="/home:$PYTHONPATH"
 
-ENTRYPOINT ["processing.py", "--weightRing", "/home/weights/best10px1000eAugEnlargedDataset.pt"]
+ENTRYPOINT ["processing.py", "--weights", "/home/weights/best10px1000eAugEnlargedDataset.pt"]
