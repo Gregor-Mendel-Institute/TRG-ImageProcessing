@@ -74,13 +74,13 @@ def convert_to_binary_mask(result, class_number):
         result_sub = result[cld_list_bool]
         mask_coords = result_sub.masks.xy
         #array_length_list = [len(i) for i in mask_coords]  # to check for empty arrays  ## seem redundant and could be removed if not crushing
-        logging.debug(f"array_length_list: {[len(i) for i in mask_coords]}")
+        logger.debug(f"array_length_list: {[len(i) for i in mask_coords]}")
         all_mask_coords = [i.astype(np.int32) for i in mask_coords if len(i) > 0]  # empty array caused segmentation fault in cv2.fillPoly
         # convert coords to binary mask of an image
         mask = np.zeros(im_shape)
-        logging.debug("cv2.fillPoly starts")
+        logger.debug("cv2.fillPoly starts")
         binary_mask = cv2.fillPoly(mask, pts=all_mask_coords, color=1)
-        logging.debug("cv2.fillPoly finished")
+        logger.debug("cv2.fillPoly finished")
 
     logger.debug("convert_to_binary_mask FINISH")
     return binary_mask
@@ -175,7 +175,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
         front_pad_width = 0
         back_pad_width = 0
     else:
-        logging.warning(f"sliding_window_overlap value of {overlap} is not valid, it should be between 0 and smaller than 1")
+        logger.warning(f"sliding_window_overlap value of {overlap} is not valid, it should be between 0 and smaller than 1")
         raise SystemExit(f"sliding_window_overlap value of {overlap} is not valid, it should be between 0 and smaller than 1")
 
     zero_padding_front = np.zeros(shape=(imgheight_for_pad, front_pad_width, 3), dtype='uint8')
@@ -407,80 +407,78 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
 #######################################################################
 # Turn contours into lines and find nearest points between them for measure
 #######################################################################
-# Return table of distances or paired point coordinates
-def measure_contours(Multi_centerlines, image):
-    logger.info("measure_contours START")
-    imgheight, imgwidth = image.shape[:2]
-    logger.debug(f"Image has height {imgheight} and width {imgwidth}")
-    logger.debug(f"{len(Multi_centerlines.geoms)} ring boundries were detected")
+# Return paired point coordinates
+## helper to find slope of each ring
+"""    
+elif intersection.geom_type == 'LineString':
 
-    # Split samples that are crossing center into two then turn the second part around
+    x, y = intersection.coords.xy
+    x_dif = abs(x[-1] - x[0])
+
+    if x_dif < frame_width * .20:  # This should be adjusted now it should skip this frame if a line is less then 20% of the frame width
+        # print(i, 'th is too short')
+        continue
+    else:
+        # print(i, "th frame is simple")
+        slope, _, _, _, _ = scipy.stats.linregress(x, y)
+        # logger.info("slope:{}".format(slope))
+        if slope > 0 and slope < 2:
+            PlusMinus = 1
+        elif slope < 0 and slope > -2:
+            PlusMinus = 0
+        else:
+            PlusMinus = []
+        PlusMinus_index.append([PlusMinus, cut_point])
+"""
+
+def _find_ring_slopes(Multi_centerlines, imgheight, imgwidth):
     PlusMinus_index = []
-    frame_width = imgheight * .75
-    sliding = frame_width * .5  # How much is the frame sliding in every frame
-    #print('frame_width', frame_width)
-    number_of_segments = int(imgwidth/sliding)
-    #print('number_of_segments', number_of_segments)
-    #plt.imshow(image)
+    frame_width = imgheight * .5 #.75
+    sliding = frame_width * .5  # How much is the frame sliding in every loop
+    # print('frame_width', frame_width)
+    number_of_segments = int(imgwidth / sliding)
+    logger.debug(f'number_of_segments: {number_of_segments}')
+    # Slide by frames along the Multicenterline and evaluate the slope
     for i in range(number_of_segments):
-        #print('loop_number', i)
+        # print('loop_number', i)
         # get the frame
-        frame_poly = shapely.geometry.box(i*sliding, 0, (i*sliding)+frame_width, imgheight)
-        cut_point = i*sliding+(frame_width*.5) # Better to get cutting point here and use instead of frame number
-        #print('cutting_point', cutting_point)
-        #print('frame_exterior_xy',frame_poly.exterior.coords.xy)
-        #x, y = frame_poly.exterior.coords.xy
-        #plt.plot(x,y)
+        frame_poly = shapely.geometry.box(i * sliding, 0, (i * sliding) + frame_width, imgheight)
+        cut_point = i * sliding + (frame_width * .5)  # Better to get cutting point here and use instead of frame number
+        logger.debug(f'frame_exterior_xy: {frame_poly.exterior.coords.xy}')
+
         # get lines inside of the frame
         intersection = Multi_centerlines.intersection(frame_poly)
-        logging.debug(f'intersection: {intersection.geom_type}')
-        if intersection.geom_type == 'LineString':
-            if intersection.is_empty:  # prevents crushing if segment is empty
-                logger.info("empty intersection")
-                continue
+        logger.debug(f'intersection type prior: {intersection.geom_type}')
+        if intersection.is_empty:  # prevents crushing if segment is empty
+            logger.info("empty intersection")
+            continue
 
-            x, y = intersection.coords.xy
+        else:
+            if intersection.geom_type == 'LineString':
+                logger.debug('attempt to convert linestring to multilinestring')
+                intersection = shapely.geometry.MultiLineString([intersection])
 
-            #line_coords = sorted(line_coords, reverse = True)# i think i do not need this for slope
-            #print('sorted:', line_coords)
-
-            x_dif = abs(x[-1] - x[0])
-            if x_dif < frame_width*.20: # This should be adjusted now it should skip this frame if a line is less then 20% of the frame width
-                #print(i, 'th is too short')
-                continue
-            else:
-                #print(i, "th frame is simple")
-                slope, _, _, _, _ = scipy.stats.linregress(x, y)
-                #logger.info("slope:{}".format(slope))
-                if slope > 0 and slope < 2:
-                    PlusMinus = 1
-                elif slope < 0 and slope > -2:
-                    PlusMinus = 0
-                else:
-                    PlusMinus = []
-                PlusMinus_index.append([PlusMinus, cut_point])
-
-        elif intersection.geom_type == 'MultiLineString':
+            logger.debug(f'intersection type after: {intersection.geom_type}')
             slopes = []
             for l in range(len(intersection.geoms)):
                 x, y = intersection.geoms[l].coords.xy
                 x_dif = abs(x[-1] - x[0])
                 # print('loop number and xy coords:',i, l, x, y)
-                if x_dif < frame_width*.20:  # This can be adjusted now it should skip this frame is line is less then 20% of the frame width
+                if x_dif < frame_width * .20:  # This can be adjusted now it should skip this frame if line is less then 20% of the frame width
                     # print(i, 'th is too short')
                     continue
                 else:
                     # print(i, "th frame is complex")
                     slope, _, _, _, _ = scipy.stats.linregress(x, y)
-                    #logger.info("slope:{}".format(slope))
+                    # logger.info("slope:{}".format(slope))
 
                     # print('linestring_x',x_int)
                     # plt.plot(x_int, y_int)
                 slopes.append(slope)
 
-            #print('slopes before mean', slopes)
+            # print('slopes before mean', slopes)
             mean_slopes = np.mean(slopes)
-            #print('mean_slopes', mean_slopes)
+            # print('mean_slopes', mean_slopes)
             if np.isnan(mean_slopes):
                 continue
             else:
@@ -491,30 +489,58 @@ def measure_contours(Multi_centerlines, image):
                 else:
                     PlusMinus = []
                 PlusMinus_index.append([PlusMinus, cut_point])
-        else:
-            continue
 
-    # Find the middle by the change in a slope of the lines in PlusMinus_index
-    cutting_point_detected, test_seq1, test_seq2 = 0, [0, 0, 1, 1], [1, 1, 0, 0]
+    return PlusMinus_index
 
+def _find_cutting_point(PlusMinus_index, imgheight):
+    test_seq1, test_seq2 = [0, 0, 1, 1], [1, 1, 0, 0]
+
+    cutting_point = None
     PlusMinus = [x for x, _ in PlusMinus_index]
     for i in range(len(PlusMinus_index)):
-        pm_seq = PlusMinus[i:i+len(test_seq1)]
+        pm_seq = PlusMinus[i:i + len(test_seq1)]
         if pm_seq != test_seq1 and pm_seq != test_seq2:
             continue
-        if cutting_point_detected == 1:
+        if cutting_point is not None:
             print('Several cutting points identified, needs to be investigated!')
             logger.warning('Several cutting points identified, needs to be investigated!')
             break
-        cutting_point = PlusMinus_index[i+1][1] + ((PlusMinus_index[i+2][1] - PlusMinus_index[i+1][1])/2)
-        cutting_point_detected = 1
-        #if cutting_point is immediately at the beginning of the sample ignore it
-        if cutting_point < imgheight*2:  # if cutting point is within 2*image height it will be ignored
-            logging.debug("cutting point is at the beginning of the image and will be set to 0")
-            cutting_point_detected = 0
+        cutting_point = PlusMinus_index[i + 1][1] + ((PlusMinus_index[i + 2][1] - PlusMinus_index[i + 1][1]) / 2)
+        # if cutting_point is immediately at the beginning of the sample ignore it
+        if cutting_point < imgheight * 2:  # if cutting point is within 2*image height it will be ignored
+            logger.debug("cutting point is at the beginning of the image and will be ignored")
+
+    return cutting_point
+
+def _measure_distances(Multi_centerlines):
+    # Reorder centerlines by x_middle
+    x_mins, x_maxs = [geom.bounds[0] for geom in Multi_centerlines.geoms], [geom.bounds[2] for geom in
+                                                                             Multi_centerlines.geoms]
+
+    x_middle = np.array(x_mins) + (np.array(x_maxs) - np.array(x_mins)) / 2
+    contourszip = zip(x_middle, Multi_centerlines.geoms)
+
+    centerlines = [x for _, x in sorted(contourszip, key=itemgetter(0))]
+    Multi_centerlines = shapely.geometry.MultiLineString(centerlines)
+    # print('ordered centerlines2:', Multi_centerlines2.geom_type)
+    measure_points = tuple(nearest_points(Multi_centerlines.geoms[i], Multi_centerlines.geoms[i + 1]) for
+                            i in range(len(Multi_centerlines.geoms) - 1))
+
+    return Multi_centerlines, measure_points
+
+def measure_contours(Multi_centerlines, image):
+    logger.info("measure_contours START")
+    imgheight, imgwidth = image.shape[:2]
+    logger.debug(f"Image has height {imgheight} and width {imgwidth}")
+    logger.debug(f"{len(Multi_centerlines.geoms)} ring boundries were detected")
+
+    # Split samples that are crossing center into two then turn the second part around
+    # Find the point where the sample is crossing a pith by the change in a slope of the lines in PlusMinus_index
+    PlusMinus_index = _find_ring_slopes(Multi_centerlines, imgheight, imgwidth)
+    cutting_point = _find_cutting_point(PlusMinus_index, imgheight)
 
     # Split sequence where it is crossing the middle
-    if cutting_point_detected == 1:
+    if cutting_point:
 
         logger.info(f'Core sample crosses the center and is cut at: {cutting_point}')
         cut_frame1_poly = shapely.geometry.box(0, 0, cutting_point, imgheight)
@@ -522,41 +548,15 @@ def measure_contours(Multi_centerlines, image):
         cut_frame2_poly = shapely.geometry.box(cutting_point, 0, imgwidth, imgheight)
         Multi_centerlines2 = Multi_centerlines.intersection(cut_frame2_poly)
 
-        # Reorder Multi_centerlines1
-        x_mins, x_maxs = [geom.bounds[0] for geom in Multi_centerlines1.geoms], [geom.bounds[2] for geom in Multi_centerlines1.geoms]
-
-        x_middle = np.array(x_mins) + (np.array(x_maxs) - np.array(x_mins))/2
-        #print('x_middle, x_maxs, x_mins', x_middle, x_maxs, x_mins)
-        contourszip = zip(x_middle, Multi_centerlines1.geoms)
-
-        #print('contourszip', contourszip)
-        #print('x_maxs', x_maxs)
-        centerlines1 = [x for _, x in sorted(contourszip, key=itemgetter(0))]
-        Multi_centerlines1 = shapely.geometry.MultiLineString(centerlines1)
-        #print('ordered centerlines2:', Multi_centerlines2.geom_type)
-        measure_points1 = tuple(nearest_points(Multi_centerlines1.geoms[i], Multi_centerlines1.geoms[i + 1]) for
-                           i in range(len(Multi_centerlines1.geoms) - 1))
+        Multi_centerlines1, measure_points1 = _measure_distances(Multi_centerlines1)
 
         if Multi_centerlines2.geom_type=='LineString':
             logger.info("Multi_centerlines2, the part after cutting point, is only one line")
             measure_points = (measure_points1,)
             Multi_centerlines = (Multi_centerlines1,)
+
         else:
-            # Order contours by x_maxs
-            x_mins, x_maxs = [geom.bounds[0] for geom in Multi_centerlines2.geoms], [geom.bounds[2] for geom in
-                                                                                    Multi_centerlines2.geoms]
-
-            x_middle = np.array(x_mins) + (np.array(x_maxs) - np.array(x_mins))/2
-            contourszip = zip(x_middle, Multi_centerlines2.geoms)
-
-            #print('contourszip', contourszip)
-            #print('x_maxs', x_maxs)
-            centerlines2 = [x for _, x in sorted(contourszip, key=itemgetter(0))]
-            Multi_centerlines2 = shapely.geometry.MultiLineString(centerlines2)
-            #print('ordered centerlines2:', Multi_centerlines2.geom_type)
-            # Find nearest_points for each pair of lines
-            measure_points2 = tuple(nearest_points(Multi_centerlines2.geoms[i], Multi_centerlines2.geoms[i + 1]) for
-                              i in range(len(Multi_centerlines2.geoms) - 1))
+            Multi_centerlines2, measure_points2 = _measure_distances(Multi_centerlines2)
 
             measure_points = (measure_points1, measure_points2)
             Multi_centerlines = (Multi_centerlines1, Multi_centerlines2)
@@ -568,20 +568,7 @@ def measure_contours(Multi_centerlines, image):
         logger.info('Middle point was not detected')
         cutting_point = {}
 
-        # Reorder the lines
-        x_mins, x_maxs = [geom.bounds[0] for geom in Multi_centerlines.geoms], [geom.bounds[2] for geom in Multi_centerlines.geoms]
-        #print("x_min, x_max", [x_mins, x_maxs])
-
-        x_middle = np.array(x_mins) + (np.array(x_maxs) - np.array(x_mins))/2
-        contourszip = zip(x_middle, Multi_centerlines.geoms)
-
-        #print('contourszip', contourszip)
-        #print('x_maxs', x_maxs)
-        centerlines = [x for _, x in sorted(contourszip, key=itemgetter(0))]
-        Multi_centerlines = shapely.geometry.MultiLineString(centerlines)
-        #print('ordered centerlines:', Multi_centerlines2.geom_type)
-        # Find nearest_points for each pair of lines
-        measure_points = tuple(nearest_points(Multi_centerlines.geoms[i], Multi_centerlines.geoms[i+1]) for i in range(len(Multi_centerlines.geoms)-1))
+        Multi_centerlines, measure_points = _measure_distances(Multi_centerlines)
 
         logger.info("measure_contours FINISH")
         return (Multi_centerlines,), (measure_points,), cutting_point
@@ -764,10 +751,10 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out, plot_dpi
                 centerlines1 = centerlines[l].geoms
             else:
                 centerlines1 = centerlines
-            logging.debug(f'centerlines1: {centerlines1}')
+            logger.debug(f'centerlines1: {centerlines1}')
 
             for i, centerline in enumerate(centerlines1):
-                logging.debug(f'centerline: {centerline}')
+                logger.debug(f'centerline: {centerline}')
 
                 xc, yc = centerline.coords.xy
                 plt.plot(xc, yc, color[l], linewidth=linewidth)

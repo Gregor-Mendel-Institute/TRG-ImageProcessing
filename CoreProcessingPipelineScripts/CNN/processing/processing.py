@@ -277,35 +277,6 @@ def main():
                     im_origin = cv2.imread(image_path)
                     image_name = os.path.splitext(f)[0]  # later for saving files
 
-                    """
-                    # This part was solved more elegantly in args kept temporarily only in case of some bugs
-                    # Define default values if they were not provided as arguments
-                    if args.cropUpandDown is not None:
-                        cropUpandDown = float(args.cropUpandDown)
-                    else:
-                        cropUpandDown = 0.17
-
-                    if args.sliding_window_overlap is not None:
-                        sliding_window_overlap = float(args.sliding_window_overlap)
-                    else:
-                        sliding_window_overlap = 0.75
-
-                    if args.n_detection_rows is None or args.n_detection_rows == 1:
-                        detection_rows = 1
-                    else:
-                        detection_rows = int(args.n_detection_rows)
-
-                    if args.min_mask_overlap is not None:
-                        min_mask_overlap = int(args.min_mask_overlap)
-                    else:
-                        min_mask_overlap = 3
-                    
-                    if args.cracks == 'True':
-                        cracks = True
-                    else:
-                        cracks = False
-                    """
-
                     # RUN DETECTION
                     detected_mask = sliding_window_detection_multirow(image=im_origin,
                                                             detection_rows=args.n_detection_rows,

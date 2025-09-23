@@ -82,3 +82,9 @@ ml GCC/13.3.0 OpenMPI/5.0.3 OpenCV/4.11.0-CUDA-12.6.0-contrib
 python -m venv --system-site-packages ~/venvs/ultra831P3123
 source ~/venvs/ultra831P3123/bin/activate
 pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson openpyxl pygeoops 'numpy<2'
+
+#### Testing env 07.07.2025 ###### Before starting with yolo12 i decided to update packages
+ml GCC/13.3.0 OpenMPI/5.0.3 OpenCV/4.11.0-CUDA-12.6.0-contrib
+python -m venv --system-site-packages ~/venvs/ultra83197P3123
+source ~/venvs/ultra83197P3123/bin/activate
+pip install --no-cache-dir --no-build-isolation ultralytics shapely lxml scikit-image ujson openpyxl pygeoops 'numpy<2'
