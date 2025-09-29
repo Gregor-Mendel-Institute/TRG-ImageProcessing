@@ -192,6 +192,10 @@ def main():
     logger.info(f"Model is running on: {device_names}")
     print(f"Model is running on: {device_names}")
 
+    # Prepere some arguments
+    if args.cracks == 'True':
+        cracks_arg = True
+
     # RETRAINING
     if args.training_data is not None:
         if not os.path.exists(args.training_data):
@@ -281,7 +285,7 @@ def main():
                     detected_mask = sliding_window_detection_multirow(image=im_origin,
                                                             detection_rows=args.n_detection_rows,
                                                             model=model,
-                                                            cracks=args.cracks,
+                                                            cracks=cracks_arg,
                                                             overlap=args.sliding_window_overlap,
                                                             cropUpandDown=args.cropUpandDown)
 
@@ -294,7 +298,7 @@ def main():
 
                     ## CRACKS
                     clean_contours_cracks = None
-                    if args.cracks is True:
+                    if cracks_arg:
                         detected_mask_cracks = detected_mask[:, :, 1]
                         logger.debug(f"detected_mask_cracks{detected_mask_cracks.shape}")
                         clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
@@ -340,7 +344,7 @@ def main():
                         logger.debug(f"masked_image.dtype{masked_image.dtype}")
                         masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
 
-                        if args.cracks is True:
+                        if cracks_arg:
                             masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
 
                         plot_lines(masked_image, centerlines, measure_points,
