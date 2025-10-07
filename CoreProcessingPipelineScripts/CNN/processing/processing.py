@@ -170,8 +170,10 @@ def main():
         logging.getLogger().setLevel(logging.DEBUG)
 
     logging.info(f"Output path set to: {path_out}")
-    # Report os
+    # Report os and python
     logger.debug(f"OS specs: {platform.platform()}")
+    logger.debug(f"Python version: {platform.python_version()}")
+    logger.debug(f"ultralytics version: {ultralytics.__version__}")
     # PREPARE THE MODEL
     # Check compulsory argument
     if args.weights is None or not os.path.isfile(args.weights):
