@@ -1,0 +1,44 @@
+Bootstrap: docker
+From: pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
+Stage: spython-base
+
+%files
+../functions /home
+../processing /home
+../training /home
+../weights /home
+../requirements.txt /home
+%post
+
+PYTHONUNBUFFERED=1
+PYTHONDONTWRITEBYTECODE=1
+PIP_NO_CACHE_DIR=1
+PIP_BREAK_SYSTEM_PACKAGES=1
+MKL_THREADING_LAYER=GNU
+
+apt update \
+&& apt install --no-install-recommends -y gcc libgl1 libglib2.0-0 libpython3-dev gnupg g++ libusb-1.0-0 libsm6
+
+mkdir -p /home
+cd /home
+
+
+pip install -r requirements.txt
+
+PATH="/home/processing:$PATH"
+PYTHONPATH="/home:$PYTHONPATH"
+
+%environment
+export PYTHONUNBUFFERED=1
+export PYTHONDONTWRITEBYTECODE=1
+export PIP_NO_CACHE_DIR=1
+export PIP_BREAK_SYSTEM_PACKAGES=1
+export MKL_THREADING_LAYER=GNU
+export PATH="/home/processing:$PATH"
+export PYTHONPATH="/home:$PYTHONPATH"
+%runscript
+cd /home
+exec processing.py --weights /home/weights/best10px1000eAugEnlargedDataset.pt "$@"
+%startscript
+cd /home
+exec processing.py --weights /home/weights/best10px1000eAugEnlargedDataset.pt "$@"
