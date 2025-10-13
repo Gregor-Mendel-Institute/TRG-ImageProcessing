@@ -173,12 +173,19 @@ def main():
     # Report os and python
     logger.debug(f"OS specs: {platform.platform()}")
     logger.debug(f"Python version: {platform.python_version()}")
-    logger.debug(f"ultralytics version: {ultralytics.__version__}")
     # PREPARE THE MODEL
     # Check compulsory argument
-    if args.weights is None or not os.path.isfile(args.weights):
-        print(f"Compulsory argument --weights is missing or the path {args.weights} does not exist.")
-        logger.warning(f"Compulsory argument --weights is missing or the path {args.weights} does not exist.")
+    logger.debug(f"args.weights: {args.weights}")
+    if args.weights:
+        if args.weights.endswith('.pt'):
+            pass
+        elif not os.path.isfile(args.weights):
+            print(f"Compulsory argument --weights path {args.weights} does not exist.")
+            logger.warning(f"Compulsory argument --weights is missing or the path {args.weights} does not exist.")
+            exit()
+    else:
+        print(f"Compulsory argument --weights is missing.")
+        logger.warning(f"Compulsory argument --weights is missing.")
         exit()
     logger.info(f"Loading weights: {args.weights}")
     model = YOLO(args.weights)

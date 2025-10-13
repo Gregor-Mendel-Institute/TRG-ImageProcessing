@@ -14,6 +14,7 @@ import cv2
 import sys
 import matplotlib.pyplot as plt
 import logging
+logging.getLogger('PIL').setLevel(logging.WARNING)
 #from datetime import datetime
 import numpy as np
 logger = logging.getLogger(__name__)
@@ -208,7 +209,7 @@ def retraining(model, dataset_path, out_path, name, epochs):
         last_weigth_path = os.path.join(out_path, name, "weights", "last.pt")
 
     if os.path.isfile(last_weigth_path):
-        #load the last model from path out location
+        #load the last model from path_out location
         model = YOLO(last_weigth_path)
         logger.debug(f"the last weight number of epochs: {len(model.ckpt['train_results']['epoch'])}")
         logger.debug(f"specified number of epochs to train the model: {epochs}")
@@ -216,12 +217,13 @@ def retraining(model, dataset_path, out_path, name, epochs):
             model.train(resume=True)
             #model.train(data=data_yaml_path, epochs=epochs, imgsz=640, project=out_path, name=name, resume=True)
         except Exception as e:
-            print("Training with this --run_ID is finihsed. Please change the --run_ID if you wish start a new training with a new name")
+            print("Training with this --run_ID is finished. Please change the --run_ID if you wish start a new training with a new name")
             logger.info("Training with this --run_ID is finihsed. Please change the --run_ID if you wish start a new training with a new name")
             logger.error(e)
 
     else:
         # Train from
+        logger.debug(f"Starting training from submitted weight. No previous training was detected.")
         model.train(data=data_yaml_path, epochs=epochs, imgsz=640, project=out_path, name=name)
     logger.debug("retraining FINISH")
 

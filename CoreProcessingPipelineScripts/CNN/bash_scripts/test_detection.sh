@@ -1,7 +1,7 @@
 
 time python ../processing/processing.py \
   --dpi=13039 \
-  --run_ID=Test_detection  \
+  --run_ID=Test_detection \
   --input=../training/sample_dataset/val \
   --weights=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
