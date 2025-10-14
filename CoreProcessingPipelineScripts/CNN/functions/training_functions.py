@@ -380,6 +380,7 @@ def plot_results(res, IoU_thresholds, out_file_plot):
         plt.plot(IoU_thresholds, recall, ls=linestyle[i], c='orange')
     plt.xlabel('IoU threshold')
     plt.legend(['Precision', 'Recall'])
+    plt.grid()
     #plt.show()
     plt.savefig(out_file_plot)
     plt.close()
