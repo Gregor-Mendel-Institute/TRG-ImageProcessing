@@ -201,7 +201,7 @@ def main():
     logger.info(f"Model is running on: {device_names}")
     print(f"Model is running on: {device_names}")
 
-    # Prepere some arguments
+    # Prepare some arguments
     if args.cracks == 'True':
         cracks_arg = True
 
@@ -226,6 +226,10 @@ def main():
             prepare_all_annotations(dataset_path=args.training_data, buffer=args.annot_buffer,
                                     overwrite_existing=True)
             check_annot_dataset(args.training_data)
+            if args.annot_buffer==0:
+                print("--annot_buffer = 0 annotations were created but the training will stop becuase some buffer is required by the model")
+                logger.warning("--annot_buffer = 0 annotations were created but the training will stop becuase some buffer is required by the model ")
+                exit()
 
         # Start retraining
         retraining(model=model, dataset_path=args.training_data, out_path=path_out, name=args.run_ID, epochs=args.epochs) #pass the training dataset and saving location

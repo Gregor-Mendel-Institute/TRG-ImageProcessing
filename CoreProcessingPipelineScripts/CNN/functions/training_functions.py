@@ -54,20 +54,24 @@ def collect_annotations(CVAT_folder):
     logger.debug("collect_annotations FINISH")
     return all_image_xml_list
 
-def polylinetopolygon(polyline_str, width, height, buffer=30):
+def polylinetopolygon(polyline_str, width, height, buffer=10):
     # takes polyline string form CVAT xml.
     # Using shapely package it transforms line into polygon
     # Output x and y coords of polygone.
     # width and height of the image ensure that polygone is not exceeding image
+    # buffer=0 will export only the lines coordinates for rings
     logger.debug("polylinetopolygon START")
     points = polyline_str.split(";")
     #coords = list((x, y) for point.split(",") in points)
     xy_coords = list(tuple(map(float, (point.split(",")))) for point in points)
     polyline = LineString(xy_coords)
-    im_box = box(1, 1, int(width)-1, int(height)-1) # to be sure i crop it one pixel inside the image
-    polygon_ring = polyline.buffer(buffer)
-    polygon_clean = polygon_ring.intersection(im_box)
-    x, y = polygon_clean.exterior.coords.xy
+    im_box = box(1, 1, int(width)-1, int(height)-1) # to be sure I crop it one pixel inside the image
+    if buffer>0:
+        polygon_ring = polyline.buffer(buffer)
+        polygon_clean = polygon_ring.intersection(im_box)
+        x, y = polygon_clean.exterior.coords.xy
+    else:
+        x, y = polyline.coords.xy
     logger.debug("polylinetopolygon FINISH")
     return list(x), list(y)
 
@@ -140,6 +144,7 @@ def prepare_annotations(dataset_path, annot_list, buffer=10, overwrite_existing=
                         # print(value)
                         if value != "CrackPoly":
                             print("Warning: Label is not CrackPoly. Continue assuming all polygon are crack")
+                            logger.warning("Warning: Label is not CrackPoly. Continue assuming all polygon are crack")
                     if key == "points":
                         all_points_x, all_points_y = preparepolygon(polygon_str=value)
                         # normalize the coordinates by image size
