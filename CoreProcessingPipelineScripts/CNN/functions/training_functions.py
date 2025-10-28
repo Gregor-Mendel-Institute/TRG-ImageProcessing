@@ -46,6 +46,7 @@ def collect_annotations(CVAT_folder):
                 root = etree.parse(file).getroot()
 
             for i in root.iter('image'):
+                logger.debug(f'Image name: {[value for key, value in i.items() if key == "name"]}')
                 all_image_xml_list.append(i)
         else:
             print(f"{xml_name} not proccesed because it`s not valid annotation file")
