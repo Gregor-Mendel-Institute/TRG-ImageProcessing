@@ -405,7 +405,7 @@ def evaluate_training(dataset_path, out_path, name, detection_rows, sliding_wind
     res_out_path = os.path.join(out_path, name, "eval")
     # make if does not exist
     if not os.path.isdir(res_out_path):
-        os.mkdir(res_out_path)
+        os.makedirs(res_out_path)
 
     for weight_name in weights_list:
         # prepare model
