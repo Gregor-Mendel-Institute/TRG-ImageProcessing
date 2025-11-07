@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Import custom functions
 ROOT_DIR = os.path.abspath("../")
-print('ROOT_DIR', ROOT_DIR)
+logger.debug('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR) # To find local version of the library
 
 from functions.processing_functions import (apply_mask, convert_to_binary_mask, load_annot,
@@ -378,7 +378,7 @@ def eval_dataset(data, model, n_classes, detection_rows, sliding_window_overlap,
         results.append(im_res)
     out_array = np.nanmean(np.array(results), axis=0)  # average along the images
     return out_array
-
+"""
 def plot_results(res, IoU_thresholds, out_file_plot):
     n_classes = res.shape[1]
     linestyle = ['solid', 'dashed', 'dashdot', 'dotted']
@@ -392,6 +392,33 @@ def plot_results(res, IoU_thresholds, out_file_plot):
     plt.grid()
     #plt.show()
     plt.savefig(out_file_plot)
+    plt.close()
+"""
+def plot_results(res, IoU_thresholds, out_file_plot):
+    n_classes = res.shape[1]
+    linestyle = ['solid', 'dashed', 'dashdot', 'dotted']
+    # specify basics
+    f, ax = plt.subplots()
+    ax.set_xlabel('IoU threshold')
+
+    dummy_lines_for_legend = [] # needed only for linestyle legend
+
+    for i in range(n_classes):
+        precision = res[0][i]
+        recall = res[1][i]
+        ax.plot(IoU_thresholds, precision, ls=linestyle[i], c='b')
+        ax.plot(IoU_thresholds, recall, ls=linestyle[i], c='orange')
+        dummy_lines_for_legend.append(ax.plot([], [], c="black", ls=linestyle[i])[0]) # needed only for linestyle legend
+
+    # add legend for colour and linestyle
+    legend1 = ax.legend(['Precision', 'Recall'], loc=(0.76, 0.85))
+    ax.legend([dummy_lines_for_legend[i] for i in [0, 1]], ["Rings", "Cracks"], loc=(0.76, 0.7))
+    ax.add_artist(legend1)
+
+    # add grid to the plot background
+    ax.grid()
+    #plt.show()
+    f.savefig(out_file_plot)
     plt.close()
 
 def evaluate_training(dataset_path, out_path, name, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap):
