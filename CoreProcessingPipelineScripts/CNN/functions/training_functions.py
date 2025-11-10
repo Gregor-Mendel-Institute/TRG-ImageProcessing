@@ -230,7 +230,7 @@ def retraining(model, dataset_path, out_path, name, epochs):
     else:
         # Train from
         logger.debug(f"Starting training from submitted weight. No previous training was detected.")
-        model.train(data=data_yaml_path, epochs=epochs, batch=-1, imgsz=640, project=out_path, name=name,
+        model.train(data=data_yaml_path, epochs=epochs, batch=-1, imgsz=1024, project=out_path, name=name,
                     lr0=0.01, lrf=0.01, seed=2, patience=500, overlap_mask=False, mask_ratio=2,
                     degrees=90, hsv_h=0.015, hsv_s=1.0, hsv_v=0.5, translate=0.1, scale=0.5, shear=20.0,
                     flipud=0.5, fliplr=0.5, copy_paste=0.2)
