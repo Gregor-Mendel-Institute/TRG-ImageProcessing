@@ -449,8 +449,8 @@ def _find_ring_slopes(Multi_centerlines, imgheight, imgwidth):
         # get lines inside of the frame
         intersection = Multi_centerlines.intersection(frame_poly)
         logger.debug(f'intersection type prior: {intersection.geom_type}')
-        if intersection.is_empty:  # prevents crushing if segment is empty
-            logger.info("empty intersection")
+        if intersection.is_empty or intersection.geom_type == 'Point':  # prevents crushing if segment is empty
+            logger.info("Intersection is empty or contains only one point")
             continue
 
         else:
@@ -792,7 +792,7 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
     out_json[image_name]['ring_widths'] = {'directionality': {}, 'shortest_distance': {},
                                             'manual': {}}
     # Separate x and y coordinates for polygons and line
-    if clean_contours_cracks is None or len(clean_contours_cracks)==0:
+    if clean_contours_cracks is None or len(clean_contours_cracks) == 0:
         input_vars = (centerlines_rings, shapely.multipolygons(clean_contours_rings))
     else:
         logger.debug(f'clean_contours_rings length: {len(clean_contours_rings)}')
