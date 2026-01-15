@@ -531,7 +531,7 @@ def _measure_distances(Multi_centerlines):
 def measure_contours(Multi_centerlines, image):
     logger.info("measure_contours START")
     imgheight, imgwidth = image.shape[:2]
-    logger.debug(f"Image has height {imgheight} and width {imgwidth}")
+    logger.info(f"Image has height {imgheight} and width {imgwidth}")
     logger.debug(f"{len(Multi_centerlines.geoms)} ring boundries were detected")
 
     # Split samples that are crossing center into two then turn the second part around
