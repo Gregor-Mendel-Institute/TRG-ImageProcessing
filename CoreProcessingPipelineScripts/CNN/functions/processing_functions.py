@@ -40,22 +40,26 @@ def log_and_print(msg, logger, level="info"):
 # apply mask to an original image
 ########################################################################
 def apply_mask(image, mask, alpha=0.5):
+
     image = image.astype(np.float32)
+
     COLORS = np.array([
         [0, 0, 178.5],  # mask==1
         [0, 178.5, 0],  # mask==2
         [178.5, 0, 0]  # mask>2
     ], dtype=np.float32)
 
-    mask1 = mask == 1
-    mask2 = mask == 2
-    mask3 = mask > 2
+    masks = (
+        (mask == 1, COLORS[0]),
+        (mask == 2, COLORS[1]),
+        (mask > 2, COLORS[2]),
+    )
 
-    image[mask1] = image[mask1] * (1 - alpha) + alpha * COLORS[0]
-    image[mask2] = image[mask2] * (1 - alpha) + alpha * COLORS[1]
-    image[mask3] = image[mask3] * (1 - alpha) + alpha * COLORS[2]
+    for m, color in masks:
+        image[m] = image[m] * (1 - alpha) + color * alpha
 
     return image.astype(np.uint8)
+
 ############################################################################################################
 # Converts yolov8 result into binary mask
 ############################################################################################################
