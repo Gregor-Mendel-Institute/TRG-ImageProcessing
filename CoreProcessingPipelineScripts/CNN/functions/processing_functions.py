@@ -18,6 +18,7 @@ import ujson
 import skimage
 import copy
 import numpy as np
+import torch
 import matplotlib.pyplot as plt
 plt.set_loglevel (level = 'warning')
 import shapely
@@ -63,8 +64,9 @@ def apply_mask(image, mask, alpha=0.5):
 ############################################################################################################
 # Converts yolov8 result into binary mask
 ############################################################################################################
+"""
 def convert_to_binary_mask(result, class_number):
-    # result is yolov8 result for one image
+    # result is yolo result for one image
     # it will output a binary mask of all the detected masks of desired class_number
     logger.debug("convert_to_binary_mask START")
     im_shape = result.orig_shape
@@ -89,7 +91,36 @@ def convert_to_binary_mask(result, class_number):
 
     logger.debug("convert_to_binary_mask FINISH")
     return binary_mask
+"""
+def convert_to_binary_mask(result, class_number):
+    logger.debug("convert_to_binary_mask START")
+    im_shape = result.orig_shape
+    cls = result.boxes.cls.int()
 
+    if len(cls) == 0:
+        return np.zeros(im_shape, dtype=np.uint8)
+
+    class_mask = cls == class_number
+
+    if not torch.any(class_mask):
+        return np.zeros(im_shape, dtype=np.uint8)
+
+    result_sub = result[class_mask]
+
+    all_mask_coords = [
+        poly.astype(np.int32)
+        for poly in result_sub.masks.xy
+        if len(poly)
+    ]
+
+    if not all_mask_coords:
+        return np.zeros(im_shape, dtype=np.uint8)
+
+    mask = np.zeros(im_shape, dtype=np.uint8)
+
+    cv2.fillPoly(mask, all_mask_coords, 1)
+    logger.debug("convert_to_binary_mask FINISH")
+    return mask
 ############################################################################################################
 # Sliding window detection with rotation of each part of image by 90 and 45 degrees and combining the output
 ############################################################################################################
