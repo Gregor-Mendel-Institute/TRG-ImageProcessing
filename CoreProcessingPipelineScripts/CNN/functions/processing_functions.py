@@ -31,11 +31,17 @@ import logging
 # set up logger
 logger = logging.getLogger(__name__)
 #######################################################################
+# logging and printing with one function
+########################################################################
+def log_and_print(msg, logger, level="info"):
+    print(msg)
+    getattr(logger, level)(msg)
+#######################################################################
 # apply mask to an original image
 ########################################################################
+"""
 def apply_mask(image, mask, alpha=0.5):
-    """Apply the given mask to the image. In BGR
-    """
+    #Apply the given mask to the image. In BGR
     color = (0.0, 0.0, 0.7)  # B
     for c in range(3):
         image[:, :, c] = np.where(mask == 1,
@@ -54,6 +60,24 @@ def apply_mask(image, mask, alpha=0.5):
                                   image[:, :, c] * (1 - alpha) + alpha * color[c] * 255,
                                   image[:, :, c])
     return image
+"""
+def apply_mask(image, mask, alpha=0.5):
+
+    lut = np.zeros((np.max(mask)+1, 3), dtype=np.float32)
+    print("lut", lut)
+
+    lut[1] = [0, 0, 178.5]
+    lut[2] = [0, 178.5, 0]
+    lut[3:] = [178.5, 0, 0]
+    print("lut", lut)
+
+    overlay = lut[mask]
+    print("overlay", overlay)
+
+    return (
+        image.astype(np.float32) * (1-alpha)
+        + overlay * alpha
+    ).astype(np.uint8)
 
 ############################################################################################################
 # Converts yolov8 result into binary mask
@@ -359,8 +383,9 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
                 continue
 
         except Exception as e:
-            logger.warning(f'Centerline of the ring {i} failed with exception {e}')
-            print(f'Centerline of the ring {i} failed with exception {e}')
+            log_and_print(f"Centerline of the ring {i} failed with exception {e}", logger, "warning")
+            #logger.warning(f'Centerline of the ring {i} failed with exception {e}')
+            #print(f'Centerline of the ring {i} failed with exception {e}')
             continue
 
         #xc,yc = cline.coords.xy
@@ -370,14 +395,18 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
 
     # test if centerline list contains something and if not abort and give a message
     if not centerlines: # empty list is False
-        print("NO LINES LEFT AFTER CLEANING")
-        print("One reason could be that your images have too much background."
+        log_and_print("NO LINES LEFT AFTER CLEANING", logger, "warning")
+        log_and_print("One reason could be that your images have too much background."
                     "Ideally, there should not be too much background above and below the core."
-                    "Try to crop tighter.")
-        logger.warning("NO LINES LEFT AFTER CLEANING")
-        logger.warning("One reason could be that your images have too much background."
-                       "Ideally, there should not be too much background above and below the core."
-                       "Try to crop tighter.")
+                    "Try to crop tighter.", logger, "warning")
+        #print("NO LINES LEFT AFTER CLEANING")
+        #print("One reason could be that your images have too much background."
+                    #"Ideally, there should not be too much background above and below the core."
+                    #"Try to crop tighter.")
+        #logger.warning("NO LINES LEFT AFTER CLEANING")
+        #logger.warning("One reason could be that your images have too much background."
+                       #"Ideally, there should not be too much background above and below the core."
+                       #"Try to crop tighter.")
         return
     else:
         logger.info(f'Filtered_centerlines: {len(centerlines)}')
@@ -502,8 +531,9 @@ def _find_cutting_point(PlusMinus_index, imgheight):
         if pm_seq != test_seq1 and pm_seq != test_seq2:
             continue
         if cutting_point is not None:
-            print('Several cutting points identified, needs to be investigated!')
-            logger.warning('Several cutting points identified, needs to be investigated!')
+            log_and_print("Several cutting points identified, needs to be investigated!", logger, "warning")
+            #print('Several cutting points identified, needs to be investigated!')
+            #logger.warning('Several cutting points identified, needs to be investigated!')
             break
         cutting_point = PlusMinus_index[i + 1][1] + ((PlusMinus_index[i + 2][1] - PlusMinus_index[i + 1][1]) / 2)
         # if cutting_point is immediately at the beginning of the sample ignore it
@@ -650,7 +680,8 @@ def load_annot(annot_path, im_size):
 def check_annot_folder(folder_path):
     logger.info("check_annot_folder START")
     out_path = os.path.join(folder_path, "annot_check")
-    print("folder_path", folder_path )
+    log_and_print(f"folder_path: {folder_path}", logger, "info")
+    #print("folder_path", folder_path )
     if not os.path.exists(out_path):
         os.makedirs(out_path)
     supported_extensions = ('.tif', '.tiff', '.png', '.jpg', '.jpeg')
@@ -659,21 +690,24 @@ def check_annot_folder(folder_path):
     ok_im_count, im_with_ring, im_with_crack, im_with_both = 0, 0, 0, 0
 
     for im_name in im_list:
-        print(im_name)
+        log_and_print(f"im_name: {im_name}", logger, "info")
         im_path = os.path.join(folder_path, im_name)
         im = cv2.imread(im_path)
         im_size = im.shape
         #annot_path = im_path.replace(".tif", ".txt")
         annot_path = os.path.splitext(im_path)[0] + '.txt'
-        print("annot_path", annot_path)
+        log_and_print(f"annot_path: {annot_path}", logger, "info")
+        #print("annot_path", annot_path)
         if not os.path.exists(annot_path):
             no_annot_file.append(im_name)
-            print(f"Annot file for image {im_name} does not exist")
+            log_and_print(f"Annot file for image {im_name} does not exist", logger, "warning")
+            #print(f"Annot file for image {im_name} does not exist")
             continue
         contours, labels = load_annot(annot_path, im_size)
         if len(labels) == 0:
             no_annot_im.append(im_name)
-            print(f"Image {im_name} has no annotations")
+            log_and_print(f"Image {im_name} has no annotations", logger, "warning")
+            #print(f"Image {im_name} has no annotations")
             continue
 
         labels_all.extend(labels)

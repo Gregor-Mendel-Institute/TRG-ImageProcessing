@@ -28,9 +28,9 @@ ROOT_DIR = os.path.abspath("../")
 print('ROOT_DIR', ROOT_DIR)
 sys.path.append(ROOT_DIR)  # To find local version of the library
 
-from functions.processing_functions import apply_mask, convert_to_binary_mask, check_annot_dataset\
+from functions.processing_functions import apply_mask, check_annot_dataset\
     , sliding_window_detection_multirow, clean_up_mask, find_centerlines, measure_contours, plot_lines, write_to_json\
-    , write_to_pos, plot_contours
+    , write_to_pos, log_and_print
 
 """
 stream_h = logging.StreamHandler()
@@ -72,8 +72,8 @@ def get_args():
                         help="Path to output folder")
 
     ## Optional arguments
-    parser.add_argument('--cracks', required=False,
-                        default=False,
+    parser.add_argument('--cracks',
+                        action='store_true',
                         help="If cracks should be also detected")
 
     parser.add_argument('--cropUpandDown', required=False,
@@ -86,8 +86,8 @@ def get_args():
                         type=float,
                         help="Proportion of sliding frame that should overlap")
 
-    parser.add_argument('--print_detections', required=False,
-                        default=False,
+    parser.add_argument('--print_detections',
+                        action='store_true',
                         help="True, if printing is desired")
 
     parser.add_argument('--min_mask_overlap', required=False,
@@ -109,8 +109,8 @@ def get_args():
                         metavar="logfile",
                         help="logfile name to put in output dir. Prepends other info (used to be 'CNN_')")
 
-    parser.add_argument('--debug', required=False,
-                        default=False,
+    parser.add_argument('--debug',
+                        action='store_true',
                         help="True will set logging level to debug")
 
     ## Additional retrainig arguments
@@ -118,8 +118,8 @@ def get_args():
                         metavar="/path/to/training/dataset/",
                         help='Directory of the training dataset')
 
-    parser.add_argument('--generate_annotations', required=False,
-                        default=False,
+    parser.add_argument('--generate_annotations',
+                        action='store_true',
                         help='If you wish to generate annotations, or overwrite existing')
 
     parser.add_argument('--annot_buffer', required=False,
@@ -145,8 +145,8 @@ def main():
     # set up logging
     # first need output folder for logging file
     if args.output_folder is None or not os.path.exists(args.output_folder):
-        print(f"Compulsory argument --output_folder is missing or the path {args.output_folder} does not exist.")
-        exit()
+        #print(f"Compulsory argument --output_folder is missing or the path {args.output_folder} does not exist.")
+        raise FileNotFoundError(f"Compulsory argument --output_folder is missing or the path {args.output_folder} does not exist.")
 
     if args.training_data is not None:
         path_out = os.path.join(args.output_folder, "retraining")
@@ -166,30 +166,35 @@ def main():
                         format='%(asctime)s-%(name)s-%(levelname)s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger(__name__)
-    if args.debug == 'True':
+    if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
 
     logging.info(f"Output path set to: {path_out}")
     # Report os and python
     logger.debug(f"OS specs: {platform.platform()}")
     logger.debug(f"Python version: {platform.python_version()}")
+
     # PREPARE THE MODEL
     # Check compulsory argument
     logger.debug(f"args.weights: {args.weights}")
+    if not args.weights:
+        logger.error(f"Compulsory argument --weights is missing.")
+        raise FileNotFoundError(f"Compulsory argument --weights is missing.")
+    elif not args.weights.endswith('.pt') or not os.path.isfile(args.weights):
+        logger.error(f"Compulsory argument --weights is missing or the file {args.weights} does not exist.")
+        raise FileNotFoundError(f"Compulsory argument --weights is missing or the file {args.weights} does not exist.")
+    else:
+        logger.info(f"Loading weights: {args.weights}")
+        model = YOLO(args.weights)
+
+    """
     if args.weights:
         if args.weights.endswith('.pt'):
             pass
         elif not os.path.isfile(args.weights):
-            print(f"Compulsory argument --weights path {args.weights} does not exist.")
             logger.warning(f"Compulsory argument --weights is missing or the path {args.weights} does not exist.")
-            exit()
-    else:
-        print(f"Compulsory argument --weights is missing.")
-        logger.warning(f"Compulsory argument --weights is missing.")
-        exit()
-    logger.info(f"Loading weights: {args.weights}")
-    model = YOLO(args.weights)
-
+            raise FileNotFoundError(f"Compulsory argument --weights is missing or the path {args.weights} does not exist.")
+    """
     # check available devices to run model
     if torch.cuda.device_count() > 0:
         logger.debug(f"{torch.cuda.device_count()} cuda devices are available")
@@ -198,21 +203,19 @@ def main():
     else:
         device_names = 'CPU'
 
-    logger.info(f"Model is running on: {device_names}")
-    print(f"Model is running on: {device_names}")
-
-    # Prepare some arguments
-    if args.cracks == 'True':
-        cracks_arg = True
+    log_and_print(f"Model is running on: {device_names}", logger, "info")
+    #logger.info(f"Model is running on: {device_names}")
+    #print(f"Model is running on: {device_names}")
 
     # RETRAINING
     if args.training_data is not None:
         if not os.path.exists(args.training_data):
-            print("Path to --training_data does not exist.")
-            logger.warning("Path to --training_data does not exist.")
+            logger.error("Path to --training_data does not exist.")
+            raise FileNotFoundError(f"Path to --training_data does not exist.")
 
-        print("Starting retraining mode")
-        logger.info("STARTING RETRAINING MODE")
+        log_and_print("STARTING RETRAINING MODE", logger, "info")
+        #print("Starting retraining mode")
+        #logger.info("STARTING RETRAINING MODE")
         # Load training functions
         from functions.training_functions import prepare_all_annotations, retraining, evaluate_training
 
@@ -221,15 +224,14 @@ def main():
         logger.debug(f"args.print_detections: {args.print_detections}")
         logger.debug(f"args.generate_annotations: {args.generate_annotations}")
 
-        if args.generate_annotations == 'True':
+        if args.generate_annotations:
             logger.info("Generating annotations")
             prepare_all_annotations(dataset_path=args.training_data, buffer=args.annot_buffer,
                                     overwrite_existing=True)
             check_annot_dataset(args.training_data)
             if args.annot_buffer==0:
-                print("--annot_buffer = 0 annotations were created but the training will stop becuase some buffer is required by the model")
-                logger.warning("--annot_buffer = 0 annotations were created but the training will stop becuase some buffer is required by the model ")
-                exit()
+                logger.error("--annot_buffer = 0 annotations were created but the training will stop because some buffer is required by the model ")
+                raise ValueError("--annot_buffer = 0 annotations were created but the training will stop because some buffer is required by the model")
 
         # Start retraining
         retraining(model=model, dataset_path=args.training_data, out_path=path_out, name=args.run_ID, epochs=args.epochs) #pass the training dataset and saving location
@@ -241,24 +243,22 @@ def main():
 
     # DETECTION
     else:
-        print("Starting inference mode")
-        logger.info("STARTING INFERENCE MODE")
+        log_and_print("Starting inference mode", logger, "info")
+        #print("Starting inference mode")
+        #logger.info("STARTING INFERENCE MODE")
         # Check compulsory argument and print which are missing
         if args.input is None or not os.path.exists(args.input):
-            print(f"Compulsory argument --input is missing or the path {args.input} does not exist.")
-            logger.warning(f"Compulsory argument --input is missing or the path {args.input} does not exist.")
-            exit()
+            logger.error(f"Compulsory argument --input is missing or the path {args.input} does not exist.")
+            raise FileNotFoundError(f"Compulsory argument --input is missing or the path {args.input} does not exist.")
         if args.dpi is None:
-            print("Compulsory argument --dpi is missing. Specify the DPI value for the image")
             logger.warning("Compulsory argument --dpi is missing. Specify the DPI value for the image")
-            exit()
+            raise TypeError("Compulsory argument --dpi is missing. Specify the DPI value for the image")
         if args.run_ID is None:
-            print("Compulsory argument --run_ID is missing. Specify the Run ID")
             logger.warning("Compulsory argument --run_ID is missing. Specify the Run ID")
-            exit()
+            raise TypeError("Compulsory argument --run_ID is missing. Specify the Run ID")
 
         # Create a list of already exported jsons to prevent re-running the same image
-        json_l = tuple(f.replace('.json', '') for f in os.listdir(path_out) if f.endswith('.json'))
+        json_l = {f.removesuffix('.json') for f in os.listdir(path_out) if f.endswith('.json')}
 
         input = args.input
         # Check pathin if its folder or file and get file list of either
@@ -272,8 +272,9 @@ def main():
             input_l = (f for f in os.listdir(input) if not f.startswith('.'))
             input_path = input
         else:
-            print("Input argument is neither valid file nor directory")  # input or image?
-            logger.warning("Input argument is neither valid file nor directory")
+            log_and_print("Input argument is neither valid file nor directory", logger, "warning")
+            #print("Input argument is neither valid file nor directory")  # input or image?
+            #logger.warning("Input argument is neither valid file nor directory")
 
         for f in input_l:
             supported_extensions = ('.tif', '.tiff', '.png', '.jpg', '.jpeg')
@@ -281,15 +282,18 @@ def main():
 
             if f.endswith(supported_extensions) and im_name_no_ext in json_l:
                 # print image name first to keep the output consistent
-                print("Processing image: {}".format(f))
-                logger.info("Processing image: {}".format(f))
-                print("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
-                logger.info("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
+                log_and_print("Processing image: {}".format(f), logger, "info")
+                #print("Processing image: {}".format(f))
+                #logger.info("Processing image: {}".format(f))
+                log_and_print("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT", logger, "info")
+                #print("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
+                #logger.info("JSON FILE FOR THIS IMAGE ALREADY EXISTS IN OUTPUT")
             elif f.endswith(supported_extensions) and im_name_no_ext not in json_l:
                 try:
                     image_start_time = time.perf_counter()
-                    print("Processing image: {}".format(f))
-                    logger.info("Processing image: {}".format(f))
+                    log_and_print("Processing image: {}".format(f), logger, "info")
+                    #print("Processing image: {}".format(f))
+                    #logger.info("Processing image: {}".format(f))
                     image_path = os.path.join(input_path, f)
                     im_origin = cv2.imread(image_path)
                     image_name = os.path.splitext(f)[0]  # later for saving files
@@ -298,7 +302,7 @@ def main():
                     detected_mask = sliding_window_detection_multirow(image=im_origin,
                                                             detection_rows=args.n_detection_rows,
                                                             model=model,
-                                                            cracks=cracks_arg,
+                                                            cracks=args.cracks,
                                                             overlap=args.sliding_window_overlap,
                                                             cropUpandDown=args.cropUpandDown)
 
@@ -311,7 +315,7 @@ def main():
 
                     ## CRACKS
                     clean_contours_cracks = None
-                    if cracks_arg:
+                    if args.cracks:
                         detected_mask_cracks = detected_mask[:, :, 1]
                         logger.debug(f"detected_mask_cracks{detected_mask_cracks.shape}")
                         clean_contours_cracks = clean_up_mask(detected_mask_cracks, is_ring=False)
@@ -320,9 +324,11 @@ def main():
                     centerlines_rings = find_centerlines(clean_contours_rings,
                                                          cut_off=0.01, y_length_threshold=im_origin.shape[0]*0.05)
                     logger.debug(f"centerlines_rings type {type(centerlines_rings)}")
+                    finished = False
                     if centerlines_rings is None:
-                        logger.warning("No centerlines were detected")
-                        print("No centerlines were detected")
+                        log_and_print("No centerlines were detected", logger, "warning")
+                        #logger.warning("No centerlines were detected")
+                        #print("No centerlines were detected")
                         centerlines = None
                         measure_points = None
                         finished = False
@@ -331,8 +337,9 @@ def main():
                         # MEASURE RING DISTANCES
                         # if statement to prevent crushing in case centerlines_rings contains only one centerline
                         if centerlines_rings.geom_type == 'LineString':
-                            logger.warning("centerlines_rings contains only one centerline for this image")
-                            print("centerlines_rings contains only one centerline for this image")
+                            log_and_print("centerlines_rings contains only one centerline for this image", logger, "warning")
+                            #logger.warning("centerlines_rings contains only one centerline for this image")
+                            #print("centerlines_rings contains only one centerline for this image")
                             centerlines = [centerlines_rings]  # for visualisation of the result
                             measure_points = None
                             finished = False
@@ -351,34 +358,39 @@ def main():
                             finished = True
 
                     # PRINT DETECTED IMAGES
-                    if args.print_detections == 'True':
+                    if args.print_detections:
                         # Plotting lines is mostly for debugging
                         masked_image = im_origin.copy()
                         logger.debug(f"masked_image.dtype{masked_image.dtype}")
                         masked_image = apply_mask(masked_image, detected_mask_rings, alpha=0.2)
 
-                        if cracks_arg:
+                        if args.cracks:
                             masked_image = apply_mask(masked_image, detected_mask_cracks, alpha=0.3)
 
                         plot_lines(masked_image, centerlines, measure_points,
                                     image_name, path_out)
 
                     if finished:
-                        logger.info("IMAGE FINISHED")
-                        print("IMAGE FINISHED")
+                        log_and_print("IMAGE FINISHED", logger, "info")
+                        #logger.info("IMAGE FINISHED")
+                        #print("IMAGE FINISHED")
                     else:
-                        logger.info("IMAGE WAS NOT FINISHED")
-                        print("IMAGE WAS NOT FINISHED")
+                        log_and_print("IMAGE WAS NOT FINISHED", logger, "info")
+                        #logger.info("IMAGE WAS NOT FINISHED")
+                        #print("IMAGE WAS NOT FINISHED")
 
                     image_finished_time = time.perf_counter()
                     image_run_time = image_finished_time - image_start_time
-                    logger.info(f"Image run time: {image_run_time} s")
+                    log_and_print(f"Image run time: {image_run_time} s", logger, "info")
+                    #logger.info(f"Image run time: {image_run_time} s")
 
                 except Exception as e:
-                    logger.exception(e)
-                    logger.info("IMAGE WAS NOT FINISHED")
-                    print(e)
-                    print("IMAGE WAS NOT FINISHED")
+                    log_and_print(e, logger, "exception")
+                    log_and_print("IMAGE WAS NOT FINISHED", logger, "info")
+                    #logger.exception(e)
+                    #logger.info("IMAGE WAS NOT FINISHED")
+                    #print(e)
+                    #print("IMAGE WAS NOT FINISHED")
 
 if __name__ == '__main__':
     main()
