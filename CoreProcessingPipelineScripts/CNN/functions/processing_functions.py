@@ -39,46 +39,23 @@ def log_and_print(msg, logger, level="info"):
 #######################################################################
 # apply mask to an original image
 ########################################################################
-"""
 def apply_mask(image, mask, alpha=0.5):
-    #Apply the given mask to the image. In BGR
-    color = (0.0, 0.0, 0.7)  # B
-    for c in range(3):
-        image[:, :, c] = np.where(mask == 1,
-                                  image[:, :, c] * (1 - alpha) + alpha * color[c] * 255,
-                                  image[:, :, c])
+    image = image.astype(np.float32)
+    COLORS = np.array([
+        [0, 0, 178.5],  # mask==1
+        [0, 178.5, 0],  # mask==2
+        [178.5, 0, 0]  # mask>2
+    ], dtype=np.float32)
 
-    color = (0.0, 0.7, 0.0)  # G
-    for c in range(3):
-        image[:, :, c] = np.where(mask == 2,
-                                  image[:, :, c] * (1 - alpha) + alpha * color[c] * 255,
-                                  image[:, :, c])
+    mask1 = mask == 1
+    mask2 = mask == 2
+    mask3 = mask > 2
 
-    color = (0.7, 0.0, 0.0)  # R
-    for c in range(3):
-        image[:, :, c] = np.where(mask > 2,
-                                  image[:, :, c] * (1 - alpha) + alpha * color[c] * 255,
-                                  image[:, :, c])
-    return image
-"""
-def apply_mask(image, mask, alpha=0.5):
+    image[mask1] = image[mask1] * (1 - alpha) + alpha * COLORS[0]
+    image[mask2] = image[mask2] * (1 - alpha) + alpha * COLORS[1]
+    image[mask3] = image[mask3] * (1 - alpha) + alpha * COLORS[2]
 
-    lut = np.zeros((np.max(mask)+1, 3), dtype=np.float32)
-    print("lut", lut)
-
-    lut[1] = [0, 0, 178.5]
-    lut[2] = [0, 178.5, 0]
-    lut[3:] = [178.5, 0, 0]
-    print("lut", lut)
-
-    overlay = lut[mask]
-    print("overlay", overlay)
-
-    return (
-        image.astype(np.float32) * (1-alpha)
-        + overlay * alpha
-    ).astype(np.uint8)
-
+    return image.astype(np.uint8)
 ############################################################################################################
 # Converts yolov8 result into binary mask
 ############################################################################################################
