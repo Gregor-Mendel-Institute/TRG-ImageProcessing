@@ -15,7 +15,7 @@ Print the image with mask over it.
 import os
 import cv2
 import ujson
-import skimage
+#import skimage
 import copy
 import numpy as np
 import torch
@@ -124,59 +124,86 @@ def convert_to_binary_mask(result, class_number):
 ############################################################################################################
 # Sliding window detection with rotation of each part of image by 90 and 45 degrees and combining the output
 ############################################################################################################
+def _rotate_image(image, angle):
+    """
+    Rotate image by arbitrary angle while preserving all pixels.
+    Parameters:
+    image : ndarray
+    angle : float
+    Returns: ndarray
+    """
+
+    h, w = image.shape[:2]
+    center = (w / 2, h / 2)
+
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+
+    cos, sin = abs(M[0, 0]), abs(M[0, 1])
+
+    new_w, new_h = int(h * sin + w * cos), int(h * cos + w * sin)
+
+    M[0, 2] += new_w / 2 - center[0]
+    M[1, 2] += new_h / 2 - center[1]
+
+    return cv2.warpAffine(
+        image,
+        M,
+        (new_w, new_h),
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=0,
+    )
+
 def _crop_and_rotate(im_padded, rl, row_height, i):
     cropped_part = im_padded[rl:rl + row_height, i:i + row_height]
 
-    ## Prepare the rotated images 90, 45
-    cropped_part_45 = skimage.transform.rotate(cropped_part, angle=45,
-                                               preserve_range=True, resize=True).astype(np.uint8)
+    ## Prepare the rotated image 45
+    cropped_part_45 = _rotate_image(cropped_part, 45)
+    #cropped_part_45 = skimage.transform.rotate(cropped_part, angle=45,
+    #                                           preserve_range=True, resize=True).astype(np.uint8)
 
-    return [cropped_part, np.rot90(cropped_part, k=1), cropped_part_45]
+    return (cropped_part, np.rot90(cropped_part, k=1), cropped_part_45)
 
 def _rotate_masks_back(results, row_height, class_number):
-    ## create flattened binary masks for every detected image and given class
-    r_mask = np.ascontiguousarray(convert_to_binary_mask(results[0], class_number), dtype='int8')  # 0 degree mask
-    r1_mask = convert_to_binary_mask(results[1], class_number)  # 90 degree mask
-    r2_mask = convert_to_binary_mask(results[2], class_number)  # 45 degree mask
+    ## create flattened binary masks for every detected image and given class and sum them up
+    #getting r_mask
+    combined_mask = np.ascontiguousarray(convert_to_binary_mask(results[0], class_number), dtype='int8')  # 0 degree mask
 
-    ## Rotate maskr1 masks back
-    r1_mask_back = np.ascontiguousarray(np.rot90(r1_mask, k=-1), dtype='int8')
 
-    # Rotate back and crop to the right size. Beware different dimensions!!!
-    imheight2 = r2_mask.shape[0]
-    r2_mask_back = skimage.transform.rotate(r2_mask, angle=-45, resize=False)
-    to_crop = int((imheight2 - row_height) / 2)
-    r2_mask_back_cropped = np.ascontiguousarray(r2_mask_back[to_crop:(to_crop + int(row_height)), to_crop:(to_crop + int(row_height))], dtype='int8')
+    ## Rotate maskr1 masks back and add to combined
+    combined_mask += np.ascontiguousarray(np.rot90(convert_to_binary_mask(results[1], class_number), k=-1), dtype='int8')
 
-    logger.debug(f"r_mask: {r_mask.shape}")
-    logger.debug(f"r1_mask_back: {r1_mask_back.shape}")
-    logger.debug(f"r2_mask_back_cropped: {r2_mask_back_cropped.shape}")
+    # Rotate back and crop r2_mask to the right size. Beware different dimensions!!!
+    r2_mask_back = _rotate_image(convert_to_binary_mask(results[2], class_number), -45)
+    #r2_mask_back = skimage.transform.rotate(convert_to_binary_mask(results[2], class_number), angle=-45, resize=False)
+    imheight = r2_mask_back.shape[0]
+    to_crop = (imheight - row_height) // 2
+    combined_mask += np.ascontiguousarray(r2_mask_back[to_crop:(to_crop + int(row_height)), to_crop:(to_crop + int(row_height))], dtype='int8')
 
-    return [r_mask, r1_mask_back, r2_mask_back_cropped]
+    logger.debug(f"combined_mask shape: {combined_mask.shape}")
+
+    return combined_mask
 
 def _concat_top_bottom(to_crop, imgwidth_origin, the_mask_clean):
     to_concatenate = np.zeros(shape=(to_crop, imgwidth_origin, the_mask_clean.shape[2]), dtype='int8')
     return np.concatenate((to_concatenate, the_mask_clean, to_concatenate), axis=0)
 
 def _clean_and_combine(combined_masks_per_class, binary_masks_back, class_number, rl, i, px_to_crop, row_height):
-    combined_mask_section = binary_masks_back[0] + binary_masks_back[1] + binary_masks_back[2]
+    #combined_mask_section = binary_masks_back[0] + binary_masks_back[1] + binary_masks_back[2]
 
-    logger.debug(f"combined_mask_section.shape{combined_mask_section.shape}")
+    logger.debug(f"combined_mask_section.shape{binary_masks_back.shape}")
     # Crop the edges of detected square to get cleaner mask
     #section_cleaned_edges = _numba_clean(combined_mask_section, px_to_crop)
     if px_to_crop == 0:
-        section_cleaned_edges = combined_mask_section
+        section_cleaned_edges = binary_masks_back
     else:
-        section_cleaned_edges = np.zeros(shape=combined_mask_section.shape, dtype='int8')
-        section_cleaned_edges[px_to_crop:-px_to_crop, px_to_crop:-px_to_crop] = combined_mask_section[
+        section_cleaned_edges = np.zeros(shape=binary_masks_back.shape, dtype='int8')
+        section_cleaned_edges[px_to_crop:-px_to_crop, px_to_crop:-px_to_crop] = binary_masks_back[
                                                                                 px_to_crop:-px_to_crop,
                                                                                 px_to_crop:-px_to_crop]
 
     logger.debug(f"section_cleaned_edges.shape{section_cleaned_edges.shape}")
-    combined_masks_per_class[rl:rl + row_height, i:i + row_height, class_number] = combined_masks_per_class[
-                                                                                   rl:rl + row_height,
-                                                                                   i:i + row_height,
-                                                                                   class_number] + section_cleaned_edges
+    combined_masks_per_class[rl:rl + row_height, i:i + row_height, class_number] += section_cleaned_edges
 
     return combined_masks_per_class
 
@@ -238,10 +265,7 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
     looping_list = [i for i in looping_range if i < imgwidth-row_height]  # before the condition was int(row_height-(row_height*overlap)) + imgwidth_origin
     logger.debug(f'looping_list: {looping_list}')
 
-    if cracks:
-        classes = (0,1)
-    else:
-        classes = (0,)
+    classes = (0, 1) if cracks else (0,)
 
     combined_masks_per_class = np.zeros(shape=(imgheight, imgwidth, len(classes)), dtype='int8') # combine all the partial masks in the final size of full tiff
     logger.debug(f"combined_masks_per_class.shape: {combined_masks_per_class.shape}")
@@ -250,15 +274,9 @@ def sliding_window_detection_multirow(image, detection_rows=1, model=None, crack
         for i in looping_list:  # defines the slide value
             logger.debug(f"i: {i}")
 
-            # Run detection on the cropped part of the image
-            ## Prepare the crop and rotated images 90, 45
-            prepared_crop_rotations = _crop_and_rotate(im_padded, rl, row_height, i)
-            logger.debug(f"cropped_part, i, i+imheight: {prepared_crop_rotations[0].shape}, {i}, {i + row_height}")
-            logger.debug(f"cropped_part.dtype: {prepared_crop_rotations[0].dtype}")  # should be uint8
-
-            ## Run the detection on all 3 at the same time
+            ## Run the detection on all 3 rotations at the same time
             logger.debug("CNN detection starts")
-            results = model(prepared_crop_rotations)
+            results = model(_crop_and_rotate(im_padded, rl, row_height, i))
             logger.debug("CNN detection finished")
 
             for class_number in classes:
@@ -372,14 +390,15 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
         logger.debug(f"ring_contour: {i}")
 
         try:
-            cline = pygeoops.centerline(polygon, densify_distance=-0.8, min_branch_length=-10, simplifytolerance=-0.20, extend= False)
+            cline = pygeoops.centerline(polygon, densify_distance=-0.1, min_branch_length=-10, simplifytolerance=-0.20, extend=False)
             # min_branch_length=-10 will filter out all branches shorter than 10 times polygon width. In problems when cline is multilinstring its because of branches.
             # the value does not affect performance only if its 0 because its probably skipping section of code
             # simplifytolerance is simplifying the line with 0 no simplification and -0.20 seems to be reasonable. with no simplification the lines are too wigly
             # seems it does not affect performance
             # densify_distance=-1 segmentize the polygon sections longer then one average polygon width. The -1 seems to work well at least for now.
-            # higher value means less points and worse line or none
+            # higher value means less points and worse line or none (-0.8 was also a good value) current testing -0.1 is the best
             # affects perfomance a lot
+            # extent was False from the begining but do not have any notes why
             logger.debug(f"cline: {cline}")
             if cline.geom_type == 'LineString':
                 centerlines.append(cline)
