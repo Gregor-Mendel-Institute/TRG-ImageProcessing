@@ -22,6 +22,7 @@ import torch
 import matplotlib.pyplot as plt
 plt.set_loglevel (level = 'warning')
 import shapely
+from shapely import LineString, MultiLineString, GeometryCollection, Polygon, Point
 from shapely.ops import nearest_points
 import scipy
 import pygeoops
@@ -306,14 +307,10 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True, simplify_tolerance=0):
     logger.info("clean_up_mask START")
     logger.info(f'is_ring: {is_ring}')
     # Make the mask binary
-    binary_mask = np.where(mask >= min_mask_overlap, 255, 0) # this part can be cleaned to remove some missdetections setting condition for higher value
-    #print("binary_mask shape", binary_mask.shape)
-    #plt.show()
-    #type(binary_mask)
-    uint8binary = binary_mask.astype(np.uint8).copy()
+    uint8binary = (mask >= min_mask_overlap).astype(np.uint8) * 255
 
     # Extract contour coordinates from binary mask
-    contours, _ = cv2.findContours(uint8binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    contours, _ = cv2.findContours(uint8binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     #print('contour_shape:', len(contours))
     logger.debug(f"Raw_contours: {len(contours)}")
 
@@ -329,22 +326,23 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True, simplify_tolerance=0):
     contours_filtered = []
     x_mins = []
     for contour in contours:
-        x_list = [x for [[x, _]] in contour]
-        x_min = np.min(x_list)
+        x_min = contour[:, 0, 0].min()
+        logger.debug(f"contour.shape: {contour.shape}")
         # Check the number of points as Polygon requires at least 4
-        n_points = len(x_list)
+        n_points = contour.shape[0]
+        #print("n_points", n_points)
         logger.debug(f"Contour has {n_points} points")
         # Remove those that are too short
         dim_max = max(cv2.minAreaRect(contour)[1])
         if dim_max > min_size_threshold and n_points >= 4:
             # Convert in shapely polygon
-            cont_polygon = shapely.geometry.Polygon([(x, y) for [[x, y]] in contour])
+            cont_polygon = shapely.geometry.Polygon(contour[:, 0, :])
             simpl_cont_polygon = cont_polygon.simplify(tolerance=simplify_tolerance, preserve_topology=True)
             # Check if polygons are bigger than 0 and valid if not try to convert
             if simpl_cont_polygon.area > 0:
                 logger.debug(f"Contour area > 0")
 
-                if shapely.is_valid(simpl_cont_polygon) and simpl_cont_polygon.geom_type == 'Polygon':
+                if shapely.is_valid(simpl_cont_polygon) and isinstance(simpl_cont_polygon, Polygon):
                     logger.debug(f"Geometry is valid and a Polygon")
                     contours_filtered.append(simpl_cont_polygon)
                     x_mins.append(x_min)
@@ -356,21 +354,20 @@ def clean_up_mask(mask, min_mask_overlap=3, is_ring=True, simplify_tolerance=0):
                     # If multiple created get the one with biggest area.
                     # Assuming some miniture selfintersections around pixels at the edges.
                     # Sometimes there are nested multipolygons hance the while loop
-                    while not cont_val.geom_type == 'Polygon':
+                    while not isinstance(cont_val, Polygon):
                         cont_val = max(cont_val.geoms, key=lambda a: a.area)
 
-                    if cont_val.geom_type == 'Polygon':
+                    if isinstance(cont_val, Polygon):
                         contours_filtered.append(cont_val)
                         x_mins.append(x_min)
                         logger.debug(f"x_mins: {x_mins}")
                     else:
-                        logger.warning(f'Contour not appended because it is {biggest_contour.geom_type} and expect Polygon')
+                        logger.warning(f'Contour not appended because it is {cont_val.geom_type} and expect Polygon')
 
             #print("contour shape", contours[i].shape
     logger.debug(f"contours_filtered_n: {len(contours_filtered)}")
     # Order contours by x, e.g. from left to right
-    contourszip = zip(x_mins, contours_filtered)
-    contours_out = tuple(contour for _, contour in sorted(contourszip, key=itemgetter(0)))
+    contours_out = tuple(contour for _, contour in sorted(zip(x_mins, contours_filtered), key=itemgetter(0)))
 
     logger.info("clean_up_mask FINISH")
     # Returns filtered and ordered contours in a form of tuple of shapely polygons
@@ -400,18 +397,16 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
             # affects perfomance a lot
             # extent was False from the begining but do not have any notes why
             logger.debug(f"cline: {cline}")
-            if cline.geom_type == 'LineString':
-                centerlines.append(cline)
-                logger.debug(
-                    f'Cline min x,y: {min(cline.coords.xy[0])}, {min(cline.coords.xy[1])} and max x,y: {max(cline.coords.xy[0])}, {max(cline.coords.xy[1])}')
-            elif cline.geom_type == 'MultiLineString':
+            if isinstance(cline, MultiLineString):
                 cline = max(cline.geoms, key=lambda a: a.length)
-                centerlines.append(cline)
-                logger.debug(
-                    f'Cline min x,y: {min(cline.coords.xy[0])}, {min(cline.coords.xy[1])} and max x,y: {max(cline.coords.xy[0])}, {max(cline.coords.xy[1])}')
-            else:
+            elif not isinstance(cline, LineString):
                 logger.warning(f'cline in neither LineString nor MultilineString: {cline}')
                 continue
+
+            centerlines.append(cline)
+            if logger.isEnabledFor(logging.DEBUG):
+                minx, miny, maxx, maxy = cline.bounds
+                logger.debug(f"Cline min x,y: {minx}, {miny} and max x,y: {maxx}, {maxy}")
 
         except Exception as e:
             log_and_print(f"Centerline of the ring {i} failed with exception {e}", logger, "warning")
@@ -419,26 +414,14 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
             #print(f'Centerline of the ring {i} failed with exception {e}')
             continue
 
-        #xc,yc = cline.coords.xy
-        #plt.plot(xc,yc,'g')
-        #print('cline done')
-        #centerlines.append(cline)
-
     # test if centerline list contains something and if not abort and give a message
     if not centerlines: # empty list is False
         log_and_print("NO LINES LEFT AFTER CLEANING", logger, "warning")
         log_and_print("One reason could be that your images have too much background."
                     "Ideally, there should not be too much background above and below the core."
                     "Try to crop tighter.", logger, "warning")
-        #print("NO LINES LEFT AFTER CLEANING")
-        #print("One reason could be that your images have too much background."
-                    #"Ideally, there should not be too much background above and below the core."
-                    #"Try to crop tighter.")
-        #logger.warning("NO LINES LEFT AFTER CLEANING")
-        #logger.warning("One reason could be that your images have too much background."
-                       #"Ideally, there should not be too much background above and below the core."
-                       #"Try to crop tighter.")
         return
+
     else:
         logger.info(f'Filtered_centerlines: {len(centerlines)}')
         ## Cut off upper and lower part of detected lines. It should help with problems of horizontal ends of detections
@@ -454,12 +437,17 @@ def find_centerlines(clean_contours, cut_off=0.01, y_length_threshold=100, simpl
         #print('minx, miny, maxx, maxy after', minx, miny, maxx, maxy)
         # Remove too short lines based on the threshold and simplify the number of points in order to reduce final size
 
-        if Multi_centerlines_cropped.geom_type == 'MultiLineString':
+        if isinstance(Multi_centerlines_cropped, MultiLineString):
             Centerlines_clean = [l.simplify(tolerance=simplification_tolerance, preserve_topology=False) for l in Multi_centerlines_cropped.geoms
                     if (l.bounds[3]-l.bounds[1]) > y_length_threshold] # _, miny, _, maxy = cline.bounds; the tolerance is in pixels
             Centerlines_clean_out = shapely.geometry.MultiLineString(Centerlines_clean)
-        elif Multi_centerlines_cropped.geom_type == 'LineString':
+        elif isinstance(Multi_centerlines_cropped, LineString):
             Centerlines_clean_out = Multi_centerlines_cropped.simplify(tolerance=simplification_tolerance, preserve_topology=False)
+        else:
+            logger.warning(f"Unexpected geometry after clipping: {Multi_centerlines_cropped.geom_type}")
+            return
+
+
 
     logger.info("find_centerlines FINISH")
     return Centerlines_clean_out
@@ -509,46 +497,57 @@ def _find_ring_slopes(Multi_centerlines, imgheight, imgwidth):
         # get lines inside of the frame
         intersection = Multi_centerlines.intersection(frame_poly)
         logger.debug(f'intersection type prior: {intersection.geom_type}')
-        if intersection.is_empty or intersection.geom_type == 'Point':  # prevents crushing if segment is empty
+        if intersection.is_empty or isinstance(intersection, Point):  # prevents crushing if segment is empty
             logger.info("Intersection is empty or contains only one point")
             continue
 
         else:
-            if intersection.geom_type == 'LineString':
-                logger.debug('attempt to convert linestring to multilinestring')
+            if isinstance(intersection, LineString):
+                logger.debug('Converting LineString to MultiLinestring')
                 intersection = shapely.geometry.MultiLineString([intersection])
 
             logger.debug(f'intersection type after: {intersection.geom_type}')
             slopes = []
-            for l in range(len(intersection.geoms)):
-                x, y = intersection.geoms[l].coords.xy
-                x_dif = abs(x[-1] - x[0])
+            for line in intersection.geoms:
+                #x, y = line.coords.xy
+                minx, _, maxx, _ = line.bounds
+                x_dif = maxx - minx
                 # print('loop number and xy coords:',i, l, x, y)
-                if x_dif < frame_width * .20:  # This can be adjusted now it should skip this frame if line is less then 20% of the frame width
+                if x_dif < frame_width * .20:  # This can be adjusted now it should skip this frame if line is less than 20% of the frame width
                     # print(i, 'th is too short')
                     continue
                 else:
                     # print(i, "th frame is complex")
-                    slope, _, _, _, _ = scipy.stats.linregress(x, y)
-                    # logger.info("slope:{}".format(slope))
+                    #slope, _, _, _, _ = scipy.stats.linregress(x, y)
+                    #print("slope", slope)
+                    # new slope
+                    coords = line.coords
 
-                    # print('linestring_x',x_int)
-                    # plt.plot(x_int, y_int)
+                    x0, y0 = coords[0]
+                    x1, y1 = coords[-1]
+
+                    dx = x1 - x0
+                    if abs(dx) < 1e-6:
+                        logger.debug(f'dx {dx}')
+                        continue
+
+                    slope = (y1 - y0) / dx
+                    #print("slope2", slope2)
+
                 slopes.append(slope)
 
-            # print('slopes before mean', slopes)
-            mean_slopes = np.mean(slopes)
-            # print('mean_slopes', mean_slopes)
-            if np.isnan(mean_slopes):
+            if not slopes:
                 continue
+
+            mean_slopes = np.mean(slopes)
+
+            if mean_slopes > 0 and mean_slopes < 2:
+                PlusMinus = 1
+            elif mean_slopes < 0 and mean_slopes > -2:
+                PlusMinus = 0
             else:
-                if mean_slopes > 0 and mean_slopes < 2:
-                    PlusMinus = 1
-                elif mean_slopes < 0 and mean_slopes > -2:
-                    PlusMinus = 0
-                else:
-                    PlusMinus = []
-                PlusMinus_index.append([PlusMinus, cut_point])
+                PlusMinus = []
+            PlusMinus_index.append([PlusMinus, cut_point])
 
     return PlusMinus_index
 
@@ -559,7 +558,7 @@ def _find_cutting_point(PlusMinus_index, imgheight):
     PlusMinus = [x for x, _ in PlusMinus_index]
     for i in range(len(PlusMinus_index)):
         pm_seq = PlusMinus[i:i + len(test_seq1)]
-        if pm_seq != test_seq1 and pm_seq != test_seq2:
+        if pm_seq not in (test_seq1, test_seq2):
             continue
         if cutting_point is not None:
             log_and_print("Several cutting points identified, needs to be investigated!", logger, "warning")
@@ -570,24 +569,60 @@ def _find_cutting_point(PlusMinus_index, imgheight):
         # if cutting_point is immediately at the beginning of the sample ignore it
         if cutting_point < imgheight * 2:  # if cutting point is within 2*image height it will be ignored
             logger.debug("cutting point is at the beginning of the image and will be ignored")
+            cutting_point = None
 
     return cutting_point
 
 def _measure_distances(Multi_centerlines):
     # Reorder centerlines by x_middle
+    """
     x_mins, x_maxs = [geom.bounds[0] for geom in Multi_centerlines.geoms], [geom.bounds[2] for geom in
                                                                              Multi_centerlines.geoms]
 
     x_middle = np.array(x_mins) + (np.array(x_maxs) - np.array(x_mins)) / 2
-    contourszip = zip(x_middle, Multi_centerlines.geoms)
+    """
+    x_middle = [(geom.bounds[0] + geom.bounds[2]) / 2 for geom in Multi_centerlines.geoms]
 
-    centerlines = [x for _, x in sorted(contourszip, key=itemgetter(0))]
+    #contourszip = zip(x_middle, Multi_centerlines.geoms)
+
+    centerlines = [x for _, x in sorted(zip(x_middle, Multi_centerlines.geoms), key=itemgetter(0))]
     Multi_centerlines = shapely.geometry.MultiLineString(centerlines)
     # print('ordered centerlines2:', Multi_centerlines2.geom_type)
     measure_points = tuple(nearest_points(Multi_centerlines.geoms[i], Multi_centerlines.geoms[i + 1]) for
                             i in range(len(Multi_centerlines.geoms) - 1))
 
     return Multi_centerlines, measure_points
+
+def _cut_sections_and_measure(Multi_centerlines, cutting_point, imgheight, before_cutting_point=True):
+    # Output is the _nearest_distances_output: Multi_centerlines, measure_points
+
+    if before_cutting_point:
+        cut_frame = shapely.geometry.box(0, 0, cutting_point, imgheight)
+    else:
+        cut_frame = shapely.geometry.box(cutting_point, 0, imgwidth, imgheight)
+
+    geom = Multi_centerlines.intersection(cut_frame)
+
+    if isinstance(geom, LineString):
+        return None
+
+    elif isinstance(geom, MultiLineString):
+        return _measure_distances(geom)
+
+    elif isinstance(geom, GeometryCollection):
+
+        lines = []
+        for g in geom.geoms:
+            if isinstance(g, LineString):
+                lines.append(g)
+            elif isinstance(g, MultiLineString):
+                lines.extend(g.geoms)
+
+        if lines and len(lines) > 1:
+            return _measure_distances(shapely.geometry.MultiLineString(lines))
+
+    return None
+
 
 def measure_contours(Multi_centerlines, image):
     logger.info("measure_contours START")
@@ -602,15 +637,29 @@ def measure_contours(Multi_centerlines, image):
 
     # Split sequence where it is crossing the middle
     if cutting_point:
-
         logger.info(f'Core sample crosses the center and is cut at: {cutting_point}')
+        """
         cut_frame1_poly = shapely.geometry.box(0, 0, cutting_point, imgheight)
         Multi_centerlines1 = Multi_centerlines.intersection(cut_frame1_poly)
         cut_frame2_poly = shapely.geometry.box(cutting_point, 0, imgwidth, imgheight)
         Multi_centerlines2 = Multi_centerlines.intersection(cut_frame2_poly)
+        """
+        # Part before pith
+        Multi_centerlines1, measure_points1 = _cut_sections_and_measure(Multi_centerlines, cutting_point, imgheight, True)
+        # Part after pith
+        Multi_centerlines2, measure_points2 = _cut_sections_and_measure(Multi_centerlines, cutting_point, imgheight, False)
 
-        Multi_centerlines1, measure_points1 = _measure_distances(Multi_centerlines1)
+        if Multi_centerlines1 is None:
+            log_and_print("Multi_centerlines1 is empty", "warning")
+            return None
+        elif Multi_centerlines2 is None:
+            logger.info("Multi_centerlines2, the part after cutting point, is only one line")
+            measure_points = (measure_points1,)
+            Multi_centerlines = (Multi_centerlines1,)
+        else:
+            return (Multi_centerlines1, Multi_centerlines2), (measure_points1, measure_points2), cutting_point
 
+        """
         if Multi_centerlines2.geom_type=='LineString':
             logger.info("Multi_centerlines2, the part after cutting point, is only one line")
             measure_points = (measure_points1,)
@@ -621,6 +670,7 @@ def measure_contours(Multi_centerlines, image):
 
             measure_points = (measure_points1, measure_points2)
             Multi_centerlines = (Multi_centerlines1, Multi_centerlines2)
+        """
 
         return Multi_centerlines, measure_points, cutting_point
 
@@ -812,7 +862,7 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out, plot_dpi
         for l in range(len(centerlines)):
             # define centerlines1 as a linestring in both cases if centerlines is Linestring or multilinestring
             logger.debug(f'centerlines[l].geom_type: {centerlines[l].geom_type}')
-            if centerlines[l].geom_type == 'MultiLineString':
+            if isinstance(centerlines[l], MultiLineString):
                 centerlines1 = centerlines[l].geoms
             else:
                 centerlines1 = centerlines
@@ -873,7 +923,7 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
         for geom in input_vars[v].geoms:
             logger.debug(f"geom {geom}")
             logger.debug(f'geom type: {geom.geom_type}')
-            if geom.geom_type == 'Polygon':
+            if isinstance(geom, Polygon):
                 geom = geom.exterior
             x_list, y_list = geom.coords.xy
             x_list = list(map(int, x_list))
