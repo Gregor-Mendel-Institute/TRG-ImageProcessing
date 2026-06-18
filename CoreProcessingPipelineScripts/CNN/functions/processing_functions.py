@@ -24,7 +24,7 @@ plt.set_loglevel (level = 'warning')
 import shapely
 from shapely import LineString, MultiLineString, GeometryCollection, Polygon, Point
 from shapely.ops import nearest_points
-import scipy
+#import scipy
 import pygeoops
 from datetime import datetime
 from operator import itemgetter
@@ -623,7 +623,6 @@ def _cut_sections_and_measure(Multi_centerlines, cutting_point, imgheight, befor
 
     return None
 
-
 def measure_contours(Multi_centerlines, image):
     logger.info("measure_contours START")
     imgheight, imgwidth = image.shape[:2]
@@ -689,25 +688,30 @@ def measure_contours(Multi_centerlines, image):
 def plot_contours(image, contours, file_name, path_out, labels=None):
     # plot image with extracted contours to facilitate debuging
     logger.info("plot_contours START")
-    image_copy = copy.deepcopy(image)
+    image_copy = copy.copy(image)
     contours = tuple(contours)
     if labels:
         color = [(0, 255, 0), (255, 0, 0)]
         for l in labels:
             contours_r = (contour for i, contour in enumerate(contours) if labels[i] == l)
             for contour in contours_r:
-                cv2.drawContours(image_copy, [contour], -1, color[int(l)], 1)
+                cv2.drawContours(image_copy, [contour], -1, color[int(l)], 2)
 
     else:
         for contour in contours:
-            cv2.drawContours(image_copy, [contour], -1, (0, 255, 0), 1)
+            cv2.drawContours(image_copy, [contour], -1, (0, 255, 0), 2)
 
     logger.info("Plotting output as png")
     export_path = os.path.join(path_out, 'pngs')
-    if not os.path.exists(export_path):
-        os.makedirs(export_path)
+
+    # checks and creates if does not exists
+    os.makedirs(export_path, exist_ok=True)
 
     f = os.path.splitext(file_name)[0] + '.png' # can not use replace as original extension can be .tif, or .tiff or .png...
+    # test simpler way of saving
+    cv2.imwrite(os.path.join(export_path, f), image_copy)
+
+    """
     # Save images at original size unles they are bigger then px in  length 30000. Should improve diagnostics on the images
     imgheight, imgwidth = image_copy.shape[:2]
     # since I use cv2 to load image I need to convert it to RGB before plotting with matplotlib
@@ -727,6 +731,7 @@ def plot_contours(image, contours, file_name, path_out, labels=None):
         plt.imshow(image_copy)
     plt.savefig(os.path.join(export_path, f), bbox_inches='tight', pad_inches=0)
     plt.close()
+    """
     logger.info("plot_contours FINISH")
 #######################################################################
 # Extract annotations from yolov8 format text files
@@ -742,17 +747,33 @@ def load_annot(annot_path, im_size):
         for line in f:
             if len(line) < 3:  # it has to be much more to be valid points but in my case its sometimes a space in a row
                 continue
-            label, annot_list = line.split()[0], line.split()[1:]
+            splt_parts = line.split()
+            label, annot_list = splt_parts[0], splt_parts[1:]
             labels.append(label)
             annot_list = list(map(float, annot_list))  # convert x,y from string to a value
             #annot_list = [int(i*im_size) for i in annot_list]
+
+            """
             annot_list_xy = []
             i = 0
             while (i < len(annot_list)):
                 # append in the coordinates as a [x,y] plus convert them to pixels
                 annot_list_xy.append([annot_list[i]*im_size[1], annot_list[i + 1]*im_size[0]])
                 i += 2
+            """
+            """
+            # This was another option instead of while loop
+            annot_list_xy = [[x * im_size[1], y * im_size[0]] for x, y in zip(annot_list[::2], annot_list[1::2])]
             contours.append(np.array(annot_list_xy, dtype=np.int32))
+            """
+            # the third might avoid for loop entirely and rely on numpy only
+            coords = np.asarray(annot_list, dtype=np.float32).reshape(-1, 2)
+
+            coords[:, 0] *= im_size[1]
+            coords[:, 1] *= im_size[0]
+
+            contours.append(coords.astype(np.int32))
+
     logger.info("load_annot FINISH")
     return contours, labels
 ##########################################################################################
@@ -763,12 +784,14 @@ def check_annot_folder(folder_path):
     out_path = os.path.join(folder_path, "annot_check")
     log_and_print(f"folder_path: {folder_path}", logger, "info")
     #print("folder_path", folder_path )
-    if not os.path.exists(out_path):
-        os.makedirs(out_path)
+
+    os.makedirs(out_path, exist_ok=True)
+
     supported_extensions = ('.tif', '.tiff', '.png', '.jpg', '.jpeg')
     im_list = (f for f in os.listdir(folder_path) if f.endswith(supported_extensions) and not f.startswith('.'))
-    labels_all, no_annot_file, no_annot_im = [], [], []
+    no_annot_file, no_annot_im = [], []
     ok_im_count, im_with_ring, im_with_crack, im_with_both = 0, 0, 0, 0
+    ring_n, crack_n = 0, 0
 
     for im_name in im_list:
         log_and_print(f"im_name: {im_name}", logger, "info")
@@ -791,20 +814,33 @@ def check_annot_folder(folder_path):
             #print(f"Image {im_name} has no annotations")
             continue
 
-        labels_all.extend(labels)
-        ok_im_count += 1
-        if '0' in labels and '1' in labels:
-            im_with_both += 1
-        elif '0' in labels and '1' not in labels:
-            im_with_ring += 1
-        elif '0' not in labels and '1' in labels:
-            im_with_crack += 1
+        ring_n += labels.count('0')
+        crack_n += labels.count('1')
 
+        ok_im_count += 1
+        label_set = set(labels)
+        has_ring = '0' in label_set
+        has_crack = '1' in label_set
+
+        if has_ring and has_crack:
+            im_with_both += 1
+        elif has_ring:
+            im_with_ring += 1
+        elif has_crack:
+            im_with_crack += 1
+        """
+        if '0' in set_labels and '1' in set_labels:
+            im_with_both += 1
+        elif '0' in set_labels and '1' not in set_labels:
+            im_with_ring += 1
+        elif '0' not in set_labels and '1' in set_labels:
+            im_with_crack += 1
+        """
         plot_contours(image=im, contours=contours, labels=labels, file_name=im_name, path_out=out_path)
 
     annot_info_file = os.path.join(out_path, "annot_info.txt")
-    ring_n = len(list(filter(lambda x: x == '0', labels_all)))
-    crack_n = len(list(filter(lambda x: x == '1', labels_all)))
+    #log_and_print(f"ring_n: {ring_n}", "info")
+    #log_and_print(f"crack_n: {crack_n}", "info")
 
     with open(annot_info_file, 'w') as f:
         f.write(f'Folder: {folder_path} \n'
@@ -820,10 +856,8 @@ def check_annot_folder(folder_path):
 #######################################################################
 def check_annot_dataset(dataset_path):
     logger.info("check_annot_dataset START")
-    folders = ("train", "val")
-    for folder in folders:
-        folder_path = os.path.join(dataset_path, folder)
-        check_annot_folder(folder_path)
+    for folder in ("train", "val"):
+        check_annot_folder(os.path.join(dataset_path, folder))
     logger.info("check_annot_dataset FINISH")
 #######################################################################
 # Plot predicted lines and points of measurements to visually assess
@@ -832,9 +866,10 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out, plot_dpi
     # line_width bigger means thicker line
     # Create pngs folder in output path
     logger.info("plot_lines START")
+    MAX_WIDTH = 30000
     export_path = os.path.join(path_out, 'pngs')
-    if not os.path.exists(export_path):
-        os.makedirs(export_path)
+
+    os.makedirs(export_path, exist_ok=True)
 
     f = file_name + '.png'
     # Save images at original size unles they are bigger in px than length 30000. Should improve diagnostics on the images
@@ -844,14 +879,14 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out, plot_dpi
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     #print('imgheight, imgwidth', imgheight, imgwidth)
 
-    if imgwidth < 30000:
+    if imgwidth < MAX_WIDTH:
         plt.figure(figsize=(imgwidth/plot_dpi, 2*(imgheight/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
-        linewidth = (imgheight/1000)*line_width   # looks very variable depending on the image resolution whne set as a constant
+        linewidth = (imgheight/1000)*line_width   # looks very variable depending on the image resolution when set as a constant
     else:  # adjust image size if it`s exceeding 30000 pixels to 30000
-        resized_height = imgheight*(30000/imgwidth)
-        plt.figure(figsize=(30000/plot_dpi, 2*(resized_height/plot_dpi)), dpi=plot_dpi)
+        resized_height = imgheight*(MAX_WIDTH/imgwidth)
+        plt.figure(figsize=(MAX_WIDTH/plot_dpi, 2*(resized_height/plot_dpi)), dpi=plot_dpi)
         #fig, (ax1, ax2) = plt.subplots(2)
         plt.imshow(image)
         linewidth = (resized_height/1000)*line_width  # looks very variable depending on the image resolution when set as a constant
@@ -861,9 +896,10 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out, plot_dpi
         color = ['g', 'b']
         for l in range(len(centerlines)):
             # define centerlines1 as a linestring in both cases if centerlines is Linestring or multilinestring
-            logger.debug(f'centerlines[l].geom_type: {centerlines[l].geom_type}')
-            if isinstance(centerlines[l], MultiLineString):
-                centerlines1 = centerlines[l].geoms
+            geom = centerlines[l]
+            logger.debug(f'centerlines[l].geom_type: {geom.geom_type}')
+            if isinstance(geom, MultiLineString):
+                centerlines1 = geom.geoms
             else:
                 centerlines1 = centerlines
             logger.debug(f'centerlines1: {centerlines1}')
@@ -880,7 +916,6 @@ def plot_lines(image, centerlines, measure_points, file_name, path_out, plot_dpi
                     if len(measure_points1) == 0:  # Precaution in case the first part of measure points is empty
                         continue
 
-                if measure_points:
                     if i < len(measure_points1):  # there is one less measure points than lines
                         points = measure_points1[i]
                         xp, yp = points[0].coords.xy
@@ -913,33 +948,39 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
         logger.debug(f'clean_contours_rings length: {len(clean_contours_rings)}')
         logger.debug(f'clean_contours_cracks length: {len(clean_contours_cracks)}')
         input_vars = (centerlines_rings, shapely.multipolygons(clean_contours_rings), shapely.multipolygons(clean_contours_cracks))
+
     logger.debug(f'input_vars length: {len(input_vars)}')
     json_names = ('ring_line', 'ring_polygon', 'crack_polygon')
-    for v in range(len(input_vars)):
-        logger.debug(f"v {v}")
-        logger.debug(f'json_name: {json_names[v]}')
+    predictions = out_json[image_name]['predictions'] # catch for faster assigning in the loop
+    for json_name, input_var in zip(json_names, input_vars):
+        logger.debug(f"input_var {input_var}")
+        logger.debug(f'json_name: {json_name}')
         coords = {}
 
-        for geom in input_vars[v].geoms:
+        for geom in input_var.geoms:
             logger.debug(f"geom {geom}")
             logger.debug(f'geom type: {geom.geom_type}')
             if isinstance(geom, Polygon):
                 geom = geom.exterior
             x_list, y_list = geom.coords.xy
-            x_list = list(map(int, x_list))
-            y_list = list(map(int, y_list))
+            #x_list = list(map(int, x_list))
+            #y_list = list(map(int, y_list))
+            x_list = np.asarray(x_list, dtype=np.int32).tolist()
+            y_list = np.asarray(y_list, dtype=np.int32).tolist()
+
             #print('x_list', x_list)
             # now add everything in the json
             x_min = min(x_list)
             the_coord = str(x_min) + '_' + 'coords'
             logger.debug(f"the_coord: {the_coord}")
-            coords[the_coord] = {}
-            coords[the_coord]['x'] = x_list
-            coords[the_coord]['y'] = y_list
+            #coords[the_coord] = {}
+            #coords[the_coord]['x'] = x_list
+            #coords[the_coord]['y'] = y_list
+            coords[the_coord] = {'x': x_list, 'y': y_list}
             # print("coords",type(coords))
 
         #print("coords",type(coords))
-        out_json[image_name]['predictions'][json_names[v]] = coords
+        predictions[json_name] = coords
 
     output = os.path.join(path_out, os.path.splitext(image_name)[0] + '.json')
     with open(output, 'w') as outfile:
@@ -948,6 +989,10 @@ def write_to_json(image_name, cutting_point, run_ID, path_out, centerlines_rings
 #######################################################################
 # Create a POS file with measure points
 #######################################################################
+def _point_to_string(point, mm_per_pixel):
+    x, y = point.coords[0]
+    return f"{x*mm_per_pixel:.3f},{y*mm_per_pixel:.3f}"
+
 def write_to_pos(measure_points, file_name, image_name, DPI, path_out):
     logger.info("write_to_pos START")
     # If two adjust naming. Nothing for the normal one and add "x" at the end for the second part
@@ -955,38 +1000,30 @@ def write_to_pos(measure_points, file_name, image_name, DPI, path_out):
     now = datetime.now()
     dt_string = now.strftime("%Y-%m-%d %H:%M:%S")
     # Prepare unit conversion
-    pixel_per_mm = DPI/25.4
+    mm_per_pixel = 25.4 / DPI
     # Create paths for output files
     out_file_path, out_fileX_path = os.path.join(path_out, file_name+'.pos'), os.path.join(path_out, file_name+'X'+'.pos')
     out_file_paths = (out_file_path, out_fileX_path)
 
     logger.debug(f"measure_points {measure_points}")
-    for l in range(len(measure_points)):
-        measure_points1 = measure_points[l]
+    for l, measure_points1 in enumerate(measure_points):
         logger.debug(f"measure_points1 {measure_points1}")
         logger.debug(f'len of measure_points1: {len(measure_points1)}')
         if len(measure_points1) == 0:  # Precaution in case the first part of measure points is empty
             logger.warning('Middle of the core identified on the first ring!!!Only X .pos file will be created!!!')
             continue
         str_measure_points1 = []
-        first_x, first_y = measure_points1[0][0].coords.xy
-        #print('first_xy', first_x, first_y)
-        first_point = "".join(str(round(float(first_x[0])/pixel_per_mm, 3))+","+str(round(float(first_y[0])/pixel_per_mm, 3))+"\n")
-        str_measure_points1.append(first_point)
-
+        logger.debug(f'measure_points1[0][0]: {measure_points1[0][0]}')
+        # The first point
+        str_measure_points1.append(_point_to_string(measure_points1[0][0], mm_per_pixel) + "\n")
+        # The middle points
         for i in range(len(measure_points1)-1):
             # This gets second point of a current tuple and the first of the next tuple
-            #print('measure_points', measure_points[i][0].coords.xy, measure_points[i][1].coords.xy)
-            current_x, current_y = measure_points1[i][1].coords.xy
-            next_x, next_y = measure_points1[i+1][0].coords.xy
-            str_point = "".join(str(round(float(current_x[0])/pixel_per_mm, 3))+","+str(round(float(current_y[0])/pixel_per_mm,3))+"  "+str(round(float(next_x[0])/pixel_per_mm, 3))+","+str(round(float(next_y[0])/pixel_per_mm, 3))+"\n")
-            str_measure_points1.append(str_point)
-            #print('str_measure_points',str_measure_points1)
-
+            str_measure_points1.append(_point_to_string(measure_points1[i][1], mm_per_pixel) + "  "
+                                       + _point_to_string(measure_points1[i+1][0], mm_per_pixel) + "\n")
+        # The last point
         logger.debug(f'should be last measure point {len(measure_points1)}')
-        last_x, last_y = measure_points1[len(measure_points1)-1][1].coords.xy
-        last_point = "".join(str(round(float(last_x[0])/pixel_per_mm, 3))+","+str(round(float(last_y[0])/pixel_per_mm, 3))+"\n")
-        str_measure_points1.append(last_point)
+        str_measure_points1.append(_point_to_string(measure_points1[len(measure_points1)-1][1], mm_per_pixel) + "\n")
 
         # Write in the file
 
@@ -1000,6 +1037,7 @@ def write_to_pos(measure_points, file_name, image_name, DPI, path_out):
                     f'#C Written={dt_string} \n'
                     f'#C CooRecorder= \n'
                     f'#C licensedTo=; \n')
-            for i in str_measure_points1:
-                f.write(i)
+
+            f.write("".join(str_measure_points1))
+
     logger.info("write_to_pos FINISH")
