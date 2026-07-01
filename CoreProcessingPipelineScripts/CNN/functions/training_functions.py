@@ -93,11 +93,11 @@ def load_annot(annot_path, im_size):
 ##########################################################################################
 # Function to print annotations as a png files plus save txt with some summary information
 ##########################################################################################
-def check_annot_folder(folder_path):
+def check_annot_folder(dataset_path, folder):
     logger.info("check_annot_folder START")
-    out_path = os.path.join(folder_path, "annot_check")
+    out_path = os.path.join(dataset_path, "annot_check", folder)
+    folder_path = os.path.join(dataset_path, folder)
     log_and_print(f"folder_path: {folder_path}", logger, "info")
-    #print("folder_path", folder_path )
 
     os.makedirs(out_path, exist_ok=True)
 
@@ -171,7 +171,7 @@ def check_annot_folder(folder_path):
 def check_annot_dataset(dataset_path):
     logger.info("check_annot_dataset START")
     for folder in ("train", "val"):
-        check_annot_folder(os.path.join(dataset_path, folder))
+        check_annot_folder(dataset_path, folder)
     logger.info("check_annot_dataset FINISH")
 
 def collect_annotations(CVAT_folder):
@@ -566,7 +566,7 @@ def eval_dataset(data, model, n_classes, detection_rows, sliding_window_overlap,
     # im_name = "20115_00041007a_0_pSX1.965424714300121_pSY1.9655438706947042.tif"
     for im_name in im_gen:
         ## load image to extract the im size and other values
-        log_and_print(f"evaluating image  {im_name}", logger, "info")
+        log_and_print(f"Evaluating image  {im_name}", logger, "info")
         im_path = os.path.join(data, im_name)
         im = cv2.imread(im_path)
         if im is None:
@@ -637,6 +637,7 @@ def plot_results(res, IoU_thresholds, out_file_plot):
 def evaluate_weight(data, weight_path, res_out_path, n_classes, detection_rows,
                     sliding_window_overlap, cropUpandDown, min_mask_overlap):
     weight_name = os.path.basename(weight_path)
+    log_and_print(f"Evaluating weight  {weight_name}", logger, "info")
     # check if results for this weight already exist
     csv_file_out = os.path.join(res_out_path, weight_name.replace(".pt", ".csv"))
     out_file_plot = os.path.join(res_out_path, weight_name.replace(".pt", ".png"))
