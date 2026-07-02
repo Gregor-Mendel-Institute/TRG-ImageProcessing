@@ -1,0 +1,1 @@
+python ../testing_and_development/Get_speed_from_logs.py --log_folder=../output/Test_detection

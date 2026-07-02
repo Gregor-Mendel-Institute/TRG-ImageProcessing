@@ -1,1 +1,1 @@
-python ../testing_and_development/Get_speed_from_logs.py --log_folder=../output/Test_detection
+python ../testing_and_development/Get_speed_from_logs.py --log_folder=/Users/miroslav/Library/CloudStorage/Dropbox-Personal/manuscripts/NewCNN_Yolov/V1_speedsall34coresV100

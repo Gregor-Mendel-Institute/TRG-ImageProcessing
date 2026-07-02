@@ -1,15 +1,15 @@
 
 time python ../processing/processing.py \
   --dpi=13039 \
-  --run_ID=Test_line_fix_08  \
+  --run_ID=Test_crack \
   --input=/Users/miroslav/Documents/Pictures/Test_cores_from_speed_test/00014006b_core_id7_bc4_obj0_pid2_tN2_pS0.6485714396165350_pSX1.9653784325736006_pSY1.9658008396911357_crop.tif \
   --weights=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
   --cropUpandDown=0 \
   --sliding_window_overlap=0.75 \
-  --cracks=True \
-  --debug=True \
-  --print_detections=True\
+  --cracks \
+  --debug \
+  --print_detections\
 
 #--input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
 #--input=/Users/miroslav.polacek/Downloads/TC_selection_of_cores/F4b_B1.png \

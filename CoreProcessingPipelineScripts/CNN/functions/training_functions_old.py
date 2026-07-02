@@ -322,17 +322,20 @@ def _get_metrics(poly_d, poly_t, IoU_thresholds):
                 IoU = pT.intersection(pD).area / pT.union(pD).area
                 logger.debug(f"IoU {IoU}")
                 if pD.area == 0:
-                    crush
+                    continue
 
         IoU_list = [max((pT.intersection(pD).area / pT.union(pD).area for pD in poly_d))
                          for pT in poly_t]
-
+        logger.debug("IoU_list: %s", IoU_list)
         TPs = np.array([len(np.where(IoU_list > IoU_threshold)[0]) for IoU_threshold in IoU_thresholds])
         logger.debug(f"TPs {TPs}")
         P = TPs / len(poly_d)
+        logger.debug("P: %s", P)
         R = TPs / len(poly_t)
+        logger.debug("R: %s", R)
         #print("IoU_list", IoU_list)
         IoU = [np.mean(IoU_list)] + np.repeat(np.nan, len(IoU_thresholds)-1).tolist() # make them same dimension to convert everything in np.array
+        logger.debug("IoU: %s", IoU)
     #print("IoU", IoU)
     #print("len IoU", len(IoU))
     return P, R, IoU

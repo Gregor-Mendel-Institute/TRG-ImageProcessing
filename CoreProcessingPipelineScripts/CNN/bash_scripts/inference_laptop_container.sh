@@ -1,12 +1,12 @@
 
 time apptainer run ../image-processing_master.sif \
   --dpi=13039 \
-  --run_ID=MambafullEnvContainer_test \
-  --input=run/media/miroslav/Storage/Ring_test_examples/mini_ring_examples/to_use \
-  --output_folder=/home/miroslav/Github/TRG_ImplementYOLOv8/TRG-ImageProcessing/CoreProcessingPipelineScripts/CNN/output \
-  --cracks=True \
-  --debug=True \
-  --print_detections=yes\/Users/miroslav.polacek/
+  --run_ID=containerYolo12x1024 \
+  --input=../training/sample_dataset/val \
+  --output_folder=../output \
+  --cracks \
+  --debug \
+  --print_detections \
 
 #--input=/Volumes/Storage/Ring_test_examples/mini_ring_examples/to_use \
 #--input=/Users/miroslav.polacek/Downloads/TC_selection_of_cores/F4b_B1.png \

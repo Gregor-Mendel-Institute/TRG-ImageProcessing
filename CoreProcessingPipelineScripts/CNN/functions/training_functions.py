@@ -504,10 +504,12 @@ def _get_metrics(poly_d, poly_t, IoU_thresholds):
             for idx, pD in enumerate(available_detections):
 
                 inter = pT.intersection(pD).area
+                logger.debug("inter %s", inter)
                 if inter == 0:
                     continue
 
                 iou = inter / (pT.area + pD.area - inter)
+                logger.debug("union %s", (pT.area + pD.area - inter))
                 if iou > best_iou:
                     best_iou, best_idx = iou, idx
 
@@ -528,6 +530,55 @@ def _get_metrics(poly_d, poly_t, IoU_thresholds):
     logger.debug("R: %s", R)
     logger.debug("IoU: %s", IoU)
     logger.debug("_get_metrics FINISH")
+    return P, R, IoU
+
+# old just for debug should be removed
+def _get_metrics_old(poly_d, poly_t, IoU_thresholds):
+    # Calculate metrics per image per class
+    # poly_d and poly_t are detected and truth shapely polygons
+    # Precision as correctly detected/all detected
+    # Recall as correctly detected/all real (ground truth) rings
+    logger.debug(f"poly_d length {len(poly_d)}")
+    logger.debug(f"poly_t length {len(poly_t)}")
+    # ADD COMPREHENSION TO filter ONLY VALID POLYGONS
+    #poly_t_v = [pT for pT in poly_t if shapely.is_valid(pT)] # just to see but remove, does not make sense they should be good
+    #poly_d_v = [pD for pD in poly_d if shapely.is_valid_reason(pD)]
+    #print(f'poly_t: {len(poly_t)}')
+
+    if len(poly_t) == 0:
+        NANs = np.repeat(np.nan, len(IoU_thresholds))
+        P, R, IoU = NANs, NANs, NANs
+    elif len(poly_d) == 0 and len(poly_t) != 0:
+        zeros = np.repeat(0, len(IoU_thresholds))
+        P, R, IoU = zeros, zeros, np.repeat(np.nan, len(IoU_thresholds))
+    else:
+        IoU_list_debug = []
+        for pT in poly_t:
+            IoUs_temp_debug = []
+            for pD in poly_d:
+                logger.debug(f"intersection {pT.intersection(pD).area}")
+                logger.debug(f"union {pT.union(pD).area}")
+                logger.debug(f"pD area {pD.area}")
+                logger.debug(f"pT area {pT.area}")
+                IoU = pT.intersection(pD).area / pT.union(pD).area
+                logger.debug(f"IoU {IoU}")
+                if pD.area == 0:
+                    continue
+
+        IoU_list = [max((pT.intersection(pD).area / pT.union(pD).area for pD in poly_d))
+                         for pT in poly_t]
+        logger.debug("IoU_list: %s", IoU_list)
+        TPs = np.array([len(np.where(IoU_list > IoU_threshold)[0]) for IoU_threshold in IoU_thresholds])
+        logger.debug(f"TPs {TPs}")
+        P = TPs / len(poly_d)
+        logger.debug("P: %s", P)
+        R = TPs / len(poly_t)
+        logger.debug("R: %s", R)
+        #print("IoU_list", IoU_list)
+        IoU = [np.mean(IoU_list)] + np.repeat(np.nan, len(IoU_thresholds)-1).tolist() # make them same dimension to convert everything in np.array
+        logger.debug("IoU: %s", IoU)
+    #print("IoU", IoU)
+    #print("len IoU", len(IoU))
     return P, R, IoU
 
 def eval_image(image, model, yolo_annot_file, im_size, n_classes, detection_rows, sliding_window_overlap, cropUpandDown, min_mask_overlap, IoU_thresholds):

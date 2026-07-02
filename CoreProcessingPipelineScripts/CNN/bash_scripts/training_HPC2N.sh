@@ -14,7 +14,8 @@ time python ../processing/processing.py \
   --weights=../weights/best10px1000eAugEnlargedDataset.pt \
   --output_folder=../output \
   --epochs=1 \
-  --generate_annotations=False \
   --annot_buffer=10 \
-  --debug=True \
+  --debug \
   --run_ID=Training_fullwithTimonyolov8
+
+# --generate_annotations \

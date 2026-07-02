@@ -155,7 +155,7 @@ def main():
     if args.evaluate_weight:
         path_out = os.path.join(args.output_folder, "evals")
     elif args.training_data is not None:
-        path_out = os.path.join(args.output_folder, "retraining")
+        path_out = os.path.join(os.path.abspath(args.output_folder), "retraining") # because yolo does not like relative path
     else:
         path_out = os.path.join(args.output_folder, args.run_ID)
     # Check if output dir for run_ID exists and if not create it
