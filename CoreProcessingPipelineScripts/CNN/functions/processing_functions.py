@@ -587,7 +587,7 @@ def _measure_distances(Multi_centerlines):
 
     return Multi_centerlines, measure_points
 
-def _cut_sections_and_measure(Multi_centerlines, cutting_point, imgheight, before_cutting_point=True):
+def _cut_sections_and_measure(Multi_centerlines, cutting_point, imgheight, imgwidth, before_cutting_point=True):
     # Output is the _nearest_distances_output: Multi_centerlines, measure_points
 
     if before_cutting_point:
@@ -638,9 +638,9 @@ def measure_contours(Multi_centerlines, image):
         Multi_centerlines2 = Multi_centerlines.intersection(cut_frame2_poly)
         """
         # Part before pith
-        Multi_centerlines1, measure_points1 = _cut_sections_and_measure(Multi_centerlines, cutting_point, imgheight, True)
+        Multi_centerlines1, measure_points1 = _cut_sections_and_measure(Multi_centerlines, cutting_point, imgheight, imgwidth, True)
         # Part after pith
-        Multi_centerlines2, measure_points2 = _cut_sections_and_measure(Multi_centerlines, cutting_point, imgheight, False)
+        Multi_centerlines2, measure_points2 = _cut_sections_and_measure(Multi_centerlines, cutting_point, imgheight, imgwidth, False)
 
         if Multi_centerlines1 is None:
             log_and_print("Multi_centerlines1 is empty", "warning")
